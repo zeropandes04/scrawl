@@ -14,7 +14,7 @@ const canvasSize = 800;
 const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
-const drawStrokeWeight = 4;
+const drawStrokeWeight = 8;
 
 let intensity = 20;
 
