@@ -119,6 +119,17 @@
       width: 100%;
     }
 
+    .sidebar .tools-grid button {
+      aspect-ratio: 1 / 1;
+      padding: 12px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
     button {
       background: #f5f5f7;
       color: #1d1d1f;
@@ -145,12 +156,23 @@
     }
 
     button.active {
-      background: #1d1d1f;
-      color: #f5f5f7;
+      background: #7ed99b;
+      color: #1d1d1f;
     }
 
     button.active:hover {
-      background: #424245;
+      background: #6bcf8a;
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    button:disabled:hover {
+      background: #f5f5f7;
+      transform: none;
     }
 
     .cta-button {
@@ -255,6 +277,263 @@
       font-variant-numeric: tabular-nums;
     }
 
+    .tool-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .tool-row button {
+      flex: 1;
+    }
+
+    select {
+      background: #ffffff;
+      color: #1d1d1f;
+      border: 1px solid #d2d2d7;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 400;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      outline: none;
+      flex: 1;
+    }
+
+    select:hover {
+      border-color: #b8b8bd;
+    }
+
+    select:focus {
+      border-color: #0071e3;
+    }
+
+    .color-select {
+      min-width: 80px;
+    }
+
+    .tools-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .custom-dropdown {
+      position: relative;
+      width: 100%;
+    }
+
+    .custom-dropdown-button {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: #f5f5f7;
+      border: none;
+      padding: 12px;
+      font-size: 15px;
+      line-height: 1.23536;
+      font-weight: 400;
+      letter-spacing: -0.022em;
+      border-radius: 18px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: inherit;
+      color: #1d1d1f;
+    }
+
+    .custom-dropdown-button:hover {
+      background: #e8e8ed;
+      transform: scale(1.02);
+    }
+
+    .custom-dropdown-button:active {
+      transform: scale(0.98);
+    }
+
+    .custom-dropdown-button.open {
+      background: #e8e8ed;
+    }
+
+    .tool-dropdown {
+      position: relative;
+      width: 100%;
+    }
+
+    .tool-dropdown-button {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      background: #f5f5f7;
+      border: none;
+      padding: 12px;
+      font-size: 15px;
+      line-height: 1.23536;
+      font-weight: 400;
+      letter-spacing: -0.022em;
+      border-radius: 18px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: inherit;
+      color: #1d1d1f;
+    }
+
+    .tool-dropdown-button:hover {
+      background: #e8e8ed;
+      transform: scale(1.02);
+    }
+
+    .tool-dropdown-button:active {
+      transform: scale(0.98);
+    }
+
+    .tool-dropdown-button.active {
+      background: #7ed99b;
+      color: #1d1d1f;
+    }
+
+    .tool-dropdown-button.active:hover {
+      background: #6bcf8a;
+    }
+
+    .tool-dropdown-button.open {
+      background: #e8e8ed;
+    }
+
+    .tool-dropdown-button.active.open {
+      background: #6bcf8a;
+    }
+
+    .tool-icon {
+      font-size: 24px;
+    }
+
+    .tool-label {
+      font-size: 11px;
+      text-align: center;
+      font-weight: 500;
+    }
+
+    .size-indicator {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 50%;
+    }
+
+    .custom-dropdown-content {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      margin-top: 4px;
+      background: #ffffff;
+      border: 1px solid #d2d2d7;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 1000;
+      display: none;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .custom-dropdown-content.show {
+      display: block;
+    }
+
+    .custom-dropdown-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .custom-dropdown-option:hover {
+      background: #f5f5f7;
+    }
+
+    .custom-dropdown-option.selected {
+      background: #e8e8ed;
+    }
+
+    .brush-preview, .eraser-preview {
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brush-circle {
+      background: #1d1d1f;
+      border-radius: 50%;
+    }
+
+    .eraser-circle {
+      background: #ffffff;
+      border: 1px solid #d2d2d7;
+      border-radius: 50%;
+    }
+
+    .dropdown-arrow {
+      font-size: 10px;
+      color: #86868b;
+      transition: transform 0.2s;
+    }
+
+    .custom-dropdown-button.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+
+    .tool-dropdown-button.open .dropdown-arrow {
+      transform: rotate(180deg);
+    }
+
+    .color-preview-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      width: 100%;
+    }
+
+    .color-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      flex-shrink: 0;
+    }
+
+    #selected-color-swatch {
+      width: 28px;
+      height: 28px;
+      border: 2px solid rgba(0, 0, 0, 0.15);
+    }
+
+    #brush-color-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-align: center;
+    }
+
+    .color-icon {
+      font-size: 24px;
+    }
+
     .example-section {
       text-align: center;
       margin-top: 80px;
@@ -276,6 +555,24 @@
       margin: 0 auto;
       border-radius: 12px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+
+    .scrawl-counter {
+      text-align: center;
+      padding: 24px 0;
+      color: #86868b;
+      font-size: 13px;
+      line-height: 1.33337;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+
+    .scrawl-counter strong {
+      color: #1d1d1f;
+      font-weight: 600;
+      font-size: 21px;
+      display: block;
+      margin-top: 4px;
     }
 
     footer {
@@ -389,7 +686,7 @@
   <div class="container">
     <header>
       <h1>Scrawlface</h1>
-      <p class="subtitle">Create unique pareidolia art with random scrawls and faces</p>
+      <p class="subtitle">Generate endless variations of abstract faces</p>
     </header>
 
     <main>
@@ -399,6 +696,10 @@
         </div>
 
         <aside class="sidebar">
+          <div class="sidebar-section">
+            <button id="generate-btn" class="cta-button">Generate Scrawl</button>
+          </div>
+
           <div class="sidebar-section">
             <div class="control-group">
               <label for="intensity-slider">Intensity</label>
@@ -410,19 +711,119 @@
           </div>
 
           <div class="sidebar-section">
-            <button id="generate-btn" class="cta-button">Generate Scrawl</button>
-          </div>
-
-          <div class="sidebar-section">
             <h3>View</h3>
             <button id="rotate-btn" title="Rotate 90°">↻ Rotate</button>
             <button id="toggle-eyes-btn" class="active" title="Toggle eyes">👁 Toggle</button>
           </div>
 
           <div class="sidebar-section">
-            <h3>Edit</h3>
-            <button id="draw-btn" title="Draw mode">✏️ Draw</button>
-            <button id="clear-drawings-btn" title="Clear drawings">⌫ Clear Drawings</button>
+            <h3>Tools</h3>
+            <div class="tools-grid">
+              <div class="tool-dropdown" id="brush-tool-dropdown">
+                <button class="tool-dropdown-button" id="brush-tool-btn">
+                  <span class="tool-icon">🖌️</span>
+                  <span class="tool-label">Sharpie</span>
+                  <div class="size-indicator">
+                    <div class="brush-circle" id="brush-size-indicator" style="width: 8px; height: 8px;"></div>
+                  </div>
+                </button>
+                <div class="custom-dropdown-content">
+                  <div class="custom-dropdown-option" data-value="4">
+                    <div class="brush-preview">
+                      <div class="brush-circle" style="width: 4px; height: 4px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option selected" data-value="8">
+                    <div class="brush-preview">
+                      <div class="brush-circle" style="width: 8px; height: 8px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="12">
+                    <div class="brush-preview">
+                      <div class="brush-circle" style="width: 12px; height: 12px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="16">
+                    <div class="brush-preview">
+                      <div class="brush-circle" style="width: 16px; height: 16px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="custom-dropdown" id="brush-color-dropdown">
+                <button class="custom-dropdown-button" id="color-dropdown-btn">
+                  <span class="color-icon">🎨</span>
+                  <span id="brush-color-label">Color</span>
+                  <div class="color-swatch" id="selected-color-swatch" style="background: #000000;"></div>
+                </button>
+                <div class="custom-dropdown-content">
+                  <div class="custom-dropdown-option selected" data-value="#000000" data-name="Black">
+                    <div class="color-swatch" style="background: #000000;"></div>
+                    <span>Black</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#001A80" data-name="Blue">
+                    <div class="color-swatch" style="background: #001A80;"></div>
+                    <span>Blue</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#2D1206" data-name="Brown">
+                    <div class="color-swatch" style="background: #2D1206;"></div>
+                    <span>Brown</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#006635" data-name="Green">
+                    <div class="color-swatch" style="background: #006635;"></div>
+                    <span>Green</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#F53524" data-name="Orange">
+                    <div class="color-swatch" style="background: #F53524;"></div>
+                    <span>Orange</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#372277" data-name="Purple">
+                    <div class="color-swatch" style="background: #372277;"></div>
+                    <span>Purple</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#CC0000" data-name="Red">
+                    <div class="color-swatch" style="background: #CC0000;"></div>
+                    <span>Red</span>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="#FFF133" data-name="Yellow">
+                    <div class="color-swatch" style="background: #FFF133;"></div>
+                    <span>Yellow</span>
+                  </div>
+                </div>
+              </div>
+              <div class="tool-dropdown" id="eraser-tool-dropdown">
+                <button class="tool-dropdown-button" id="eraser-tool-btn">
+                  <span class="tool-icon">🧽</span>
+                  <span class="tool-label">Eraser</span>
+                  <div class="size-indicator">
+                    <div class="eraser-circle" id="eraser-size-indicator" style="width: 16px; height: 16px;"></div>
+                  </div>
+                </button>
+                <div class="custom-dropdown-content">
+                  <div class="custom-dropdown-option" data-value="8">
+                    <div class="eraser-preview">
+                      <div class="eraser-circle" style="width: 8px; height: 8px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option selected" data-value="16">
+                    <div class="eraser-preview">
+                      <div class="eraser-circle" style="width: 16px; height: 16px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="24">
+                    <div class="eraser-preview">
+                      <div class="eraser-circle" style="width: 24px; height: 24px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="32">
+                    <div class="eraser-preview">
+                      <div class="eraser-circle" style="width: 32px; height: 32px;"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
+            </div>
           </div>
 
           <div class="sidebar-section">
@@ -447,8 +848,9 @@
         <div class="toolbar-divider"></div>
 
         <div class="toolbar-section">
-          <button id="draw-btn-mobile" class="icon-btn" title="Draw mode">✏️</button>
-          <button id="clear-drawings-btn-mobile" class="icon-btn" title="Clear drawings">⌫</button>
+          <button id="draw-btn-mobile" class="icon-btn" title="Sharpie">✏️</button>
+          <button id="erase-btn-mobile" class="icon-btn" title="Eraser">🧽</button>
+          <button id="clear-drawings-btn-mobile" class="icon-btn" title="Clear" disabled>⌫</button>
         </div>
 
         <div class="toolbar-divider"></div>
@@ -462,10 +864,15 @@
         <h2>Example Scrawlface</h2>
         <img src="example-scrawlface.png" alt="Example pareidolia artwork" class="example-image" id="example-image">
       </section>
+
+      <div class="scrawl-counter">
+        Total scrawls created
+        <strong id="scrawl-counter">0</strong>
+      </div>
     </main>
 
     <footer>
-      <p>Generate endless variations of abstract faces</p>
+      <p></p>
     </footer>
   </div>
 
