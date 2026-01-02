@@ -130,6 +130,12 @@
       font-weight: 500;
     }
 
+    .sidebar .tools-grid .clear-btn-full {
+      grid-column: 1 / -1;
+      aspect-ratio: auto;
+      padding: 12px 24px;
+    }
+
     button {
       background: #f5f5f7;
       color: #1d1d1f;
@@ -534,6 +540,35 @@
       font-size: 24px;
     }
 
+    .color-swatches-palette {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      padding: 0;
+    }
+
+    .color-swatch-btn {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 3px solid transparent;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .color-swatch-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-swatch-btn.selected {
+      border-color: #1d1d1f;
+      transform: scale(1.05);
+      box-shadow: 0 0 0 2px #ffffff, 0 0 0 5px #1d1d1f;
+    }
+
     .example-section {
       text-align: center;
       margin-top: 80px;
@@ -750,46 +785,11 @@
                   </div>
                 </div>
               </div>
-              <div class="custom-dropdown" id="brush-color-dropdown">
-                <button class="custom-dropdown-button" id="color-dropdown-btn">
-                  <span class="color-icon">🎨</span>
-                  <span id="brush-color-label">Color</span>
-                  <div class="color-swatch" id="selected-color-swatch" style="background: #000000;"></div>
+              <div class="tool-dropdown" id="bucket-tool-dropdown">
+                <button class="tool-dropdown-button" id="bucket-tool-btn">
+                  <span class="tool-icon">🪣</span>
+                  <span class="tool-label">Bucket</span>
                 </button>
-                <div class="custom-dropdown-content">
-                  <div class="custom-dropdown-option selected" data-value="#000000" data-name="Black">
-                    <div class="color-swatch" style="background: #000000;"></div>
-                    <span>Black</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#001A80" data-name="Blue">
-                    <div class="color-swatch" style="background: #001A80;"></div>
-                    <span>Blue</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#2D1206" data-name="Brown">
-                    <div class="color-swatch" style="background: #2D1206;"></div>
-                    <span>Brown</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#006635" data-name="Green">
-                    <div class="color-swatch" style="background: #006635;"></div>
-                    <span>Green</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#F53524" data-name="Orange">
-                    <div class="color-swatch" style="background: #F53524;"></div>
-                    <span>Orange</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#372277" data-name="Purple">
-                    <div class="color-swatch" style="background: #372277;"></div>
-                    <span>Purple</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#CC0000" data-name="Red">
-                    <div class="color-swatch" style="background: #CC0000;"></div>
-                    <span>Red</span>
-                  </div>
-                  <div class="custom-dropdown-option" data-value="#FFF133" data-name="Yellow">
-                    <div class="color-swatch" style="background: #FFF133;"></div>
-                    <span>Yellow</span>
-                  </div>
-                </div>
               </div>
               <div class="tool-dropdown" id="eraser-tool-dropdown">
                 <button class="tool-dropdown-button" id="eraser-tool-btn">
@@ -822,7 +822,26 @@
                   </div>
                 </div>
               </div>
-              <button id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
+              <!-- Color Swatches Palette -->
+              <div class="color-swatches-palette">
+                <div class="color-swatch-btn selected" data-color="#000000" style="background: #000000;" title="Black"></div>
+                <div class="color-swatch-btn" data-color="#001A80" style="background: #001A80;" title="Blue"></div>
+                <div class="color-swatch-btn" data-color="#2D1206" style="background: #2D1206;" title="Brown"></div>
+                <div class="color-swatch-btn" data-color="#006635" style="background: #006635;" title="Green"></div>
+                <div class="color-swatch-btn" data-color="#F53524" style="background: #F53524;" title="Orange"></div>
+                <div class="color-swatch-btn" data-color="#372277" style="background: #372277;" title="Purple"></div>
+                <div class="color-swatch-btn" data-color="#CC0000" style="background: #CC0000;" title="Red"></div>
+                <div class="color-swatch-btn" data-color="#FFF133" style="background: #FFF133;" title="Yellow"></div>
+              </div>
+              <button id="clear-drawings-btn" class="clear-btn-full" title="Clear drawings" disabled>Clear</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>History</h3>
+            <div class="tool-row">
+              <button id="undo-btn" title="Undo (⌘Z)" disabled>↶ Undo</button>
+              <button id="redo-btn" title="Redo (⌘⇧Z)" disabled>↷ Redo</button>
             </div>
           </div>
 
@@ -851,6 +870,13 @@
           <button id="draw-btn-mobile" class="icon-btn" title="Sharpie">✏️</button>
           <button id="erase-btn-mobile" class="icon-btn" title="Eraser">🧽</button>
           <button id="clear-drawings-btn-mobile" class="icon-btn" title="Clear" disabled>⌫</button>
+        </div>
+
+        <div class="toolbar-divider"></div>
+
+        <div class="toolbar-section">
+          <button id="undo-btn-mobile" class="icon-btn" title="Undo" disabled>↶</button>
+          <button id="redo-btn-mobile" class="icon-btn" title="Redo" disabled>↷</button>
         </div>
 
         <div class="toolbar-divider"></div>
