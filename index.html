@@ -66,10 +66,29 @@
     .canvas-area {
       flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px;
       background: #ffffff;
+      gap: 24px;
+    }
+
+    .canvas-controls {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      width: 100%;
+      max-width: 800px;
+    }
+
+    .canvas-controls .cta-button {
+      flex-shrink: 0;
+    }
+
+    .canvas-controls .control-group {
+      flex: 1;
+      max-width: 300px;
     }
 
     #scrawl-container {
@@ -543,30 +562,30 @@
     .color-swatches-palette {
       grid-column: 1 / -1;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 5px;
       padding: 0;
     }
 
     .color-swatch-btn {
       width: 100%;
       aspect-ratio: 1 / 1;
-      border-radius: 12px;
+      border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s;
-      border: 3px solid transparent;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border: 2px solid transparent;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
     .color-swatch-btn:hover {
       transform: scale(1.1);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
 
     .color-swatch-btn.selected {
       border-color: #1d1d1f;
       transform: scale(1.05);
-      box-shadow: 0 0 0 2px #ffffff, 0 0 0 5px #1d1d1f;
+      box-shadow: 0 0 0 1px #ffffff, 0 0 0 3px #1d1d1f;
     }
 
     .example-section {
@@ -727,15 +746,8 @@
     <main>
       <section class="canvas-section">
         <div class="canvas-area">
-          <div id="scrawl-container"></div>
-        </div>
-
-        <aside class="sidebar">
-          <div class="sidebar-section">
+          <div class="canvas-controls">
             <button id="generate-btn" class="cta-button">Generate Scrawl</button>
-          </div>
-
-          <div class="sidebar-section">
             <div class="control-group">
               <label for="intensity-slider">Intensity</label>
               <div class="slider-container">
@@ -744,6 +756,10 @@
               </div>
             </div>
           </div>
+          <div id="scrawl-container"></div>
+        </div>
+
+        <aside class="sidebar">
 
           <div class="sidebar-section">
             <h3>View</h3>
@@ -825,13 +841,20 @@
               <!-- Color Swatches Palette -->
               <div class="color-swatches-palette">
                 <div class="color-swatch-btn selected" data-color="#000000" style="background: #000000;" title="Black"></div>
-                <div class="color-swatch-btn" data-color="#001A80" style="background: #001A80;" title="Blue"></div>
-                <div class="color-swatch-btn" data-color="#2D1206" style="background: #2D1206;" title="Brown"></div>
-                <div class="color-swatch-btn" data-color="#006635" style="background: #006635;" title="Green"></div>
-                <div class="color-swatch-btn" data-color="#F53524" style="background: #F53524;" title="Orange"></div>
-                <div class="color-swatch-btn" data-color="#372277" style="background: #372277;" title="Purple"></div>
                 <div class="color-swatch-btn" data-color="#CC0000" style="background: #CC0000;" title="Red"></div>
+                <div class="color-swatch-btn" data-color="#F53524" style="background: #F53524;" title="Orange"></div>
+                <div class="color-swatch-btn" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine"></div>
                 <div class="color-swatch-btn" data-color="#FFF133" style="background: #FFF133;" title="Yellow"></div>
+                <div class="color-swatch-btn" data-color="#66BD0F" style="background: #66BD0F;" title="Lime"></div>
+                <div class="color-swatch-btn" data-color="#006635" style="background: #006635;" title="Green"></div>
+                <div class="color-swatch-btn" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua"></div>
+                <div class="color-swatch-btn" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue"></div>
+                <div class="color-swatch-btn" data-color="#001A80" style="background: #001A80;" title="Blue"></div>
+                <div class="color-swatch-btn" data-color="#372277" style="background: #372277;" title="Purple"></div>
+                <div class="color-swatch-btn" data-color="#CC0099" style="background: #CC0099;" title="Magenta"></div>
+                <div class="color-swatch-btn" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink"></div>
+                <div class="color-swatch-btn" data-color="#94056E" style="background: #94056E;" title="Berry"></div>
+                <div class="color-swatch-btn" data-color="#2D1206" style="background: #2D1206;" title="Brown"></div>
               </div>
               <button id="clear-drawings-btn" class="clear-btn-full" title="Clear drawings" disabled>Clear</button>
             </div>
