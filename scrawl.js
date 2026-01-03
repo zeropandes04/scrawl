@@ -33,6 +33,12 @@ let historyStack = [];
 let redoStack = [];
 const maxHistorySize = 50;
 
+// Brush stroke tracking for easing
+let strokePoints = 0;
+let maxStrokePoints = 20; // Points to reach full size
+let currentBrushSize = 0;
+let lastStrokePos = null; // Track last position for ease-out
+
 function setup() {
   // Load scrawl count from localStorage
   const savedCount = localStorage.getItem('scrawlCount');
@@ -231,19 +237,49 @@ function draw() {
     const current = getTransformedCoords(mouseX, mouseY);
     const previous = getTransformedCoords(pmouseX, pmouseY);
 
+    // Calculate easing for brush
+    const targetSize = eraseMode ? eraserSize : brushSize;
+
+    // Calculate velocity for ease-out
+    const distance = dist(previous.x, previous.y, current.x, current.y);
+    const velocity = constrain(distance, 0, 20);
+    const velocityFactor = map(velocity, 0, 20, 0.3, 1.0); // Slow = taper, fast = full size
+
+    // Ease in: gradually increase size at start of stroke
+    let sizeFactor = 1.0;
+    if (strokePoints < maxStrokePoints) {
+      strokePoints++;
+      const easeIn = strokePoints / maxStrokePoints;
+      // Use smooth easing function (smoothstep)
+      sizeFactor = easeIn * easeIn * (3 - 2 * easeIn);
+    }
+
+    // Combine ease-in and velocity-based tapering
+    currentBrushSize = targetSize * sizeFactor * velocityFactor;
+
+    // Draw brush stroke as circles along the path
+    const steps = max(1, floor(distance / 2)); // More steps for smoother strokes
+
     if (eraseMode) {
       drawingGraphics.erase();
-      drawingGraphics.strokeWeight(eraserSize);
     } else {
-      drawingGraphics.stroke(brushColor);
-      drawingGraphics.strokeWeight(brushSize);
+      drawingGraphics.fill(brushColor);
+      drawingGraphics.noStroke();
     }
-    drawingGraphics.strokeCap(ROUND);
-    drawingGraphics.strokeJoin(ROUND);
-    drawingGraphics.line(previous.x, previous.y, current.x, current.y);
+
+    for (let i = 0; i <= steps; i++) {
+      const t = steps > 0 ? i / steps : 0;
+      const x = lerp(previous.x, current.x, t);
+      const y = lerp(previous.y, current.y, t);
+      drawingGraphics.ellipse(x, y, currentBrushSize, currentBrushSize);
+    }
+
     if (eraseMode) {
       drawingGraphics.noErase();
     }
+
+    // Store last position for potential ease-out
+    lastStrokePos = {x: current.x, y: current.y};
 
     if (!hasDrawings) {
       hasDrawings = true;
@@ -282,6 +318,9 @@ function mousePressed() {
 
   if ((drawMode || eraseMode) && isMouseInCanvas()) {
     isDrawing = true;
+    // Reset stroke for easing in
+    strokePoints = 0;
+    currentBrushSize = 0;
     // Save state BEFORE starting to draw so we can undo to the clean state
     saveState();
   }
@@ -302,6 +341,7 @@ function mouseReleased() {
   }
 
   isDrawing = false;
+  lastStrokePos = null;
 }
 
 function keyPressed() {

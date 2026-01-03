@@ -396,7 +396,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 2px;
+      gap: 11px;
       background: #e8e8ed;
       border: none;
       padding: 8px;
@@ -439,6 +439,9 @@
 
     .tool-icon {
       font-size: 28px;
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
     }
 
     .tool-label {
@@ -765,15 +768,14 @@
             <div class="tools-grid">
               <div class="tool-dropdown" id="bucket-tool-dropdown">
                 <button class="tool-dropdown-button" id="bucket-tool-btn">
-                  <span class="tool-icon">🪣</span>
-                  <div class="size-indicator" style="visibility: hidden;">
-                    <div style="width: 8px; height: 8px;"></div>
-                  </div>
+                  <div style="height: 5px;"></div>
+                  <img src="icons/paint-rollers.png" alt="Paint Roller" class="tool-icon">
+                  <div style="height: 4px;"></div>
                 </button>
               </div>
               <div class="tool-dropdown" id="brush-tool-dropdown">
                 <button class="tool-dropdown-button" id="brush-tool-btn">
-                  <span class="tool-icon">✏️</span>
+                  <img src="icons/paintbrush.png" alt="Paintbrush" class="tool-icon">
                   <div style="display: flex; align-items: center; gap: 4px;">
                     <div class="size-indicator">
                       <div class="brush-circle" id="brush-size-indicator" style="width: 8px; height: 8px;"></div>
@@ -806,7 +808,7 @@
               </div>
               <div class="tool-dropdown" id="eraser-tool-dropdown">
                 <button class="tool-dropdown-button" id="eraser-tool-btn">
-                  <span class="tool-icon">🧽</span>
+                  <img src="icons/eraser.png" alt="Eraser" class="tool-icon">
                   <div style="display: flex; align-items: center; gap: 4px;">
                     <div class="size-indicator">
                       <div class="eraser-circle" id="eraser-size-indicator" style="width: 16px; height: 16px;"></div>
