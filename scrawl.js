@@ -2,7 +2,8 @@ let canvas;
 const bgColor = [255, 255, 255];
 let strokeColor = [0, 0, 0];
 let rotation = 0;
-let showEyes = true;
+let showScrawl = true;
+let moveEyesMode = false;
 let drawMode = false;
 let eraseMode = false;
 let bucketMode = false;
@@ -58,6 +59,7 @@ function setup() {
   select("#download-btn").mousePressed(() => saveCanvas(canvas, 'scrawl', 'png', 2));
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
+  select("#move-eyes-btn").mousePressed(toggleMoveEyesMode);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
@@ -71,9 +73,9 @@ function setup() {
   select("#rotate-btn-mobile").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn-mobile").mousePressed(() => {
     toggleEyes();
-    // Sync mobile button state
+    // Sync mobile button state (inverted logic: button active = scrawl hidden)
     const btn = select("#toggle-eyes-btn-mobile");
-    showEyes ? btn.addClass("active") : btn.removeClass("active");
+    showScrawl ? btn.removeClass("active") : btn.addClass("active");
   });
   select("#draw-btn-mobile").mousePressed(() => {
     toggleDrawMode();
@@ -146,6 +148,16 @@ function generateScrawlface() {
   // Clear undo/redo history
   clearHistory();
 
+  // Ensure scrawl is visible when generating new scrawl
+  if (!showScrawl) {
+    showScrawl = true;
+    const btn = select("#toggle-eyes-btn");
+    // Inverted logic: button inactive = scrawl visible
+    if (btn) btn.removeClass("active");
+    const btnMobile = select("#toggle-eyes-btn-mobile");
+    if (btnMobile) btnMobile.removeClass("active");
+  }
+
   // Increment and save scrawl count
   scrawlCount++;
   localStorage.setItem('scrawlCount', scrawlCount.toString());
@@ -211,7 +223,7 @@ function draw() {
     return;
   }
 
-  if (!drawMode && showEyes && !mouseIsPressed) {
+  if (!drawMode && !eraseMode && !bucketMode && moveEyesMode && !mouseIsPressed) {
     updateCursor();
   }
 
@@ -256,7 +268,7 @@ function isMouseInCanvas() {
 }
 
 function mousePressed() {
-  if (!drawMode && !eraseMode && !bucketMode && showEyes) {
+  if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     const eyeIndex = eyePositions.findIndex(pos =>
       dist(transformed.x, transformed.y, pos.x, pos.y) < eyeRadius
@@ -332,20 +344,20 @@ function redrawCanvas() {
   rotate(radians(rotation));
   imageMode(CENTER);
 
-  if (showEyes) {
+  if (showScrawl) {
     image(scrawlGraphics, 0, 0);
   } else {
-    image(originalScrawlGraphics, 0, 0);
+    // Only show drawings, not the base scrawl
+    image(drawingGraphics, 0, 0);
   }
 
   pop();
 
-  if (showEyes) {
-    eyePositions.forEach(pos => {
-      const rotatedPos = getRotatedPosition(pos.x, pos.y);
-      drawEye(rotatedPos.x, rotatedPos.y, pos.scale);
-    });
-  }
+  // Always show eyes
+  eyePositions.forEach(pos => {
+    const rotatedPos = getRotatedPosition(pos.x, pos.y);
+    drawEye(rotatedPos.x, rotatedPos.y, pos.scale);
+  });
 }
 
 function getRotatedPosition(x, y) {
@@ -391,10 +403,27 @@ function rotateCanvas() {
 }
 
 function toggleEyes() {
-  showEyes = !showEyes;
+  showScrawl = !showScrawl;
   const btn = select("#toggle-eyes-btn");
-  showEyes ? btn.addClass("active") : btn.removeClass("active");
+  // Inverted logic: button active = scrawl hidden, button inactive = scrawl visible
+  showScrawl ? btn.removeClass("active") : btn.addClass("active");
   redrawCanvas();
+}
+
+function toggleMoveEyesMode() {
+  moveEyesMode = !moveEyesMode;
+  const btn = select("#move-eyes-btn");
+  moveEyesMode ? btn.addClass("active") : btn.removeClass("active");
+
+  // Deactivate all drawing tools when entering move eyes mode
+  if (moveEyesMode) {
+    deactivateAllTools();
+  }
+
+  // Reset cursor when exiting move eyes mode
+  if (!moveEyesMode) {
+    cursor(ARROW);
+  }
 }
 
 function activateBrushMode() {
@@ -402,6 +431,13 @@ function activateBrushMode() {
     drawMode = true;
     eraseMode = false;
     bucketMode = false;
+
+    // Deactivate move eyes mode
+    if (moveEyesMode) {
+      moveEyesMode = false;
+      const moveEyesBtn = select("#move-eyes-btn");
+      if (moveEyesBtn) moveEyesBtn.removeClass("active");
+    }
 
     const brushBtn = document.getElementById('brush-tool-btn');
     const eraserBtn = document.getElementById('eraser-tool-btn');
@@ -421,6 +457,13 @@ function activateEraseMode() {
     drawMode = false;
     bucketMode = false;
 
+    // Deactivate move eyes mode
+    if (moveEyesMode) {
+      moveEyesMode = false;
+      const moveEyesBtn = select("#move-eyes-btn");
+      if (moveEyesBtn) moveEyesBtn.removeClass("active");
+    }
+
     const brushBtn = document.getElementById('brush-tool-btn');
     const eraserBtn = document.getElementById('eraser-tool-btn');
     const bucketBtn = document.getElementById('bucket-tool-btn');
@@ -438,6 +481,13 @@ function activateBucketMode() {
     bucketMode = true;
     drawMode = false;
     eraseMode = false;
+
+    // Deactivate move eyes mode
+    if (moveEyesMode) {
+      moveEyesMode = false;
+      const moveEyesBtn = select("#move-eyes-btn");
+      if (moveEyesBtn) moveEyesBtn.removeClass("active");
+    }
 
     const brushBtn = document.getElementById('brush-tool-btn');
     const eraserBtn = document.getElementById('eraser-tool-btn');
@@ -822,8 +872,8 @@ function setupColorSwatches() {
       // Update brush color
       brushColor = color;
 
-      // Activate brush mode
-      activateBrushMode();
+      // Update brush size indicator color
+      document.getElementById('brush-size-indicator').style.background = color;
     });
   });
 }
