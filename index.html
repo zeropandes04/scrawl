@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Scrawlface - Generate Pareidolia Art</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
   <script src="scrawl.js"></script>
@@ -231,6 +231,145 @@
     .bottom-toolbar button.icon-btn {
       min-width: 44px;
       padding: 10px 12px;
+    }
+
+    /* Mobile toolbar styles */
+    .mobile-toolbar-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      gap: 12px;
+    }
+
+    .mobile-tool-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 48px;
+      min-height: 48px;
+      padding: 12px;
+    }
+
+    .mobile-tool-btn.active {
+      background: #7ed99b;
+    }
+
+    .mobile-toolbar-expanded {
+      width: 100%;
+      background: #ffffff;
+      border-top: 1px solid #d2d2d7;
+      padding: 16px;
+      max-height: 60vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .mobile-section {
+      margin-bottom: 20px;
+    }
+
+    .mobile-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .mobile-section-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #6e6e73;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+
+    .mobile-color-swatches {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 8px;
+    }
+
+    .color-swatch-btn-mobile {
+      min-width: 44px;
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 3px solid transparent;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .color-swatch-btn-mobile:active {
+      transform: scale(0.95);
+    }
+
+    .color-swatch-btn-mobile.selected {
+      border-color: #1d1d1f;
+      transform: scale(1.05);
+      box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #1d1d1f;
+    }
+
+    .mobile-size-options {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-start;
+    }
+
+    .mobile-size-btn {
+      min-width: 48px;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #f5f5f7;
+      border: 2px solid transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mobile-size-btn:active {
+      transform: scale(0.95);
+    }
+
+    .mobile-size-btn.selected {
+      background: #e8e8ed;
+      border-color: #0071e3;
+    }
+
+    .mobile-controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .mobile-control-btn {
+      padding: 14px 16px;
+      font-size: 14px;
+      min-height: 48px;
+      background: #e8e8ed;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .mobile-control-btn:active {
+      transform: scale(0.97);
+      background: #d2d2d7;
+    }
+
+    .mobile-control-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .mobile-control-btn.active {
+      background: #7ed99b;
     }
 
     .control-group {
@@ -843,7 +982,7 @@
           </div>
 
           <div class="sidebar-section">
-            <h3>Swatches</h3>
+            <h3>Colours</h3>
             <div class="color-swatches-palette">
               <div class="color-swatch-btn selected" data-color="#000000" style="background: #000000;" title="Black"></div>
               <div class="color-swatch-btn" data-color="#CC0000" style="background: #CC0000;" title="Red"></div>
@@ -889,36 +1028,83 @@
 
       <!-- Mobile bottom toolbar -->
       <div class="bottom-toolbar">
-        <div class="toolbar-section">
-          <button id="generate-btn-mobile" class="cta-button">Generate Scrawl</button>
+        <!-- Main toolbar - always visible -->
+        <div class="mobile-toolbar-main">
+          <button id="bucket-tool-btn-mobile" class="icon-btn mobile-tool-btn" title="Fill">
+            <img src="icons/paint-rollers.png" alt="Fill" style="width: 24px; height: 24px;">
+          </button>
+          <button id="brush-tool-btn-mobile" class="icon-btn mobile-tool-btn" title="Brush">
+            <img src="icons/paintbrush.png" alt="Brush" style="width: 24px; height: 24px;">
+          </button>
+          <button id="eraser-tool-btn-mobile" class="icon-btn mobile-tool-btn" title="Eraser">
+            <img src="icons/eraser.png" alt="Eraser" style="width: 24px; height: 24px;">
+          </button>
+          <button id="rotate-btn-mobile" class="icon-btn mobile-tool-btn" title="Rotate">↻</button>
+          <button id="undo-btn-mobile" class="icon-btn mobile-tool-btn" title="Undo" disabled>↶</button>
+          <button id="toggle-mobile-menu" class="icon-btn mobile-tool-btn" title="More">⋯</button>
         </div>
 
-        <div class="toolbar-divider"></div>
+        <!-- Expandable menu - hidden by default -->
+        <div class="mobile-toolbar-expanded" id="mobile-expanded-menu" style="display: none;">
+          <!-- Color Swatches -->
+          <div class="mobile-section">
+            <div class="mobile-section-label">Colours</div>
+            <div class="mobile-color-swatches">
+              <div class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black"></div>
+              <div class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red"></div>
+              <div class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange"></div>
+              <div class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine"></div>
+              <div class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow"></div>
+              <div class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime"></div>
+              <div class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green"></div>
+              <div class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua"></div>
+              <div class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue"></div>
+              <div class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue"></div>
+              <div class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple"></div>
+              <div class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta"></div>
+              <div class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink"></div>
+              <div class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry"></div>
+              <div class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown"></div>
+            </div>
+          </div>
 
-        <div class="toolbar-section">
-          <button id="rotate-btn-mobile" class="icon-btn" title="Rotate 90°">↻</button>
-          <button id="toggle-eyes-btn-mobile" class="icon-btn active" title="Toggle eyes">👁</button>
-        </div>
+          <!-- Brush/Eraser Size -->
+          <div class="mobile-section">
+            <div class="mobile-section-label">Brush Size</div>
+            <div class="mobile-size-options">
+              <button class="mobile-size-btn" data-size="4">
+                <div style="width: 4px; height: 4px; background: #1d1d1f; border-radius: 50%;"></div>
+              </button>
+              <button class="mobile-size-btn selected" data-size="8">
+                <div style="width: 8px; height: 8px; background: #1d1d1f; border-radius: 50%;"></div>
+              </button>
+              <button class="mobile-size-btn" data-size="12">
+                <div style="width: 12px; height: 12px; background: #1d1d1f; border-radius: 50%;"></div>
+              </button>
+              <button class="mobile-size-btn" data-size="16">
+                <div style="width: 16px; height: 16px; background: #1d1d1f; border-radius: 50%;"></div>
+              </button>
+            </div>
+          </div>
 
-        <div class="toolbar-divider"></div>
+          <!-- Other Controls -->
+          <div class="mobile-section">
+            <div class="mobile-section-label">Controls</div>
+            <div class="mobile-controls-grid">
+              <button id="generate-btn-mobile" class="mobile-control-btn">Generate</button>
+              <button id="rotate-btn-mobile" class="mobile-control-btn">Rotate</button>
+              <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Toggle Scrawl</button>
+              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
+              <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
+              <button id="download-btn-mobile" class="mobile-control-btn">Download</button>
+            </div>
+          </div>
 
-        <div class="toolbar-section">
-          <button id="draw-btn-mobile" class="icon-btn" title="Sharpie">✏️</button>
-          <button id="erase-btn-mobile" class="icon-btn" title="Eraser">🧽</button>
-          <button id="clear-drawings-btn-mobile" class="icon-btn" title="Clear" disabled>⌫</button>
-        </div>
-
-        <div class="toolbar-divider"></div>
-
-        <div class="toolbar-section">
-          <button id="undo-btn-mobile" class="icon-btn" title="Undo" disabled>↶</button>
-          <button id="redo-btn-mobile" class="icon-btn" title="Redo" disabled>↷</button>
-        </div>
-
-        <div class="toolbar-divider"></div>
-
-        <div class="toolbar-section">
-          <button id="download-btn-mobile" title="Download PNG">Download</button>
+          <!-- Intensity Slider -->
+          <div class="mobile-section">
+            <div class="mobile-section-label">Intensity: <span id="intensity-value-mobile">20</span></div>
+            <input type="range" id="intensity-slider-mobile" min="10" max="40" value="20" step="1" style="width: 100%;">
+          </div>
         </div>
       </div>
 

@@ -51,6 +51,27 @@ function setup() {
 
   canvas = createCanvas(canvasSize, canvasSize);
   canvas.parent("scrawl-container");
+
+  // Prevent default touch behavior on canvas to avoid scrolling/zooming while drawing
+  const canvasElement = canvas.elt;
+  canvasElement.addEventListener('touchstart', (e) => {
+    if (drawMode || eraseMode || bucketMode || moveEyesMode) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvasElement.addEventListener('touchmove', (e) => {
+    if (drawMode || eraseMode || moveEyesMode) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  canvasElement.addEventListener('touchend', (e) => {
+    if (drawMode || eraseMode || bucketMode || moveEyesMode) {
+      e.preventDefault();
+    }
+  }, { passive: false });
+
   scrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.drawingContext.willReadFrequently = true;
@@ -70,31 +91,29 @@ function setup() {
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
-  select("#undo-btn-mobile").mousePressed(undo);
-  select("#redo-btn-mobile").mousePressed(redo);
+
+  const undoBtnMobile = select("#undo-btn-mobile");
+  if (undoBtnMobile) {
+    undoBtnMobile.mousePressed(undo);
+  }
+
+  const redoBtnMobile = select("#redo-btn-mobile");
+  if (redoBtnMobile) {
+    redoBtnMobile.mousePressed(redo);
+  }
 
   // Mobile buttons
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
   select("#download-btn-mobile").mousePressed(() => saveCanvas(canvas, 'scrawl', 'png', 2));
   select("#rotate-btn-mobile").mousePressed(rotateCanvas);
-  select("#toggle-eyes-btn-mobile").mousePressed(() => {
-    toggleEyes();
-    // Sync mobile button state (inverted logic: button active = scrawl hidden)
-    const btn = select("#toggle-eyes-btn-mobile");
-    showScrawl ? btn.removeClass("active") : btn.addClass("active");
-  });
-  select("#draw-btn-mobile").mousePressed(() => {
-    toggleDrawMode();
-    // Sync mobile button state
-    const btn = select("#draw-btn-mobile");
-    drawMode ? btn.addClass("active") : btn.removeClass("active");
-  });
-  select("#erase-btn-mobile").mousePressed(() => {
-    toggleEraseMode();
-    // Sync mobile button state
-    const btn = select("#erase-btn-mobile");
-    eraseMode ? btn.addClass("active") : btn.removeClass("active");
-  });
+  const toggleEyesBtnMobile = select("#toggle-eyes-btn-mobile");
+  if (toggleEyesBtnMobile) {
+    toggleEyesBtnMobile.mousePressed(() => {
+      toggleEyes();
+      // Sync mobile button state (inverted logic: button active = scrawl hidden)
+      showScrawl ? toggleEyesBtnMobile.removeClass("active") : toggleEyesBtnMobile.addClass("active");
+    });
+  }
 
   // Setup slider
   const intensitySlider = select("#intensity-slider");
@@ -140,6 +159,21 @@ function setup() {
   if (bucketBtn) {
     bucketBtn.addEventListener('click', () => {
       activateBucketMode();
+    });
+  }
+
+  // Setup mobile toolbar
+  setupMobileToolbar();
+
+  // Setup mobile intensity slider
+  const intensitySliderMobile = select("#intensity-slider-mobile");
+  if (intensitySliderMobile) {
+    intensitySliderMobile.input(() => {
+      intensity = parseInt(intensitySliderMobile.value());
+      select("#intensity-value-mobile").html(intensity);
+      // Sync with desktop slider
+      select("#intensity-slider").value(intensity);
+      select("#intensity-value").html(intensity);
     });
   }
 
@@ -1034,4 +1068,134 @@ function clearHistory() {
   historyStack = [];
   redoStack = [];
   updateUndoRedoButtons();
+}
+
+function setupMobileToolbar() {
+  // Toggle mobile menu
+  const toggleMenuBtn = document.getElementById('toggle-mobile-menu');
+  const expandedMenu = document.getElementById('mobile-expanded-menu');
+
+  if (toggleMenuBtn && expandedMenu) {
+    toggleMenuBtn.addEventListener('click', () => {
+      if (expandedMenu.style.display === 'none') {
+        expandedMenu.style.display = 'block';
+        toggleMenuBtn.textContent = '×';
+        toggleMenuBtn.style.fontSize = '24px';
+      } else {
+        expandedMenu.style.display = 'none';
+        toggleMenuBtn.textContent = '⋯';
+        toggleMenuBtn.style.fontSize = '';
+      }
+    });
+  }
+
+  // Mobile tool buttons
+  const brushBtnMobile = document.getElementById('brush-tool-btn-mobile');
+  const bucketBtnMobile = document.getElementById('bucket-tool-btn-mobile');
+  const eraserBtnMobile = document.getElementById('eraser-tool-btn-mobile');
+
+  if (brushBtnMobile) {
+    brushBtnMobile.addEventListener('click', () => {
+      activateBrushMode();
+      updateMobileToolButtons();
+    });
+  }
+
+  if (bucketBtnMobile) {
+    bucketBtnMobile.addEventListener('click', () => {
+      activateBucketMode();
+      updateMobileToolButtons();
+    });
+  }
+
+  if (eraserBtnMobile) {
+    eraserBtnMobile.addEventListener('click', () => {
+      activateEraseMode();
+      updateMobileToolButtons();
+    });
+  }
+
+  // Mobile color swatches
+  const mobileSwatches = document.querySelectorAll('.color-swatch-btn-mobile');
+  mobileSwatches.forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      const color = swatch.getAttribute('data-color');
+
+      // Update selected state
+      mobileSwatches.forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
+
+      // Update brush color
+      brushColor = color;
+
+      // Sync with desktop swatch
+      const desktopSwatches = document.querySelectorAll('.color-swatch-btn');
+      desktopSwatches.forEach(s => {
+        if (s.getAttribute('data-color') === color) {
+          s.classList.add('selected');
+        } else {
+          s.classList.remove('selected');
+        }
+      });
+
+      // Update brush size indicator color
+      document.getElementById('brush-size-indicator').style.background = color;
+    });
+  });
+
+  // Mobile size buttons
+  const mobileSizeBtns = document.querySelectorAll('.mobile-size-btn');
+  mobileSizeBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const size = parseInt(btn.getAttribute('data-size'));
+
+      // Update selected state
+      mobileSizeBtns.forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+
+      // Update brush/eraser size based on active tool
+      if (drawMode) {
+        brushSize = size;
+        // Update desktop brush indicator
+        const indicator = document.getElementById('brush-size-indicator');
+        if (indicator) {
+          indicator.style.width = size + 'px';
+          indicator.style.height = size + 'px';
+        }
+      } else if (eraseMode) {
+        eraserSize = size;
+        // Update desktop eraser indicator
+        const indicator = document.getElementById('eraser-size-indicator');
+        if (indicator) {
+          indicator.style.width = size + 'px';
+          indicator.style.height = size + 'px';
+        }
+      }
+    });
+  });
+
+  // Mobile move eyes button
+  const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');
+  if (moveEyesBtnMobile) {
+    moveEyesBtnMobile.addEventListener('click', () => {
+      toggleMoveEyesMode();
+      moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
+    });
+  }
+}
+
+function updateMobileToolButtons() {
+  const brushBtnMobile = document.getElementById('brush-tool-btn-mobile');
+  const bucketBtnMobile = document.getElementById('bucket-tool-btn-mobile');
+  const eraserBtnMobile = document.getElementById('eraser-tool-btn-mobile');
+
+  if (brushBtnMobile) {
+    brushBtnMobile.classList.toggle('active', drawMode);
+  }
+  if (bucketBtnMobile) {
+    bucketBtnMobile.classList.toggle('active', bucketMode);
+  }
+  if (eraserBtnMobile) {
+    eraserBtnMobile.classList.toggle('active', eraseMode);
+  }
 }
