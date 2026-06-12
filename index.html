@@ -752,24 +752,6 @@
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
 
-    .scrawl-counter {
-      text-align: center;
-      padding: 24px 0;
-      color: #86868b;
-      font-size: 13px;
-      line-height: 1.33337;
-      font-weight: 400;
-      letter-spacing: -0.01em;
-    }
-
-    .scrawl-counter strong {
-      color: #1d1d1f;
-      font-weight: 600;
-      font-size: 21px;
-      display: block;
-      margin-top: 4px;
-    }
-
     footer {
       text-align: center;
       padding: 52px 0;
@@ -806,11 +788,20 @@
         flex-direction: column;
         min-height: auto;
         padding-bottom: 0;
-        margin-bottom: 80px;
+        /* Break out of .container's side padding so the canvas card can go edge-to-edge */
+        background: transparent;
+        border-radius: 0;
+        box-shadow: none;
+        margin: 0 -16px 80px;
       }
 
       .canvas-area {
-        padding: 24px;
+        padding: 8px;
+      }
+
+      #scrawl-container canvas {
+        border-radius: 0;
+        box-shadow: none;
       }
 
       .sidebar {
@@ -862,10 +853,6 @@
         padding: 32px 0 14px;
       }
 
-      .canvas-area {
-        padding: 20px;
-      }
-
       .bottom-toolbar {
         padding: 10px 12px;
         gap: 8px;
@@ -873,6 +860,96 @@
 
       .example-section {
         margin-top: 60px;
+      }
+    }
+
+    @media (min-width: 769px) {
+      /* Constrain the layout to the viewport so nothing scrolls, down to a 1024x768 floor */
+      .container {
+        height: 100vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        padding: 12px 0 6px;
+      }
+
+      h1 {
+        font-size: 26px;
+        margin-bottom: 2px;
+      }
+
+      .subtitle {
+        font-size: 13px;
+        margin-top: 2px;
+      }
+
+      /* main fills the remaining height; canvas-section (canvas + sidebar) fills main */
+      main {
+        flex: 1;
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 1fr 280px;
+      }
+
+      .canvas-section {
+        grid-column: 1 / -1;
+        min-height: 0;
+        margin: 16px 0 20px;
+        border-radius: 18px;
+      }
+
+      .canvas-area {
+        min-height: 0;
+        min-width: 0;
+      }
+
+      /* Canvas scales to fit within the smaller of available width/height.
+         #scrawl-container fills the available box; object-fit keeps the
+         square scrawl undistorted and centered within it. */
+      #scrawl-container {
+        flex: 1;
+        min-height: 0;
+        min-width: 0;
+        width: 100%;
+      }
+
+      #scrawl-container canvas {
+        width: 100%;
+        height: 100% !important;
+        object-fit: contain;
+      }
+
+      /* Generate/Intensity controls now live in the sidebar - stack to fit its width */
+      .canvas-controls {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+      }
+
+      /* The sidebar now also carries the generate/intensity controls and has
+         less height to work with, so tighten its spacing; overflow-y is a
+         safety net rather than the norm */
+      .sidebar {
+        padding: 17px 24px;
+        gap: 11px;
+        overflow-y: auto;
+      }
+
+      .sidebar-section {
+        gap: 8px;
+      }
+
+      /* Two rows instead of three reclaims ~60px of sidebar height */
+      .color-swatches-palette {
+        grid-template-columns: repeat(8, 1fr);
+      }
+
+      /* Empty footer only adds height */
+      footer {
+        display: none;
       }
     }
   </style>
@@ -887,8 +964,13 @@
     <main>
       <section class="canvas-section">
         <div class="canvas-area">
+          <div id="scrawl-container"></div>
+        </div>
+
+        <aside class="sidebar">
+
           <div class="canvas-controls">
-            <button id="generate-btn" class="cta-button" style="min-width: 280px;">Generate New Scrawl</button>
+            <button id="generate-btn" class="cta-button">Generate New Scrawl</button>
             <div class="control-group">
               <label for="intensity-slider">Intensity</label>
               <div class="slider-container">
@@ -897,10 +979,6 @@
               </div>
             </div>
           </div>
-          <div id="scrawl-container"></div>
-        </div>
-
-        <aside class="sidebar">
 
           <div class="sidebar-section">
             <h3>Tools</h3>
@@ -1019,10 +1097,6 @@
               <button id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
             </div>
           </div>
-
-          <div class="sidebar-section" style="margin-top: auto;">
-            <button id="download-btn" title="Download PNG" style="font-size: 13px; padding: 10px 20px; opacity: 0.8;">Download PNG</button>
-          </div>
         </aside>
       </section>
 
@@ -1096,7 +1170,6 @@
               <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Toggle Scrawl</button>
               <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
-              <button id="download-btn-mobile" class="mobile-control-btn">Download</button>
             </div>
           </div>
 
@@ -1112,11 +1185,6 @@
         <h2>Example Scrawlface</h2>
         <img src="example-scrawlface.png" alt="Example pareidolia artwork" class="example-image" id="example-image">
       </section>
-
-      <div class="scrawl-counter">
-        Total scrawls created
-        <strong id="scrawl-counter">0</strong>
-      </div>
     </main>
 
     <footer>

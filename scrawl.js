@@ -23,7 +23,6 @@ const scrawlStrokeWeight = 1;
 const drawStrokeWeight = 8;
 
 let intensity = 20;
-let scrawlCount = 0;
 let brushSize = 8;
 let brushColor = '#000000';
 let eraserSize = 16;
@@ -40,11 +39,6 @@ let currentBrushSize = 0;
 let lastStrokePos = null; // Track last position for ease-out
 
 function setup() {
-  // Load scrawl count from localStorage
-  const savedCount = localStorage.getItem('scrawlCount');
-  scrawlCount = savedCount ? parseInt(savedCount) : 0;
-  updateScrawlCounter();
-
   // CRITICAL: Disable pixel density to prevent coordinate mismatch
   // On retina displays, p5.js doubles canvas resolution but we need 1:1 mapping
   pixelDensity(1);
@@ -83,7 +77,6 @@ function setup() {
 
   // Desktop buttons
   select("#generate-btn").mousePressed(generateScrawlface);
-  select("#download-btn").mousePressed(() => saveCanvas(canvas, 'scrawl', 'png', 2));
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#move-eyes-btn").mousePressed(toggleMoveEyesMode);
@@ -104,7 +97,6 @@ function setup() {
 
   // Mobile buttons
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
-  select("#download-btn-mobile").mousePressed(() => saveCanvas(canvas, 'scrawl', 'png', 2));
   select("#rotate-btn-mobile").mousePressed(rotateCanvas);
   const toggleEyesBtnMobile = select("#toggle-eyes-btn-mobile");
   if (toggleEyesBtnMobile) {
@@ -197,11 +189,6 @@ function generateScrawlface() {
     const btnMobile = select("#toggle-eyes-btn-mobile");
     if (btnMobile) btnMobile.removeClass("active");
   }
-
-  // Increment and save scrawl count
-  scrawlCount++;
-  localStorage.setItem('scrawlCount', scrawlCount.toString());
-  updateScrawlCounter();
 
   baseScrawlGraphics.background(bgColor);
   strokeColor = getComplementaryColor(bgColor);
@@ -611,13 +598,6 @@ function enableClearButton() {
 function disableClearButton() {
   select("#clear-drawings-btn").attribute("disabled", "");
   select("#clear-drawings-btn-mobile").attribute("disabled", "");
-}
-
-function updateScrawlCounter() {
-  const counterElement = select("#scrawl-counter");
-  if (counterElement) {
-    counterElement.html(scrawlCount.toLocaleString());
-  }
 }
 
 function floodFill(startX, startY, fillColor) {
