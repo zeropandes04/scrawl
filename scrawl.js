@@ -97,7 +97,7 @@ function setup() {
 
   // Mobile buttons
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
-  select("#rotate-btn-mobile").mousePressed(rotateCanvas);
+  select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   const toggleEyesBtnMobile = select("#toggle-eyes-btn-mobile");
   if (toggleEyesBtnMobile) {
     toggleEyesBtnMobile.mousePressed(() => {
@@ -1060,11 +1060,9 @@ function setupMobileToolbar() {
       if (expandedMenu.style.display === 'none') {
         expandedMenu.style.display = 'block';
         toggleMenuBtn.textContent = '×';
-        toggleMenuBtn.style.fontSize = '24px';
       } else {
         expandedMenu.style.display = 'none';
         toggleMenuBtn.textContent = '⋯';
-        toggleMenuBtn.style.fontSize = '';
       }
     });
   }
