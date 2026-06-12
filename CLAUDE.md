@@ -14,7 +14,7 @@ Hosting: static site — no build step, no package manager, no framework
 - `eyes.js` — early eye-dragging prototype; NOT loaded by `index.html` (dead file, candidate for removal)
 - `icons/` — toolbar PNG icons (eraser, eye, paint-rollers, paintbrush)
 
-**Notion Dev Tickets database ID:** 37c00c4fd8838056919df90a2f88bd26
+**Notion Dev Tickets database ID:** see `CLAUDE.local.md` (untracked)
 
 **How to respond:**
 - Push back when needed. Don't be a people pleaser.
