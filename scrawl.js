@@ -485,6 +485,8 @@ function toggleMoveEyesMode() {
   if (!moveEyesMode) {
     cursor(ARROW);
   }
+
+  updateMobileToolButtons();
 }
 
 function activateBrushMode() {
@@ -509,6 +511,7 @@ function activateBrushMode() {
     if (bucketBtn) bucketBtn.classList.remove('active');
 
     cursor(CROSS);
+    updateMobileToolButtons();
   }
 }
 
@@ -534,6 +537,7 @@ function activateEraseMode() {
     if (bucketBtn) bucketBtn.classList.remove('active');
 
     cursor(CROSS);
+    updateMobileToolButtons();
   }
 }
 
@@ -559,6 +563,7 @@ function activateBucketMode() {
     if (bucketBtn) bucketBtn.classList.add('active');
 
     cursor(CROSS);
+    updateMobileToolButtons();
   }
 }
 
@@ -576,6 +581,7 @@ function deactivateAllTools() {
   if (bucketBtn) bucketBtn.classList.remove('active');
 
   cursor(ARROW);
+  updateMobileToolButtons();
 }
 
 function clearDrawings() {
@@ -1075,21 +1081,18 @@ function setupMobileToolbar() {
   if (brushBtnMobile) {
     brushBtnMobile.addEventListener('click', () => {
       activateBrushMode();
-      updateMobileToolButtons();
     });
   }
 
   if (bucketBtnMobile) {
     bucketBtnMobile.addEventListener('click', () => {
       activateBucketMode();
-      updateMobileToolButtons();
     });
   }
 
   if (eraserBtnMobile) {
     eraserBtnMobile.addEventListener('click', () => {
       activateEraseMode();
-      updateMobileToolButtons();
     });
   }
 
@@ -1157,7 +1160,6 @@ function setupMobileToolbar() {
   if (moveEyesBtnMobile) {
     moveEyesBtnMobile.addEventListener('click', () => {
       toggleMoveEyesMode();
-      moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
     });
   }
 }
@@ -1175,5 +1177,10 @@ function updateMobileToolButtons() {
   }
   if (eraserBtnMobile) {
     eraserBtnMobile.classList.toggle('active', eraseMode);
+  }
+
+  const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');
+  if (moveEyesBtnMobile) {
+    moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
   }
 }
