@@ -8,7 +8,6 @@ let drawMode = false;
 let eraseMode = false;
 let bucketMode = false;
 let baseScrawlGraphics;
-let originalScrawlGraphics;
 let drawingGraphics;
 let eyePositions = [];
 let draggedEyeIndex = -1;
@@ -19,7 +18,6 @@ const canvasSize = 800;
 const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
-const drawStrokeWeight = 8;
 
 let intensity = 20;
 let brushSize = 8;
@@ -37,7 +35,6 @@ const maxHistorySize = 25;
 let strokePoints = 0;
 let maxStrokePoints = 20; // Points to reach full size
 let currentBrushSize = 0;
-let lastStrokePos = null; // Track last position for ease-out
 
 function setup() {
   // CRITICAL: Disable pixel density to prevent coordinate mismatch
@@ -69,7 +66,6 @@ function setup() {
 
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.drawingContext.willReadFrequently = true;
-  originalScrawlGraphics = createGraphics(canvasSize, canvasSize);
   drawingGraphics = createGraphics(canvasSize, canvasSize);
   drawingGraphics.drawingContext.willReadFrequently = true;
   drawingGraphics.clear();
@@ -229,9 +225,6 @@ function generateScrawlface() {
     {x: eye2X, y: eye2Y, scale: 0.9}
   ];
 
-  originalScrawlGraphics.clear();
-  originalScrawlGraphics.image(baseScrawlGraphics, 0, 0);
-
   redrawCanvas();
 }
 
@@ -292,9 +285,6 @@ function draw() {
     if (eraseMode) {
       drawingGraphics.noErase();
     }
-
-    // Store last position for potential ease-out
-    lastStrokePos = {x: current.x, y: current.y};
 
     if (!hasDrawings) {
       hasDrawings = true;
@@ -359,7 +349,6 @@ function mouseReleased() {
   }
 
   isDrawing = false;
-  lastStrokePos = null;
 }
 
 function keyPressed() {
@@ -864,107 +853,6 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
         label.style.width = sizeValue + 'px';
         label.style.height = sizeValue + 'px';
       }
-
-      // Close dropdown
-      content.classList.remove('show');
-      button.classList.remove('open');
-
-      // Call callback
-      onSelect(value);
-    });
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target)) {
-      content.classList.remove('show');
-      button.classList.remove('open');
-    }
-  });
-}
-
-function setupColorDropdown(dropdownId, buttonId, swatchId, onSelect, onActivate) {
-  const dropdown = document.getElementById(dropdownId);
-  const button = document.getElementById(buttonId);
-  const content = dropdown.querySelector('.custom-dropdown-content');
-  const swatch = document.getElementById(swatchId);
-  const options = dropdown.querySelectorAll('.custom-dropdown-option');
-
-  let longPressTimer = null;
-  let isLongPress = false;
-
-  // Long-press handling for mouse
-  button.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    isLongPress = false;
-    longPressTimer = setTimeout(() => {
-      isLongPress = true;
-      openDropdown();
-    }, 500);
-  });
-
-  button.addEventListener('mouseup', () => {
-    clearTimeout(longPressTimer);
-    if (!isLongPress) {
-      // Short click - activate tool
-      onActivate();
-    }
-  });
-
-  button.addEventListener('mouseleave', () => {
-    clearTimeout(longPressTimer);
-  });
-
-  // Long-press handling for touch
-  button.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    isLongPress = false;
-    longPressTimer = setTimeout(() => {
-      isLongPress = true;
-      openDropdown();
-    }, 500);
-  });
-
-  button.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    clearTimeout(longPressTimer);
-    if (!isLongPress) {
-      // Short tap - activate tool
-      onActivate();
-    }
-  });
-
-  button.addEventListener('touchcancel', () => {
-    clearTimeout(longPressTimer);
-  });
-
-  // Function to open dropdown
-  function openDropdown() {
-    // Close all other dropdowns
-    document.querySelectorAll('.custom-dropdown-content.show').forEach(el => {
-      el.classList.remove('show');
-      const parentDropdown = el.closest('.tool-dropdown, .custom-dropdown');
-      if (parentDropdown) {
-        const btn = parentDropdown.querySelector('.tool-dropdown-button, .custom-dropdown-button');
-        if (btn) btn.classList.remove('open');
-      }
-    });
-
-    content.classList.add('show');
-    button.classList.add('open');
-  }
-
-  // Handle option selection
-  options.forEach(option => {
-    option.addEventListener('click', () => {
-      const value = option.getAttribute('data-value');
-
-      // Update selected state
-      options.forEach(opt => opt.classList.remove('selected'));
-      option.classList.add('selected');
-
-      // Update swatch color
-      swatch.style.background = value;
 
       // Close dropdown
       content.classList.remove('show');

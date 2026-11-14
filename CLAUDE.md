@@ -13,7 +13,6 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 
 - `index.html` — markup + all CSS (inline `<style>`), desktop sidebar + mobile bottom toolbar
 - `scrawl.js` — all app logic: canvas setup, scrawl generation (bezier curves), brush/eraser/bucket tools, eye placement & dragging, undo/redo (memento pattern), mobile toolbar wiring
-- `eyes.js` — early eye-dragging prototype; NOT loaded by `index.html` (dead file, candidate for removal)
 - `icons/` — toolbar PNG icons (eraser, eye, paint-rollers, paintbrush)
 
 ## Hard rules
@@ -35,7 +34,6 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 
 - **Undo/redo is the most fragile part.** The memento pattern implementation in `scrawl.js` is the most likely source of regressions. Approach changes here carefully.
 - **Touch events on mobile canvas are risky.** p5.js touch handling can conflict with default browser scroll/zoom behaviour. Test on a real small viewport, not just DevTools resize.
-- **`eyes.js` is dead.** It is not loaded. Do not edit it or reference it in new code. Flag it for removal.
 - **Inline CSS in `index.html`.** All styles live in a single `<style>` block. Changes can have unexpected cascade effects — check mobile toolbar and desktop sidebar together.
 
 ## Success looks like

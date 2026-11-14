@@ -735,29 +735,6 @@
       box-shadow: 0 0 0 1px #ffffff, 0 0 0 3px #1d1d1f;
     }
 
-    .example-section {
-      text-align: center;
-      margin-top: 80px;
-      padding-top: 48px;
-      border-top: 1px solid #d2d2d7;
-    }
-
-    .example-section h2 {
-      font-size: 32px;
-      line-height: 1.125;
-      font-weight: 600;
-      letter-spacing: 0.004em;
-      color: #1d1d1f;
-      margin-bottom: 24px;
-    }
-
-    .example-image {
-      max-width: 400px;
-      margin: 0 auto;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
-
     footer {
       text-align: center;
       padding: 52px 0;
@@ -840,10 +817,6 @@
       .toolbar-section {
         gap: 8px;
       }
-
-      .example-section h2 {
-        font-size: 28px;
-      }
     }
 
     @media (max-width: 480px) {
@@ -862,10 +835,6 @@
       .bottom-toolbar {
         padding: 10px 12px;
         gap: 8px;
-      }
-
-      .example-section {
-        margin-top: 60px;
       }
     }
 
@@ -1191,24 +1160,11 @@
           </div>
         </div>
       </div>
-
-      <section class="example-section">
-        <h2>Example Scrawlface</h2>
-        <img src="example-scrawlface.png" alt="Example pareidolia artwork" class="example-image" id="example-image">
-      </section>
     </main>
 
     <footer>
       <p></p>
     </footer>
   </div>
-
-  <script>
-    // Hide example section if image doesn't exist
-    const exampleImg = document.getElementById('example-image');
-    exampleImg.onerror = function() {
-      document.querySelector('.example-section').style.display = 'none';
-    };
-  </script>
 </body>
 </html>
