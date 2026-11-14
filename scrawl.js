@@ -7,7 +7,6 @@ let moveEyesMode = false;
 let drawMode = false;
 let eraseMode = false;
 let bucketMode = false;
-let scrawlGraphics;
 let baseScrawlGraphics;
 let originalScrawlGraphics;
 let drawingGraphics;
@@ -68,7 +67,6 @@ function setup() {
     }
   }, { passive: false });
 
-  scrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.drawingContext.willReadFrequently = true;
   originalScrawlGraphics = createGraphics(canvasSize, canvasSize);
@@ -234,14 +232,7 @@ function generateScrawlface() {
   originalScrawlGraphics.clear();
   originalScrawlGraphics.image(baseScrawlGraphics, 0, 0);
 
-  updateScrawl();
   redrawCanvas();
-}
-
-function updateScrawl() {
-  scrawlGraphics.clear();
-  scrawlGraphics.image(baseScrawlGraphics, 0, 0);
-  scrawlGraphics.image(drawingGraphics, 0, 0);
 }
 
 function draw() {
@@ -249,7 +240,6 @@ function draw() {
     const transformed = getTransformedCoords(mouseX, mouseY);
     eyePositions[draggedEyeIndex].x = transformed.x;
     eyePositions[draggedEyeIndex].y = transformed.y;
-    updateScrawl();
     redrawCanvas();
     return;
   }
@@ -311,7 +301,6 @@ function draw() {
       enableClearButton();
     }
 
-    updateScrawl();
     redrawCanvas();
   }
 }
@@ -413,12 +402,12 @@ function redrawCanvas() {
   rotate(radians(rotation));
   imageMode(CENTER);
 
+  // Draw the layers straight onto the canvas (no intermediate composite),
+  // so each frame while drawing only copies what's needed
   if (showScrawl) {
-    image(scrawlGraphics, 0, 0);
-  } else {
-    // Only show drawings, not the base scrawl
-    image(drawingGraphics, 0, 0);
+    image(baseScrawlGraphics, 0, 0);
   }
+  image(drawingGraphics, 0, 0);
 
   pop();
 
@@ -607,7 +596,6 @@ function clearDrawings() {
   hasDrawings = false;
   disableClearButton();
 
-  updateScrawl();
   redrawCanvas();
 }
 
@@ -783,7 +771,6 @@ function floodFill(startX, startY, fillColor) {
     enableClearButton();
   }
 
-  updateScrawl();
   redrawCanvas();
 }
 
@@ -1052,7 +1039,6 @@ function undo() {
   hasDrawings = checkIfDrawingHasContent();
   hasDrawings ? enableClearButton() : disableClearButton();
 
-  updateScrawl();
   redrawCanvas();
   updateUndoRedoButtons();
 }
@@ -1073,7 +1059,6 @@ function redo() {
   hasDrawings = checkIfDrawingHasContent();
   hasDrawings ? enableClearButton() : disableClearButton();
 
-  updateScrawl();
   redrawCanvas();
   updateUndoRedoButtons();
 }
