@@ -324,7 +324,12 @@ function isMouseInCanvas() {
   return mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height;
 }
 
-function mousePressed() {
+function mousePressed(event) {
+  // mousePressed is window-wide. Ignore presses on anything other than the
+  // canvas (e.g. mobile toolbar buttons that overlap it when the menu is open),
+  // even if their coordinates fall inside the canvas bounds.
+  if (event && event.target !== canvas.elt) return;
+
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     const eyeIndex = eyePositions.findIndex(pos =>
