@@ -1016,9 +1016,11 @@ function setupMobileToolbar() {
       if (expandedMenu.style.display === 'none') {
         expandedMenu.style.display = 'block';
         toggleMenuBtn.textContent = '×';
+        toggleMenuBtn.setAttribute('aria-expanded', 'true');
       } else {
         expandedMenu.style.display = 'none';
         toggleMenuBtn.textContent = '⋯';
+        toggleMenuBtn.setAttribute('aria-expanded', 'false');
       }
     });
   }
