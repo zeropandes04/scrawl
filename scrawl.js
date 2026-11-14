@@ -598,12 +598,14 @@ function deactivateAllTools() {
 }
 
 function clearDrawings() {
+  if (!hasDrawings) return;
+
+  // Save state BEFORE clearing so Clear can be undone
+  saveState();
+
   drawingGraphics.clear();
   hasDrawings = false;
   disableClearButton();
-
-  // Clear undo/redo history
-  clearHistory();
 
   updateScrawl();
   redrawCanvas();
@@ -1047,10 +1049,8 @@ function undo() {
   drawingGraphics.image(previousState, 0, 0);
 
   // Update canvas
-  hasDrawings = historyStack.length > 0 || checkIfDrawingHasContent();
-  if (!hasDrawings) {
-    disableClearButton();
-  }
+  hasDrawings = checkIfDrawingHasContent();
+  hasDrawings ? enableClearButton() : disableClearButton();
 
   updateScrawl();
   redrawCanvas();
@@ -1069,9 +1069,9 @@ function redo() {
   drawingGraphics.clear();
   drawingGraphics.image(redoState, 0, 0);
 
-  // Update canvas
-  hasDrawings = true;
-  enableClearButton();
+  // Update canvas (redoing a Clear leaves the drawing empty)
+  hasDrawings = checkIfDrawingHasContent();
+  hasDrawings ? enableClearButton() : disableClearButton();
 
   updateScrawl();
   redrawCanvas();
