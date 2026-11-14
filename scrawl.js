@@ -657,49 +657,57 @@ function floodFill(startX, startY, fillColor) {
   const fillG = parseInt(fillColor.slice(3, 5), 16);
   const fillB = parseInt(fillColor.slice(5, 7), 16);
 
-  // Flood fill to find all pixels to fill (on the rotated view)
-  const pixelsToFill = [];
-  const stack = [[startX, startY]];
-  const visited = new Set();
+  // Flood fill to find all pixels to fill (on the rotated view).
+  // Pixels are addressed by flat index (y * canvasSize + x) and tracked in typed
+  // arrays: far faster on mobile than string keys in a Set and [x, y] pairs.
+  const totalPixels = canvasSize * canvasSize;
+  const inRegion = new Uint8Array(totalPixels); // 1 = pixel is part of the fill region
+  const stack = new Int32Array(totalPixels);    // each pixel is pushed at most once
+  let stackSize = 0;
 
-  // Get target color (the color we're replacing)
+  // Target color (the color we're replacing) is whatever was clicked
   const targetR = clickR;
   const targetG = clickG;
   const targetB = clickB;
 
-  while (stack.length > 0) {
-    const [x, y] = stack.pop();
-
-    if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) continue;
-
-    const key = `${x},${y}`;
-    if (visited.has(key)) continue;
-    visited.add(key);
-
-    const idx = (y * canvasSize + x) * 4;
-    const pr = data[idx];
-    const pg = data[idx + 1];
-    const pb = data[idx + 2];
-
-    // If this pixel matches the target color
-    if (pr === targetR && pg === targetG && pb === targetB) {
-      pixelsToFill.push([x, y]);
-      stack.push([x + 1, y]);
-      stack.push([x - 1, y]);
-      stack.push([x, y + 1]);
-      stack.push([x, y - 1]);
+  // Add a neighbour to the region if it matches the target color and isn't in yet
+  const visit = (i) => {
+    if (inRegion[i]) return;
+    const idx = i * 4;
+    if (data[idx] === targetR && data[idx + 1] === targetG && data[idx + 2] === targetB) {
+      inRegion[i] = 1;
+      stack[stackSize++] = i;
     }
+  };
+
+  visit(startY * canvasSize + startX);
+
+  while (stackSize > 0) {
+    const i = stack[--stackSize];
+    const x = i % canvasSize;
+    if (x > 0) visit(i - 1);
+    if (x < canvasSize - 1) visit(i + 1);
+    if (i >= canvasSize) visit(i - canvasSize);
+    if (i < totalPixels - canvasSize) visit(i + canvasSize);
   }
 
   // Now we need to map these rotated screen pixels back to unrotated graphics coordinates
-  // and fill them in the drawingGraphics layer
+  // and fill them in the drawingGraphics layer. Same math as getTransformedCoords(),
+  // with the trig hoisted out of the per-pixel loop.
   drawingGraphics.loadPixels();
 
-  for (const [screenX, screenY] of pixelsToFill) {
+  const angle = -radians(rotation);
+  const cosA = cos(angle);
+  const sinA = sin(angle);
+
+  for (let i = 0; i < totalPixels; i++) {
+    if (!inRegion[i]) continue;
+
     // Transform from rotated screen coordinates to unrotated graphics coordinates
-    const unrotatedCoords = getTransformedCoords(screenX, screenY);
-    const gx = Math.floor(unrotatedCoords.x);
-    const gy = Math.floor(unrotatedCoords.y);
+    const cx = (i % canvasSize) - width / 2;
+    const cy = Math.floor(i / canvasSize) - height / 2;
+    const gx = Math.floor(cx * cosA - cy * sinA + canvasSize / 2);
+    const gy = Math.floor(cx * sinA + cy * cosA + canvasSize / 2);
 
     // Make sure we're within bounds
     if (gx >= 0 && gx < canvasSize && gy >= 0 && gy < canvasSize) {
