@@ -30,7 +30,9 @@ let eraserSize = 16;
 // Memento pattern for undo/redo
 let historyStack = [];
 let redoStack = [];
-const maxHistorySize = 50;
+// Each snapshot is a full 800x800 RGBA copy (~2.7MB measured); undo + redo
+// share this budget, so 25 keeps a full history around 70MB on mobile.
+const maxHistorySize = 25;
 
 // Brush stroke tracking for easing
 let strokePoints = 0;
