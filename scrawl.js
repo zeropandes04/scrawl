@@ -621,41 +621,69 @@ function floodFill(startX, startY, fillColor) {
   startX = Math.floor(startX);
   startY = Math.floor(startY);
 
-  // Create a temporary canvas that matches what the user sees (rotated scrawl)
+  // Max per-channel difference from the clicked colour that still counts as
+  // "the same area". Absorbs the soft anti-aliased edges of lines without
+  // leaking through them (measured: higher values start crossing 1px lines).
+  const fillTolerance = 64;
+
+  // Build a temporary canvas that matches what the user sees: background,
+  // rotated scrawl (if shown) and rotated drawings. The fill is bounded by all of it.
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvasSize;
   tempCanvas.height = canvasSize;
   const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
 
-  // Draw the rotated scrawl (matching the visual display)
-  tempCtx.save();
-  tempCtx.translate(canvasSize / 2, canvasSize / 2);
-  tempCtx.rotate(rotation * Math.PI / 180);
-  tempCtx.translate(-canvasSize / 2, -canvasSize / 2);
-  tempCtx.drawImage(baseScrawlGraphics.canvas, 0, 0);
-  tempCtx.restore();
+  const drawRotated = (source) => {
+    tempCtx.save();
+    tempCtx.translate(canvasSize / 2, canvasSize / 2);
+    tempCtx.rotate(rotation * Math.PI / 180);
+    tempCtx.translate(-canvasSize / 2, -canvasSize / 2);
+    tempCtx.drawImage(source, 0, 0);
+    tempCtx.restore();
+  };
 
-  // Check if we clicked on a scrawl line
-  const imageData = tempCtx.getImageData(0, 0, canvasSize, canvasSize);
-  const data = imageData.data;
+  tempCtx.fillStyle = `rgb(${bgColor.join(',')})`;
+  tempCtx.fillRect(0, 0, canvasSize, canvasSize);
 
-  const clickIndex = (startY * canvasSize + startX) * 4;
-  const clickR = data[clickIndex];
-  const clickG = data[clickIndex + 1];
-  const clickB = data[clickIndex + 2];
+  if (showScrawl) {
+    drawRotated(baseScrawlGraphics.canvas);
 
-  // Don't fill if clicking on a scrawl line (non-white pixel)
-  if (clickR + clickG + clickB < 700) {
-    return;
+    // Don't fill if clicking on a scrawl line (non-white pixel)
+    const [lineR, lineG, lineB] = tempCtx.getImageData(startX, startY, 1, 1).data;
+    if (lineR + lineG + lineB < 700) {
+      return;
+    }
   }
 
-  // Save state BEFORE filling - only now that we know a fill will happen
-  saveState();
+  drawRotated(drawingGraphics.canvas);
+
+  const data = tempCtx.getImageData(0, 0, canvasSize, canvasSize).data;
+
+  // Target color (the color we're replacing) is whatever was clicked
+  const clickIndex = (startY * canvasSize + startX) * 4;
+  const targetR = data[clickIndex];
+  const targetG = data[clickIndex + 1];
+  const targetB = data[clickIndex + 2];
 
   // Convert fill color
   const fillR = parseInt(fillColor.slice(1, 3), 16);
   const fillG = parseInt(fillColor.slice(3, 5), 16);
   const fillB = parseInt(fillColor.slice(5, 7), 16);
+
+  // Largest per-channel difference between a pixel and the target color
+  const distanceFromTarget = (idx) => Math.max(
+    Math.abs(data[idx] - targetR),
+    Math.abs(data[idx + 1] - targetG),
+    Math.abs(data[idx + 2] - targetB)
+  );
+
+  // Nothing to do if the area is already (close to) the fill color
+  if (Math.max(Math.abs(fillR - targetR), Math.abs(fillG - targetG), Math.abs(fillB - targetB)) <= fillTolerance) {
+    return;
+  }
+
+  // Save state BEFORE filling - only now that we know a fill will happen
+  saveState();
 
   // Flood fill to find all pixels to fill (on the rotated view).
   // Pixels are addressed by flat index (y * canvasSize + x) and tracked in typed
@@ -665,16 +693,10 @@ function floodFill(startX, startY, fillColor) {
   const stack = new Int32Array(totalPixels);    // each pixel is pushed at most once
   let stackSize = 0;
 
-  // Target color (the color we're replacing) is whatever was clicked
-  const targetR = clickR;
-  const targetG = clickG;
-  const targetB = clickB;
-
-  // Add a neighbour to the region if it matches the target color and isn't in yet
+  // Add a neighbour to the region if it is close to the target color and isn't in yet
   const visit = (i) => {
     if (inRegion[i]) return;
-    const idx = i * 4;
-    if (data[idx] === targetR && data[idx + 1] === targetG && data[idx + 2] === targetB) {
+    if (distanceFromTarget(i * 4) <= fillTolerance) {
       inRegion[i] = 1;
       stack[stackSize++] = i;
     }
@@ -691,31 +713,62 @@ function floodFill(startX, startY, fillColor) {
     if (i < totalPixels - canvasSize) visit(i + canvasSize);
   }
 
+  // The 1px ring just outside the region is the soft edge of whatever bounds it.
+  // Blend the fill into those pixels, more strongly the closer they are to the
+  // target color, so no white halo is left along lines but the lines stay visible.
+  // This ring never spreads further, so it can't leak through a line.
+  const edgeAlpha = new Uint8Array(totalPixels);
+  const markEdge = (j) => {
+    if (!inRegion[j]) edgeAlpha[j] = 255 - distanceFromTarget(j * 4);
+  };
+  for (let i = 0; i < totalPixels; i++) {
+    if (!inRegion[i]) continue;
+    const x = i % canvasSize;
+    if (x > 0) markEdge(i - 1);
+    if (x < canvasSize - 1) markEdge(i + 1);
+    if (i >= canvasSize) markEdge(i - canvasSize);
+    if (i < totalPixels - canvasSize) markEdge(i + canvasSize);
+  }
+
   // Now we need to map these rotated screen pixels back to unrotated graphics coordinates
-  // and fill them in the drawingGraphics layer. Same math as getTransformedCoords(),
-  // with the trig hoisted out of the per-pixel loop.
+  // and fill them in the drawingGraphics layer. Same rotation as getTransformedCoords(),
+  // but applied to pixel centres and rounded: flooring pixel corners lands 1px off at
+  // 90/180/270 degrees (cos(90deg) is 6e-17, not 0), shifting the fill across lines.
   drawingGraphics.loadPixels();
+  const px = drawingGraphics.pixels;
 
   const angle = -radians(rotation);
   const cosA = cos(angle);
   const sinA = sin(angle);
 
   for (let i = 0; i < totalPixels; i++) {
-    if (!inRegion[i]) continue;
+    if (!inRegion[i] && !edgeAlpha[i]) continue;
 
     // Transform from rotated screen coordinates to unrotated graphics coordinates
-    const cx = (i % canvasSize) - width / 2;
-    const cy = Math.floor(i / canvasSize) - height / 2;
-    const gx = Math.floor(cx * cosA - cy * sinA + canvasSize / 2);
-    const gy = Math.floor(cx * sinA + cy * cosA + canvasSize / 2);
+    const cx = (i % canvasSize) + 0.5 - width / 2;
+    const cy = Math.floor(i / canvasSize) + 0.5 - height / 2;
+    const gx = Math.round(cx * cosA - cy * sinA + canvasSize / 2 - 0.5);
+    const gy = Math.round(cx * sinA + cy * cosA + canvasSize / 2 - 0.5);
 
     // Make sure we're within bounds
-    if (gx >= 0 && gx < canvasSize && gy >= 0 && gy < canvasSize) {
-      const idx = (gy * canvasSize + gx) * 4;
-      drawingGraphics.pixels[idx] = fillR;
-      drawingGraphics.pixels[idx + 1] = fillG;
-      drawingGraphics.pixels[idx + 2] = fillB;
-      drawingGraphics.pixels[idx + 3] = 255;
+    if (gx < 0 || gx >= canvasSize || gy < 0 || gy >= canvasSize) continue;
+
+    const idx = (gy * canvasSize + gx) * 4;
+
+    if (inRegion[i]) {
+      px[idx] = fillR;
+      px[idx + 1] = fillG;
+      px[idx + 2] = fillB;
+      px[idx + 3] = 255;
+    } else {
+      // Edge pixel: composite the fill at partial opacity over what's already drawn
+      const a = edgeAlpha[i] / 255;
+      const existingA = px[idx + 3] / 255;
+      const outA = a + existingA * (1 - a);
+      px[idx] = (fillR * a + px[idx] * existingA * (1 - a)) / outA;
+      px[idx + 1] = (fillG * a + px[idx + 1] * existingA * (1 - a)) / outA;
+      px[idx + 2] = (fillB * a + px[idx + 2] * existingA * (1 - a)) / outA;
+      px[idx + 3] = outA * 255;
     }
   }
 
