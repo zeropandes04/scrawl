@@ -84,6 +84,8 @@ function setup() {
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
+  select("#save-btn").mousePressed(saveImage);
+  select("#save-btn-mobile").mousePressed(saveImage);
 
   const undoBtnMobile = select("#undo-btn-mobile");
   if (undoBtnMobile) {
@@ -465,6 +467,11 @@ function drawEye(x, y, scale = 1.0) {
 function rotateCanvas() {
   rotation = (rotation + 90) % 360;
   redrawCanvas();
+}
+
+// Saves exactly what is on screen (eyes, rotation, scrawl visibility)
+function saveImage() {
+  saveCanvas(canvas, 'scrawlface', 'png');
 }
 
 function toggleEyes() {

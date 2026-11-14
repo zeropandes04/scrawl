@@ -354,6 +354,16 @@
       font-weight: 500;
     }
 
+    /* Compact so the desktop sidebar still fits a 720px-tall viewport */
+    #save-btn {
+      padding: 8px 24px;
+    }
+
+    /* 7th button in the 2-column grid: span the full row instead of sitting alone */
+    #save-btn-mobile {
+      grid-column: 1 / -1;
+    }
+
     .mobile-control-btn:active {
       transform: scale(0.97);
       background: #d2d2d7;
@@ -1095,6 +1105,8 @@
               <button id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
             </div>
           </div>
+
+          <button id="save-btn" title="Save as PNG">Save PNG</button>
         </aside>
       </section>
 
@@ -1168,6 +1180,7 @@
               <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
+              <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
             </div>
           </div>
 
