@@ -352,8 +352,7 @@ function mousePressed(event) {
   }
 
   if (bucketMode && isMouseInCanvas()) {
-    // Save state BEFORE bucket fill
-    saveState();
+    // floodFill saves undo state itself, only when it actually fills.
     // For bucket fill, we need to work with screen coordinates directly
     // because we need to detect what's visible at the clicked position
     floodFill(Math.floor(mouseX), Math.floor(mouseY), brushColor);
@@ -642,6 +641,9 @@ function floodFill(startX, startY, fillColor) {
   if (clickR + clickG + clickB < 700) {
     return;
   }
+
+  // Save state BEFORE filling - only now that we know a fill will happen
+  saveState();
 
   // Convert fill color
   const fillR = parseInt(fillColor.slice(1, 3), 16);
