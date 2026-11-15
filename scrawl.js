@@ -697,9 +697,12 @@ function redrawCanvas() {
   pop();
 
   // Always show eyes (window = the main canvas in p5 global mode)
+  const onScreen = eyePositions.map(pos => getRotatedPosition(pos.x, pos.y));
   eyePositions.forEach((pos, i) => {
-    const rotatedPos = getRotatedPosition(pos.x, pos.y);
-    drawEye(window, rotatedPos.x, rotatedPos.y, pos.scale * viewZoom, eyeStyles[i], i);
+    // Whichever eye is further right is drawn as the right-hand one, so
+    // slanted eyes keep facing each other when they're dragged past each other
+    const isRight = onScreen[i].x > onScreen[1 - i].x ? 1 : 0;
+    drawEye(window, onScreen[i].x, onScreen[i].y, pos.scale * viewZoom, eyeStyles[i], isRight);
   });
 }
 
@@ -719,8 +722,8 @@ function getRotatedPosition(x, y) {
 
 // ---- Eye styles ----
 // Swappable eye styles, drawn as bold hand-drawn doodles. Each eye has its
-// own style, so the two can differ. A set is a ready-made pair (Wink is an
-// open and a closed eye); Mix picks a random pair.
+// own style, so the two can differ. A set is a ready-made pair (Patch is an
+// open eye and an eye patch); Mix picks a random pair.
 // `g` is what to draw on: the main canvas (window) or a preview graphic.
 const eyeSets = {
   classic: ['classic', 'classic'],
@@ -728,34 +731,61 @@ const eyeSets = {
   sleepy: ['sleepy', 'sleepy'],
   glam: ['glam', 'glam'],
   spiky: ['spiky', 'spiky'],
-  wink: ['lashes', 'closed'],
+  patch: ['lashes', 'patch'],
   dot: ['dot', 'dot'],
   side: ['side', 'side'],
-  amber: ['amber', 'amber'],
+  goat: ['goat', 'goat'],
   sunny: ['sunny', 'sunny'],
-  blue: ['blue', 'blue'],
+  frog: ['frog', 'frog'],
   cat: ['cat', 'cat']
 };
 // Eye colours come from the swatch palette, so eyes and doodles match
 const eyeColors = {
   blue: '#26ACD9',      // Nano Blue
+  red: '#CC0000',       // Red
   orange: '#F53524',    // Orange
   aqua: '#44A2A2',      // Aqua
   tangerine: '#FFA64D', // Tangerine
   yellow: '#FFF133',    // Yellow
-  lime: '#66BD0F'       // Lime
+  lime: '#66BD0F',      // Lime
+  magenta: '#CC0099',   // Magenta
+  pink: '#F2A6ED'       // Electric Pink
 };
-const almondW = 40;  // half the width of an almond eye
-const almondC = 33;  // control-point height of its top and bottom curves
 let doodleSeed = 0;  // set per eye, so two eyes of one style aren't identical
 
-// `seed` only varies the hand-drawn wobble (the two eyes pass 0 and 1)
+// Every eye is two curves meeting in a point at each side. A shape says how
+// wide it is (w = half the width), how far the top and bottom curves bulge,
+// how rounded each end is (kl/kr: 0.5 = pointed almond, towards 1 = round)
+// and how much it slants (tilt, in radians; positive = outer corner up).
+const eyeShapes = {
+  almond:   { w: 40, top: 33, bottom: 33, kl: 0.5, kr: 0.5 },
+  lens:     { w: 48, top: 22, bottom: 24, kl: 0.5, kr: 0.5, tilt: -0.12 }, // wide, flat, drooping
+  upturned: { w: 44, top: 40, bottom: 18, kl: 0.35, kr: 0.6, tilt: 0.2 },
+  round:    { w: 32, top: 46, bottom: 46, kl: 0.95, kr: 0.95 },
+  slit:     { w: 48, top: 14, bottom: 14, kl: 0.5, kr: 0.5 },    // long and narrowed
+  teardrop: { w: 42, top: 36, bottom: 36, kl: 0.05, kr: 1.1 },   // pointed left, round right
+  wide:     { w: 46, top: 28, bottom: 28, kl: 0.6, kr: 0.6 },    // broad, soft-cornered
+  dome:     { w: 42, top: 52, bottom: 8, kl: 0.7, kr: 0.7 },     // deep top, flat bottom
+  orb:      { w: 31, top: 39, bottom: 39, kl: 0.9, kr: 0.9 },    // small and round
+  slanted:  { w: 46, top: 24, bottom: 24, kl: 0.3, kr: 0.7, tilt: 0.3 }
+};
+const eyeStyleShapes = {
+  lashes: 'almond', sleepy: 'lens', glam: 'upturned',
+  spiky: 'round', dot: 'slit', side: 'teardrop', goat: 'wide',
+  sunny: 'dome', frog: 'orb', cat: 'slanted'
+};
+let eyeShape = eyeShapes.almond; // shape of the eye being drawn
+
+// `seed` is 0 for the left-hand eye and 1 for the right-hand one: it varies
+// the hand-drawn wobble and mirrors the slant, so a slanted pair faces each other
 function drawEye(g, x, y, scale, style, seed = 0) {
   doodleSeed = seed * 100;
+  eyeShape = eyeShapes[eyeStyleShapes[style]] || eyeShapes.almond;
 
   g.push();
   g.translate(x, y);
   g.scale(scale);
+  g.rotate((eyeShape.tilt || 0) * (seed === 1 ? -1 : 1));
   g.stroke(0);
   g.strokeWeight(3);
   g.strokeCap(ROUND);
@@ -775,86 +805,127 @@ function drawEye(g, x, y, scale, style, seed = 0) {
     doodleEllipse(g, 1, 1, 40, 40, 3);
     g.fill(255);
     doodleEllipse(g, 7, -6, 11, 10, 4);
-  } else if (style === 'lashes') {
-    almondEye(g, 255);
-    iris(g, 0, 0, 26, 0);
-    lashes(g, -1, 5, 14);
-  } else if (style === 'closed') {
-    // Closed eye: just the lower lid with lashes hanging down
-    g.noFill();
-    g.beginShape();
-    g.vertex(-almondW, 0);
-    g.bezierVertex(-almondW / 2, almondC * 0.8, almondW / 2, almondC * 0.8, almondW, 0);
-    g.endShape();
-    // The pen going over the lid a second time
-    g.strokeWeight(1.5);
-    g.bezier(-almondW - 3, -2, -almondW / 2, almondC * 0.8 + 3, almondW / 2, almondC * 0.8 - 1, almondW + 4, -1);
-    g.strokeWeight(3);
-    lashes(g, 1, 5, 12, 0.8);
-  } else if (style === 'sleepy') {
-    // Heavy coloured lid covering the top half
-    almondEye(g, 255);
-    iris(g, 0, 6, 26, 0);
-    lid(g, eyeColors.blue, 0);
-  } else if (style === 'glam') {
-    // Coloured crescent lid, blue iris, lower lashes
-    almondEye(g, 255);
-    iris(g, 0, 2, 30, eyeColors.blue);
-    lid(g, eyeColors.orange, 0.35);
-    lashes(g, 1, 4, 10);
-  } else if (style === 'spiky') {
-    // Aqua iris with lashes all round
-    lashes(g, -1, 7, 14);
-    lashes(g, 1, 5, 12);
-    almondEye(g, 255);
-    iris(g, 0, 0, 30, eyeColors.aqua);
-  } else if (style === 'dot') {
-    // Plain outline with a small dot pupil
-    almondEye(g, 255);
+  } else if (style === 'patch') {
+    // Pirate eye patch: a black shield with its strap running off both sides
+    g.line(-26, -20, -64, -40);
+    g.line(26, -20, 64, -40);
     g.fill(0);
-    doodleEllipse(g, 0, 0, 12, 12, 3);
-  } else if (style === 'side') {
-    // Big black iris pushed against the edge, clipped by the eye shape
-    almondEye(g, 255);
+    const patch = [[-30, -22], [0, -27], [30, -22], [33, 0], [20, 24], [0, 31], [-20, 24], [-33, 0]];
+    g.beginShape();
+    for (let i = 0; i < patch.length + 3; i++) {
+      const k = i % patch.length;
+      g.curveVertex(patch[k][0] + 2 * wobble(70 + k), patch[k][1] + 2 * wobble(80 + k));
+    }
+    g.endShape();
+    // The pen going round a second time
+    g.noFill();
+    g.strokeWeight(1.5);
+    doodleEllipse(g, 1, 1, 72, 64, 2);
+    // A glint, so the black doesn't read as a hole
+    g.stroke(255);
+    g.strokeWeight(2);
+    g.bezier(-18, -10, -15, -17, -8, -19, -2, -19);
+  } else {
+    // Open eyes: the outline, then everything inside it (clipped to the
+    // shape so nothing pokes out), then the outline again and the lashes
+    if (style === 'frog') {
+      // The green bump a frog's eye sits in, showing above and beside it
+      g.fill(eyeColors.lime);
+      doodleEllipse(g, 0, -5, 76, 71, 8);
+    }
+    const colour = { goat: eyeColors.tangerine, frog: eyeColors.yellow, cat: eyeColors.lime }[style];
+    eyeOutline(g, colour || 255);
+
     const ctx = g.drawingContext;
     ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(-almondW, 0);
-    ctx.bezierCurveTo(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
-    ctx.bezierCurveTo(almondW / 2, almondC, -almondW / 2, almondC, -almondW, 0);
-    ctx.clip();
-    g.noStroke();
-    g.fill(0);
-    doodleEllipse(g, 18, 0, 44, 44, 3);
-    g.fill(255);
-    doodleEllipse(g, 10, -7, 9, 8, 4);
+    clipToEye(ctx);
+    if (style === 'lashes') {
+      iris(g, 0, 0, 26, 0);
+    } else if (style === 'sleepy') {
+      // Heavy coloured lid covering the top half
+      iris(g, 0, 6, 26, 0);
+      lid(g, eyeColors.pink, 0);
+    } else if (style === 'glam') {
+      // Magenta crescent lid, aqua iris
+      iris(g, 0, 0, 30, eyeColors.aqua);
+      lid(g, eyeColors.magenta, 0.35);
+    } else if (style === 'spiky') {
+      // Bloodshot: red veins on the white, around a blue iris
+      veins(g);
+      iris(g, 0, 0, 28, eyeColors.blue);
+    } else if (style === 'dot') {
+      // Small dot pupil
+      g.fill(0);
+      doodleEllipse(g, 0, 0, 12, 12, 3);
+    } else if (style === 'side') {
+      // Big black iris pushed against the round end
+      g.noStroke();
+      g.fill(0);
+      doodleEllipse(g, 18, 0, 44, 44, 3);
+      g.fill(255);
+      doodleEllipse(g, 10, -7, 9, 8, 4);
+    } else if (style === 'goat') {
+      // Amber eye with a goat's flat, bar-shaped pupil, hand-drawn:
+      // short orange flecks scratched in around a wobbly bar
+      g.stroke(eyeColors.orange);
+      g.strokeWeight(1.5);
+      for (let i = 0; i < 10; i++) {
+        const angle = TWO_PI * (i + 0.3 * wobble(40 + i)) / 10;
+        const near = 1.25 + 0.1 * wobble(50 + i);
+        const far = near + 0.35 + 0.15 * wobble(60 + i);
+        g.line(cos(angle) * 18 * near, sin(angle) * 8 * near, cos(angle) * 18 * far, sin(angle) * 8 * far);
+      }
+      g.noStroke();
+      g.fill(0);
+      // The bar: eight points round a rectangle, each nudged off true
+      const bar = [[-17, -5], [0, -6.5], [17, -5], [18.5, 0], [17, 5], [0, 6.5], [-17, 5], [-18.5, 0]];
+      g.beginShape();
+      for (let i = 0; i < bar.length + 3; i++) {
+        const k = i % bar.length;
+        g.curveVertex(bar[k][0] + 1.5 * wobble(70 + k), bar[k][1] + 1.2 * wobble(80 + k));
+      }
+      g.endShape();
+      g.fill(255);
+      doodleEllipse(g, 9, -9, 6, 5, 4);
+    } else if (style === 'frog') {
+      // Golden eye with a wide oval pupil
+      g.noStroke();
+      g.fill(0);
+      doodleEllipse(g, 0, 2, 31, 13, 3);
+      g.fill(255);
+      doodleEllipse(g, 8, -8, 7, 6, 4);
+    } else if (style === 'cat') {
+      // The whole eye is a lime iris with a vertical slit pupil
+      g.noStroke();
+      g.fill(0);
+      doodleEllipse(g, 0, 0, 9, 40, 3);
+      g.fill(255);
+      doodleEllipse(g, 9, -8, 7, 6, 4);
+    } else if (style === 'sunny') {
+      // Yellow lid over a black iris
+      iris(g, 0, -6, 26, 0);
+      lid(g, eyeColors.yellow, 0.45);
+    }
     ctx.restore();
-    // Redraw the outline over the iris
+
+    // ctx.restore() also put the pen back, so set it again
     g.stroke(0);
-    almondEye(g, null);
-  } else if (style === 'amber' || style === 'blue') {
-    // Whole eye filled with colour, dot pupil
-    almondEye(g, style === 'amber' ? eyeColors.tangerine : eyeColors.blue);
-    g.fill(0);
-    doodleEllipse(g, 0, 0, 14, 14, 3);
-    g.noStroke();
-    g.fill(255);
-    doodleEllipse(g, 3, -3, 5, 4, 4);
-  } else if (style === 'cat') {
-    // Cat: the whole eye is a lime iris with a vertical slit pupil
-    almondEye(g, eyeColors.lime);
-    g.noStroke();
-    g.fill(0);
-    doodleEllipse(g, 0, 0, 9, 40, 3);
-    g.fill(255);
-    doodleEllipse(g, 9, -9, 7, 6, 4);
-    g.stroke(0);
-  } else if (style === 'sunny') {
-    // Yellow lid, black iris, lower lashes
-    almondEye(g, 255);
-    iris(g, 0, 3, 26, 0);
-    lid(g, eyeColors.yellow, 0.2);
-    lashes(g, 1, 4, 10);
+    g.strokeWeight(3);
+    eyeOutline(g, null);
+
+    if (style === 'lashes') lashes(g, -1, 5, 14);
+    if (style === 'goat') {
+      // A heavy brow line sketched above the eye
+      const { w, top, kl, kr } = eyeShape;
+      g.noFill();
+      g.strokeWeight(2);
+      g.bezier(-w * 0.8, -top * 0.55, -w * kl, -top - 7, w * kr, -top - 8, w * 0.85, -top * 0.5);
+    }
+    if (style === 'glam' || style === 'sunny') lashes(g, 1, 4, 10);
+    if (style === 'spiky') {
+      lashes(g, -1, 7, 14);
+      lashes(g, 1, 5, 12);
+    }
   }
 
   g.pop();
@@ -882,14 +953,14 @@ function doodleEllipse(g, x, y, w, h, n) {
   g.endShape();
 }
 
-// Almond outline: two curves meeting in points at each side
-// (fillColor null = outline only)
-function almondEye(g, fillColor) {
+// The outline of the current eye shape (fillColor null = outline only)
+function eyeOutline(g, fillColor) {
+  const { w, top, bottom, kl, kr } = eyeShape;
   fillColor === null ? g.noFill() : g.fill(fillColor);
   g.beginShape();
-  g.vertex(-almondW, 0);
-  g.bezierVertex(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
-  g.bezierVertex(almondW / 2, almondC, -almondW / 2, almondC, -almondW, 0);
+  g.vertex(-w, 0);
+  g.bezierVertex(-w * kl, -top, w * kr, -top, w, 0);
+  g.bezierVertex(w * kr, bottom, -w * kl, bottom, -w, 0);
   g.endShape(CLOSE);
 
   // The pen going round a second time: thinner, a little off the first line,
@@ -898,9 +969,19 @@ function almondEye(g, fillColor) {
   g.noFill();
   g.strokeWeight(1.5);
   const o = (n) => 2.5 * wobble(n);
-  g.bezier(-almondW - 4, 2 + o(11), -almondW / 2, -almondC - 2 + o(12), almondW / 2, -almondC + 2 + o(13), almondW + 3, -1 + o(14));
-  g.bezier(almondW + 4, -2 + o(15), almondW / 2, almondC + 2 + o(16), -almondW / 2, almondC - 2 + o(17), -almondW - 3, 1 + o(18));
+  g.bezier(-w - 4, 2 + o(11), -w * kl, -top - 2 + o(12), w * kr, -top + 2 + o(13), w + 3, -1 + o(14));
+  g.bezier(w + 4, -2 + o(15), w * kr, bottom + 2 + o(16), -w * kl, bottom - 2 + o(17), -w - 3, 1 + o(18));
   g.pop();
+}
+
+// Limits drawing to the inside of the current eye shape (until ctx.restore())
+function clipToEye(ctx) {
+  const { w, top, bottom, kl, kr } = eyeShape;
+  ctx.beginPath();
+  ctx.moveTo(-w, 0);
+  ctx.bezierCurveTo(-w * kl, -top, w * kr, -top, w, 0);
+  ctx.bezierCurveTo(w * kr, bottom, -w * kl, bottom, -w, 0);
+  ctx.clip();
 }
 
 // A coloured iris (or plain black when color is 0) with a pupil and highlight
@@ -917,24 +998,51 @@ function iris(g, x, y, size, color) {
   g.stroke(0);
 }
 
+// Thin red veins creeping in from the edge of the eye white. Drawn inside
+// the eye's clip, before the iris, so both trim them.
+function veins(g) {
+  const { w, top, bottom } = eyeShape;
+  const count = 9;
+  g.push();
+  g.noFill();
+  g.stroke(eyeColors.red);
+  g.strokeWeight(1.2);
+  for (let i = 0; i < count; i++) {
+    const angle = TWO_PI * (i + 0.3 * wobble(40 + i)) / count;
+    // Start on the edge and head for the middle, stopping part of the way
+    const x0 = cos(angle) * w;
+    const y0 = sin(angle) * (sin(angle) < 0 ? top : bottom) * 0.8;
+    const reach = 0.45 + 0.15 * wobble(50 + i);
+    // Sideways wiggle, so no vein is a straight line
+    const bx = -sin(angle) * 6 * wobble(60 + i);
+    const by = cos(angle) * 6 * wobble(60 + i);
+    g.bezier(x0, y0, x0 * 0.85 + bx, y0 * 0.85 + by, x0 * 0.65 - bx, y0 * 0.65 - by, x0 * reach, y0 * reach);
+    // A short branch forking off part of the way in
+    g.line(x0 * 0.72, y0 * 0.72, x0 * 0.58 + 5 * wobble(70 + i), y0 * 0.58 + 5 * wobble(80 + i));
+  }
+  g.pop();
+}
+
 // Upper lid: from the top curve down to a lower curve at `depth`
 // (0 = straight across the middle, 1 = no lid)
 function lid(g, color, depth) {
+  const { w, top, kl, kr } = eyeShape;
   g.fill(color);
   g.beginShape();
-  g.vertex(-almondW, 0);
-  g.bezierVertex(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
-  g.bezierVertex(almondW / 2, -almondC * depth, -almondW / 2, -almondC * depth, -almondW, 0);
+  g.vertex(-w, 0);
+  g.bezierVertex(-w * kl, -top, w * kr, -top, w, 0);
+  g.bezierVertex(w * kr, -top * depth, -w * kl, -top * depth, -w, 0);
   g.endShape(CLOSE);
 }
 
 // Lashes along the top (side -1) or bottom (side 1) curve, pointing outwards.
 // Each one is a slightly different length and angle, as if flicked in by hand.
 function lashes(g, side, count, length, curve = 1) {
-  const c = almondC * curve * side;
+  const { w, top, bottom, kl, kr } = eyeShape;
+  const c = (side < 0 ? -top : bottom) * curve;
   for (let i = 0; i < count; i++) {
     const t = 0.2 + 0.6 * i / (count - 1);
-    const x = bezierPoint(-almondW, -almondW / 2, almondW / 2, almondW, t);
+    const x = bezierPoint(-w, -w * kl, w * kr, w, t);
     const y = bezierPoint(0, c, c, 0, t);
     // Fan out from a point on the other side of the eye
     const dx = x + 5 * wobble(20 + i + side);
@@ -945,7 +1053,7 @@ function lashes(g, side, count, length, curve = 1) {
   }
 }
 
-// Each key shows a preview of its set (the closed eye for Wink); picking one
+// Each key shows a preview of its set (the patch for Patch); picking one
 // restyles both eyes. Eye styles are not part of the undo history.
 function setupEyeSetButtons() {
   const previews = {};
@@ -973,11 +1081,11 @@ function setupEyeSetButtons() {
   updateEyeSetButtons();
 }
 
-// Gives each eye a different random style (never both closed, never the
+// Gives each eye a different random style (never the
 // same pair as now, so every press visibly changes something)
 function mixEyes() {
-  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed',
-                  'dot', 'side', 'amber', 'blue', 'sunny', 'cat'];
+  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'patch',
+                  'dot', 'side', 'goat', 'frog', 'sunny', 'cat'];
   let pair;
   do {
     pair = shuffle(styles).slice(0, 2);
