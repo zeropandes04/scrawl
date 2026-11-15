@@ -49,7 +49,12 @@ loadWordmarkFont();
 let canvas;
 const bgColor = [255, 255, 255];
 let strokeColor = [0, 0, 0];
-let rotation = 0;
+let rotation = 0;      // degrees; quarter turns from the Rotate button, any angle from a pinch
+let viewZoom = 1;      // 1 = whole canvas visible; pinch zooms in up to maxZoom
+let viewPan = { x: 0, y: 0 }; // canvas px the zoomed view is shifted by
+const maxZoom = 8;
+let pinch = null;      // two-finger gesture in progress: the view and fingers when it started
+let pressChangedDrawing = false; // the current press started a stroke or filled
 let showScrawl = true;
 let moveEyesMode = false;
 let drawMode = false;
@@ -105,23 +110,37 @@ function setup() {
 
   // Prevent default touch behavior on canvas to avoid scrolling/zooming while drawing
   const canvasElement = canvas.elt;
+  // Two fingers on the canvas zoom, rotate and pan the view (see startPinch).
+  // These listeners run before p5's window-level ones, so mousePressed
+  // already sees the pinch.
   canvasElement.addEventListener('touchstart', (e) => {
-    if (drawMode || eraseMode || bucketMode || moveEyesMode) {
+    if (e.targetTouches.length === 2) {
+      startPinch(e.targetTouches);
+    }
+    if (pinch || drawMode || eraseMode || bucketMode || moveEyesMode) {
       e.preventDefault();
     }
   }, { passive: false });
 
   canvasElement.addEventListener('touchmove', (e) => {
-    if (drawMode || eraseMode || moveEyesMode) {
+    if (pinch && e.targetTouches.length === 2) {
+      movePinch(e.targetTouches);
+    }
+    if (pinch || drawMode || eraseMode || moveEyesMode) {
       e.preventDefault();
     }
   }, { passive: false });
 
-  canvasElement.addEventListener('touchend', (e) => {
-    if (drawMode || eraseMode || bucketMode || moveEyesMode) {
+  const onTouchEnd = (e) => {
+    if (pinch || drawMode || eraseMode || bucketMode || moveEyesMode) {
       e.preventDefault();
     }
-  }, { passive: false });
+    if (pinch && e.targetTouches.length < 2) {
+      endPinch();
+    }
+  };
+  canvasElement.addEventListener('touchend', onTouchEnd, { passive: false });
+  canvasElement.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.drawingContext.willReadFrequently = true;
@@ -193,6 +212,10 @@ function generateScrawlface() {
   drawingGraphics.clear();
   hasDrawings = false;
   disableClearButton();
+
+  // A new scrawl starts with the whole canvas in view
+  viewZoom = 1;
+  viewPan = { x: 0, y: 0 };
 
   // Clear undo/redo history
   clearHistory();
@@ -331,8 +354,9 @@ function draw() {
 
     // Calculate velocity for ease-out
     const distance = dist(previous.x, previous.y, current.x, current.y);
-    strokeLength += distance;
-    const velocity = constrain(distance, 0, 20);
+    // Measured as it looks on screen, so the brush feels the same when zoomed in
+    strokeLength += distance * viewZoom;
+    const velocity = constrain(distance * viewZoom, 0, 20);
     const velocityFactor = map(velocity, 0, 20, 0.3, 1.0); // Slow = taper, fast = full size
 
     // Ease in: gradually increase size at start of stroke
@@ -385,9 +409,9 @@ function updateCursor() {
 
 // Index of the eye nearest to a point (canvas coords), or -1 if none is in reach.
 // The canvas is scaled down on small screens, so the reach grows to stay a
-// ~44px touch target.
+// ~44px touch target (and shrinks again when zoomed in).
 function findEyeAt(x, y) {
-  let reach = max(eyeRadius, 22 * canvasSize / canvas.elt.clientWidth);
+  let reach = max(eyeRadius, 22 * canvasSize / canvas.elt.clientWidth / viewZoom);
   let found = -1;
   eyePositions.forEach((pos, i) => {
     const d = dist(x, y, pos.x, pos.y);
@@ -408,6 +432,9 @@ function mousePressed(event) {
   // canvas (e.g. mobile toolbar buttons that overlap it when the menu is open),
   // even if their coordinates fall inside the canvas bounds.
   if (event && event.target !== canvas.elt) return;
+
+  // A second finger is a pinch, not another press
+  if (pinch) return;
 
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
@@ -431,14 +458,93 @@ function mousePressed(event) {
     strokeLength = 0;
     // Save state BEFORE starting to draw so we can undo to the clean state
     saveState();
+    pressChangedDrawing = true;
   }
 
   if (bucketMode && isMouseInCanvas()) {
-    // floodFill saves undo state itself, only when it actually fills.
-    // For bucket fill, we need to work with screen coordinates directly
-    // because we need to detect what's visible at the clicked position
-    floodFill(Math.floor(mouseX), Math.floor(mouseY), brushColor);
+    // floodFill saves undo state itself, only when it actually fills
+    const lastState = historyStack[historyStack.length - 1];
+    const pos = getTransformedCoords(mouseX, mouseY);
+    floodFill(pos.x, pos.y, brushColor);
+    pressChangedDrawing = historyStack[historyStack.length - 1] !== lastState;
   }
+}
+
+// ---- Two-finger pinch: zoom, rotate and pan the view ----
+// The view is only how the canvas is shown; the drawing itself isn't changed,
+// so none of this is part of the undo history.
+
+// A touch in canvas coordinates (the canvas element is scaled by CSS)
+function touchPoint(touch) {
+  const rect = canvas.elt.getBoundingClientRect();
+  const k = canvasSize / rect.width;
+  return { x: (touch.clientX - rect.left) * k, y: (touch.clientY - rect.top) * k };
+}
+
+function startPinch(touches) {
+  // The first finger had already started a stroke or filled: take it back,
+  // the gesture turned out to be a pinch. An eye being dragged is let go.
+  if (pressChangedDrawing) {
+    undo();
+    redoStack.pop(); // undo() queued the cancelled mark for redo
+    updateUndoRedoButtons();
+    pressChangedDrawing = false;
+  }
+  isDrawing = false;
+  draggedEyeIndex = -1;
+
+  const a = touchPoint(touches[0]);
+  const b = touchPoint(touches[1]);
+  pinch = {
+    distance: dist(a.x, a.y, b.x, b.y),
+    angle: atan2(b.y - a.y, b.x - a.x),
+    // The point of the drawing between the fingers; it stays between them
+    anchor: getTransformedCoords((a.x + b.x) / 2, (a.y + b.y) / 2),
+    zoom: viewZoom,
+    rotation: rotation
+  };
+}
+
+function movePinch(touches) {
+  const a = touchPoint(touches[0]);
+  const b = touchPoint(touches[1]);
+
+  viewZoom = constrain(pinch.zoom * dist(a.x, a.y, b.x, b.y) / pinch.distance, 1, maxZoom);
+  rotation = pinch.rotation + degrees(atan2(b.y - a.y, b.x - a.x) - pinch.angle);
+
+  // Shift the view so the anchor point is back between the fingers
+  viewPan = { x: 0, y: 0 };
+  const anchorOnScreen = getRotatedPosition(pinch.anchor.x, pinch.anchor.y);
+  viewPan = {
+    x: (a.x + b.x) / 2 - anchorOnScreen.x,
+    y: (a.y + b.y) / 2 - anchorOnScreen.y
+  };
+  clampViewPan();
+
+  redrawCanvas();
+}
+
+function endPinch() {
+  pinch = null;
+
+  // Settle on a quarter turn when close to one, and on the full view when
+  // barely zoomed, so it's easy to get back to a straight, whole canvas
+  const quarterTurn = round(rotation / 90) * 90;
+  if (abs(rotation - quarterTurn) < 8) rotation = quarterTurn;
+  rotation = ((rotation % 360) + 360) % 360;
+  if (viewZoom < 1.05) viewZoom = 1;
+  clampViewPan();
+
+  if (drawMode || eraseMode) setBrushCursor();
+  redrawCanvas();
+}
+
+// The view can only be shifted as far as the zoom has pushed the canvas past
+// the frame: none at zoom 1, so zooming all the way out re-centres it
+function clampViewPan() {
+  const limit = (viewZoom - 1) * canvasSize / 2;
+  viewPan.x = constrain(viewPan.x, -limit, limit);
+  viewPan.y = constrain(viewPan.y, -limit, limit);
 }
 
 function mouseReleased() {
@@ -473,6 +579,7 @@ function mouseReleased() {
   }
 
   isDrawing = false;
+  pressChangedDrawing = false;
 }
 
 function keyPressed() {
@@ -500,9 +607,10 @@ function keyPressed() {
   if (key.toLowerCase() === 'n') generateScrawlface();
 }
 
+// Screen (canvas element) position -> position on the drawing
 function getTransformedCoords(mx, my) {
-  const cx = mx - width / 2;
-  const cy = my - height / 2;
+  const cx = (mx - width / 2 - viewPan.x) / viewZoom;
+  const cy = (my - height / 2 - viewPan.y) / viewZoom;
   const angle = -radians(rotation);
   const cosA = cos(angle);
   const sinA = sin(angle);
@@ -517,8 +625,9 @@ function redrawCanvas() {
   background(bgColor);
 
   push();
-  translate(width / 2, height / 2);
+  translate(width / 2 + viewPan.x, height / 2 + viewPan.y);
   rotate(radians(rotation));
+  scale(viewZoom);
   imageMode(CENTER);
 
   // Draw the layers straight onto the canvas (no intermediate composite),
@@ -533,20 +642,21 @@ function redrawCanvas() {
   // Always show eyes (window = the main canvas in p5 global mode)
   eyePositions.forEach((pos, i) => {
     const rotatedPos = getRotatedPosition(pos.x, pos.y);
-    drawEye(window, rotatedPos.x, rotatedPos.y, pos.scale, eyeStyles[i]);
+    drawEye(window, rotatedPos.x, rotatedPos.y, pos.scale * viewZoom, eyeStyles[i]);
   });
 }
 
+// Position on the drawing -> screen (canvas element) position
 function getRotatedPosition(x, y) {
-  const cx = x - canvasSize / 2;
-  const cy = y - canvasSize / 2;
+  const cx = (x - canvasSize / 2) * viewZoom;
+  const cy = (y - canvasSize / 2) * viewZoom;
   const angle = radians(rotation);
   const cosA = cos(angle);
   const sinA = sin(angle);
 
   return {
-    x: cx * cosA - cy * sinA + width / 2,
-    y: cx * sinA + cy * cosA + height / 2
+    x: cx * cosA - cy * sinA + width / 2 + viewPan.x,
+    y: cx * sinA + cy * cosA + height / 2 + viewPan.y
   };
 }
 
@@ -793,7 +903,7 @@ function rotateCanvas() {
   redrawCanvas();
 }
 
-// Saves exactly what is on screen (eyes, rotation, scrawl visibility)
+// Saves exactly what is on screen (eyes, rotation, zoom, scrawl visibility)
 function saveImage() {
   saveCanvas(canvas, 'scrawlface', 'png');
 }
@@ -849,7 +959,7 @@ function currentTool() {
 function setBrushCursor() {
   const size = eraseMode ? eraserSize : brushSize;
   // Even diameter (min 4px) so the hotspot lands on a whole pixel
-  const d = max(4, 2 * round(size * canvas.elt.clientWidth / canvasSize / 2));
+  const d = max(4, 2 * round(size * viewZoom * canvas.elt.clientWidth / canvasSize / 2));
   const box = d + 4;
   const c = box / 2;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${box}" height="${box}">` +
@@ -886,36 +996,30 @@ function disableClearButton() {
   select("#clear-drawings-btn-mobile").attribute("disabled", "");
 }
 
+// startX/startY are a position on the drawing (see getTransformedCoords).
+// The fill works on the unrotated, unzoomed layers, so the view doesn't matter.
 function floodFill(startX, startY, fillColor) {
   startX = Math.floor(startX);
   startY = Math.floor(startY);
+  if (startX < 0 || startX >= canvasSize || startY < 0 || startY >= canvasSize) return;
 
   // Max per-channel difference from the clicked colour that still counts as
   // "the same area". Absorbs the soft anti-aliased edges of lines without
   // leaking through them (measured: higher values start crossing 1px lines).
   const fillTolerance = 64;
 
-  // Build a temporary canvas that matches what the user sees: background,
-  // rotated scrawl (if shown) and rotated drawings. The fill is bounded by all of it.
+  // Build a temporary canvas of everything that bounds a fill: background,
+  // scrawl (if shown) and drawings.
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvasSize;
   tempCanvas.height = canvasSize;
   const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
 
-  const drawRotated = (source) => {
-    tempCtx.save();
-    tempCtx.translate(canvasSize / 2, canvasSize / 2);
-    tempCtx.rotate(rotation * Math.PI / 180);
-    tempCtx.translate(-canvasSize / 2, -canvasSize / 2);
-    tempCtx.drawImage(source, 0, 0);
-    tempCtx.restore();
-  };
-
   tempCtx.fillStyle = `rgb(${bgColor.join(',')})`;
   tempCtx.fillRect(0, 0, canvasSize, canvasSize);
 
   if (showScrawl) {
-    drawRotated(baseScrawlGraphics.canvas);
+    tempCtx.drawImage(baseScrawlGraphics.canvas, 0, 0);
 
     // Don't fill if clicking on a scrawl line (non-white pixel)
     const [lineR, lineG, lineB] = tempCtx.getImageData(startX, startY, 1, 1).data;
@@ -924,7 +1028,7 @@ function floodFill(startX, startY, fillColor) {
     }
   }
 
-  drawRotated(drawingGraphics.canvas);
+  tempCtx.drawImage(drawingGraphics.canvas, 0, 0);
 
   const data = tempCtx.getImageData(0, 0, canvasSize, canvasSize).data;
 
@@ -954,7 +1058,7 @@ function floodFill(startX, startY, fillColor) {
   // Save state BEFORE filling - only now that we know a fill will happen
   saveState();
 
-  // Flood fill to find all pixels to fill (on the rotated view).
+  // Flood fill to find all pixels to fill.
   // Pixels are addressed by flat index (y * canvasSize + x) and tracked in typed
   // arrays: far faster on mobile than string keys in a Set and [x, y] pairs.
   const totalPixels = canvasSize * canvasSize;
@@ -999,30 +1103,14 @@ function floodFill(startX, startY, fillColor) {
     if (i < totalPixels - canvasSize) markEdge(i + canvasSize);
   }
 
-  // Now we need to map these rotated screen pixels back to unrotated graphics coordinates
-  // and fill them in the drawingGraphics layer. Same rotation as getTransformedCoords(),
-  // but applied to pixel centres and rounded: flooring pixel corners lands 1px off at
-  // 90/180/270 degrees (cos(90deg) is 6e-17, not 0), shifting the fill across lines.
+  // Write the region into the drawing layer
   drawingGraphics.loadPixels();
   const px = drawingGraphics.pixels;
-
-  const angle = -radians(rotation);
-  const cosA = cos(angle);
-  const sinA = sin(angle);
 
   for (let i = 0; i < totalPixels; i++) {
     if (!inRegion[i] && !edgeAlpha[i]) continue;
 
-    // Transform from rotated screen coordinates to unrotated graphics coordinates
-    const cx = (i % canvasSize) + 0.5 - width / 2;
-    const cy = Math.floor(i / canvasSize) + 0.5 - height / 2;
-    const gx = Math.round(cx * cosA - cy * sinA + canvasSize / 2 - 0.5);
-    const gy = Math.round(cx * sinA + cy * cosA + canvasSize / 2 - 0.5);
-
-    // Make sure we're within bounds
-    if (gx < 0 || gx >= canvasSize || gy < 0 || gy >= canvasSize) continue;
-
-    const idx = (gy * canvasSize + gx) * 4;
+    const idx = i * 4;
 
     if (inRegion[i]) {
       px[idx] = fillR;
