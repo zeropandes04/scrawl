@@ -764,7 +764,29 @@
         background: #ffffff;
       }
 
+      /* The page is at least one screen tall and the canvas area takes all
+         the height left over, so the scrawl sits centred between the header
+         and the bottom bar. On short screens it simply grows and scrolls. */
+      .container {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Empty footer would push the canvas off-centre */
+      footer {
+        display: none;
+      }
+
       .canvas-section {
+        flex: 1;
         flex-direction: column;
         min-height: auto;
         padding-bottom: 0;
