@@ -25,7 +25,7 @@
       --ink: #161616;
       --muted: #55544f;    /* 5.2:1 on --chassis, AA for small text */
       --screen: #161616;
-      --te-blue: #2c6fd6;
+      --focus: #2c6fd6;    /* keyboard focus ring: darker, 3:1 on --chassis */
       --te-green: #2fb35a;
       --te-orange: #ff6b1a;
       --te-orange-edge: #c24e0d;
@@ -258,7 +258,7 @@
     }
 
     button:focus-visible {
-      outline: 2px solid var(--te-blue);
+      outline: 2px solid var(--focus);
       outline-offset: 2px;
     }
 
@@ -394,7 +394,7 @@
       transform: translateY(2px);
       box-shadow:
         inset 0 1px 3px rgba(0,0,0,0.18),
-        0 0 0 2px var(--te-blue);
+        0 0 0 2px var(--te-orange);
     }
 
     /* Colour keys: square caps in the paint colour */
@@ -713,7 +713,7 @@
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.7);
     }
 
-    /* Blue fader cap with a white centre line */
+    /* Fader cap in the primary button's orange, with a white centre line */
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -721,8 +721,8 @@
       height: 30px;
       margin-top: -11px; /* centre on the 8px track */
       border-radius: 5px;
-      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-blue);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 #1d4f9e, 0 3px 5px rgba(0,0,0,0.3);
+      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-orange);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 var(--te-orange-edge), 0 3px 5px rgba(0,0,0,0.3);
     }
 
     input[type="range"]::-moz-range-thumb {
@@ -730,12 +730,12 @@
       height: 30px;
       border: none;
       border-radius: 5px;
-      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-blue);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 #1d4f9e, 0 3px 5px rgba(0,0,0,0.3);
+      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-orange);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 var(--te-orange-edge), 0 3px 5px rgba(0,0,0,0.3);
     }
 
     input[type="range"]:focus-visible {
-      outline: 2px solid var(--te-blue);
+      outline: 2px solid var(--focus);
       outline-offset: 2px;
       border-radius: 4px;
     }
@@ -748,7 +748,7 @@
       min-width: 52px;
       padding: 6px 10px;
       background: var(--screen);
-      color: #63a4ff;
+      color: var(--te-orange);
       font-family: var(--mono);
       font-size: 18px;
       font-variant-numeric: tabular-nums;
