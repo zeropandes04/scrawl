@@ -725,6 +725,14 @@ function getRotatedPosition(x, y) {
 // own style, so the two can differ. A set is a ready-made pair (Patch is an
 // open eye and an eye patch); Mix picks a random pair.
 // `g` is what to draw on: the main canvas (window) or a preview graphic.
+//
+// House style, so the set reads as one family:
+// - black and white only
+// - main lines 3 wide; detail lines (second pen pass, hatching, veins,
+//   flecks) 1.5 wide
+// - every outline is drawn twice, the second pass thinner and a little off
+// - every pupil is solid black with a white glint inside it, up and right
+// - every lid is white, shaded with hatching (closer hatching = darker)
 const eyeSets = {
   classic: ['classic', 'classic'],
   lashes: ['lashes', 'lashes'],
@@ -782,18 +790,16 @@ function drawEye(g, x, y, scale, style, seed = 0) {
 
   if (style === 'classic') {
     // The original googly eye
-    g.strokeWeight(2.5);
     g.fill(255);
     doodleEllipse(g, 0, 0, eyeSize, eyeSize, 1);
     // The pen going round a second time
     g.noFill();
-    g.strokeWeight(1.2);
+    g.strokeWeight(1.5);
     doodleEllipse(g, 0.5, -0.5, eyeSize + 3, eyeSize + 2, 2);
     g.noStroke();
     g.fill(0);
     doodleEllipse(g, 1, 1, 40, 40, 3);
-    g.fill(255);
-    doodleEllipse(g, 7, -6, 11, 10, 4);
+    glint(g, 7, -6, 10);
   } else if (style === 'patch') {
     // Pirate eye patch: a black shield with its strap running off both sides
     g.line(-26, -20, -64, -40);
@@ -828,30 +834,31 @@ function drawEye(g, x, y, scale, style, seed = 0) {
     ctx.save();
     clipToEye(ctx);
     if (style === 'lashes') {
-      iris(g, 0, 0, 26, 0);
+      iris(g, 0, 0, 26);
     } else if (style === 'sleepy') {
       // Heavy lid covering the top half
-      iris(g, 0, 6, 26, 0);
-      lid(g, 255, 0);
+      iris(g, 0, 6, 26);
+      lid(g, 0, 7);
     } else if (style === 'glam') {
-      // Black crescent lid over a ringed iris
-      iris(g, 0, 0, 30, 255);
-      lid(g, 0, 0.35);
+      // Crescent lid with heavy eyeshadow (close hatching)
+      iris(g, 0, 0, 26);
+      lid(g, 0.35, 3.5);
     } else if (style === 'spiky') {
-      // Bloodshot: veins on the white, around a ringed iris
+      // Bloodshot: veins on the white
       veins(g);
-      iris(g, 0, 0, 28, 255);
+      iris(g, 0, 0, 26);
     } else if (style === 'dot') {
       // Small dot pupil
+      g.noStroke();
       g.fill(0);
-      doodleEllipse(g, 0, 0, 12, 12, 3);
+      doodleEllipse(g, 0, 0, 13, 13, 3);
+      glint(g, 2, -2, 4);
     } else if (style === 'side') {
       // Big black iris pushed against the round end
       g.noStroke();
       g.fill(0);
       doodleEllipse(g, 18, 0, 44, 44, 3);
-      g.fill(255);
-      doodleEllipse(g, 10, -7, 9, 8, 4);
+      glint(g, 26, -8, 10);
     } else if (style === 'goat') {
       // A goat's flat, bar-shaped pupil, hand-drawn: short flecks
       // scratched in around a wobbly bar
@@ -873,26 +880,23 @@ function drawEye(g, x, y, scale, style, seed = 0) {
         g.curveVertex(bar[k][0] + 1.5 * wobble(70 + k), bar[k][1] + 1.2 * wobble(80 + k));
       }
       g.endShape();
-      g.fill(255);
-      doodleEllipse(g, 9, -9, 6, 5, 4);
+      glint(g, 10, -1.5, 4.5);
     } else if (style === 'frog') {
       // A wide oval pupil
       g.noStroke();
       g.fill(0);
       doodleEllipse(g, 0, 2, 31, 13, 3);
-      g.fill(255);
-      doodleEllipse(g, 8, -8, 7, 6, 4);
+      glint(g, 7, 0.5, 4.5);
     } else if (style === 'cat') {
       // A vertical slit pupil
       g.noStroke();
       g.fill(0);
-      doodleEllipse(g, 0, 0, 9, 40, 3);
-      g.fill(255);
-      doodleEllipse(g, 9, -8, 7, 6, 4);
+      doodleEllipse(g, 0, 0, 10, 40, 3);
+      glint(g, 0.5, -8, 4);
     } else if (style === 'sunny') {
       // Deep lid over a black iris
-      iris(g, 0, -6, 26, 0);
-      lid(g, 255, 0.45);
+      iris(g, 0, -6, 26);
+      lid(g, 0.45, 7);
     }
     ctx.restore();
 
@@ -906,7 +910,6 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       // A heavy brow line sketched above the eye
       const { w, top, kl, kr } = eyeShape;
       g.noFill();
-      g.strokeWeight(2);
       g.bezier(-w * 0.8, -top * 0.55, -w * kl, -top - 7, w * kr, -top - 8, w * 0.85, -top * 0.5);
     }
     if (style === 'glam' || style === 'sunny') lashes(g, 1, 4, 10);
@@ -972,19 +975,20 @@ function clipToEye(ctx) {
   ctx.clip();
 }
 
-// An iris with a highlight: solid black when color is 0, otherwise a
-// ring in that colour around a black pupil
-function iris(g, x, y, size, color) {
-  g.fill(color);
-  doodleEllipse(g, x, y, size, size, 5);
+// The round pupil most eyes have: solid black with a glint
+function iris(g, x, y, size) {
   g.noStroke();
-  if (color !== 0) {
-    g.fill(0);
-    doodleEllipse(g, x, y, size * 0.4, size * 0.4, 6);
-  }
-  g.fill(255);
-  doodleEllipse(g, x + size * 0.2, y - size * 0.2, size * 0.28, size * 0.25, 7);
+  g.fill(0);
+  doodleEllipse(g, x, y, size, size, 5);
+  glint(g, x + size * 0.2, y - size * 0.2, size * 0.27);
   g.stroke(0);
+}
+
+// The white glint inside a pupil
+function glint(g, x, y, size) {
+  g.noStroke();
+  g.fill(255);
+  doodleEllipse(g, x, y, size * 1.1, size, 7);
 }
 
 // Thin veins creeping in from the edge of the eye white. Drawn inside
@@ -995,7 +999,7 @@ function veins(g) {
   g.push();
   g.noFill();
   g.stroke(0);
-  g.strokeWeight(1.2);
+  g.strokeWeight(1.5);
   for (let i = 0; i < count; i++) {
     const angle = TWO_PI * (i + 0.3 * wobble(40 + i)) / count;
     // Start on the edge and head for the middle, stopping part of the way
@@ -1013,15 +1017,35 @@ function veins(g) {
 }
 
 // Upper lid: from the top curve down to a lower curve at `depth`
-// (0 = straight across the middle, 1 = no lid)
-function lid(g, color, depth) {
+// (0 = straight across the middle, 1 = no lid), shaded with slanting pen
+// strokes `spacing` apart
+function lid(g, depth, spacing) {
   const { w, top, kl, kr } = eyeShape;
-  g.fill(color);
+  g.fill(255);
   g.beginShape();
   g.vertex(-w, 0);
   g.bezierVertex(-w * kl, -top, w * kr, -top, w, 0);
   g.bezierVertex(w * kr, -top * depth, -w * kl, -top * depth, -w, 0);
   g.endShape(CLOSE);
+
+  // Hatching, kept inside the lid
+  const ctx = g.drawingContext;
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(-w, 0);
+  ctx.bezierCurveTo(-w * kl, -top, w * kr, -top, w, 0);
+  ctx.bezierCurveTo(w * kr, -top * depth, -w * kl, -top * depth, -w, 0);
+  ctx.clip();
+  g.strokeWeight(1.5);
+  let n = 0;
+  for (let x = -w - top * 0.6; x < w; x += spacing) {
+    const off = 1.2 * wobble(90 + n++);
+    g.line(x + off, 0, x + top * 0.6 - off, -top);
+  }
+  ctx.restore();
+  // ctx.restore() also put the pen back, so set it again
+  g.stroke(0);
+  g.strokeWeight(3);
 }
 
 // Lashes along the top (side -1) or bottom (side 1) curve, pointing outwards.
