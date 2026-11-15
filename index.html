@@ -97,7 +97,6 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 40px;
       background: #ffffff;
       gap: 24px;
     }
@@ -108,11 +107,10 @@
       align-items: center;
     }
 
+    /* No frame of its own: the canvas fills the white area and blends into it */
     #scrawl-container canvas {
       max-width: 100%;
       height: auto !important;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
 
     /* Control panel: styled after Teenage Engineering hardware (OP-1) */
@@ -782,15 +780,6 @@
         margin: 0 -16px calc(156px + env(safe-area-inset-bottom));
       }
 
-      .canvas-area {
-        padding: 8px;
-      }
-
-      #scrawl-container canvas {
-        border-radius: 0;
-        box-shadow: none;
-      }
-
       .sidebar {
         display: none;
       }
@@ -863,7 +852,7 @@
     /* Short phones: shrink the header so the fixed toolbar doesn't cover the canvas */
     @media (max-width: 768px) and (max-height: 620px) {
       header {
-        padding: 12px 0 8px;
+        padding: 8px 0 4px;
       }
 
       .subtitle {
