@@ -171,6 +171,9 @@ function setup() {
     });
   }
 
+  // Start with the brush selected so the canvas responds to the first touch
+  activateBrushMode();
+
   generateScrawlface();
 }
 
