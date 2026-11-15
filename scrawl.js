@@ -82,7 +82,11 @@ let brushSizesShown = false; // mobile strip: brush sizes instead of colours
 
 // Scrawl segments still to be drawn by the draw-in animation
 let scrawlQueue = [];
-const scrawlDrawInFrames = 70; // ~1.2s at 60fps, whatever the intensity
+// The draw-in takes a short fixed start plus a little per segment, so a
+// simple scrawl appears quickly and a dense one takes longer
+// (at 60fps: intensity 1 ~0.3s, 10 ~0.6s, 25 ~1.1s)
+const scrawlDrawInBaseFrames = 15;
+const scrawlDrawInFramesPerSegment = 2;
 let scrawlDrawInRate = 0;      // segments per frame (can be a fraction)
 let scrawlDrawInProgress = 0;  // fraction of a segment carried to the next frame
 
@@ -251,7 +255,8 @@ function generateScrawlface() {
     y = y2;
   }
   fitScrawlToCanvas(scrawlQueue);
-  scrawlDrawInRate = scrawlQueue.length / scrawlDrawInFrames;
+  scrawlDrawInRate = scrawlQueue.length /
+    (scrawlDrawInBaseFrames + scrawlDrawInFramesPerSegment * scrawlQueue.length);
   scrawlDrawInProgress = 0;
   // Reduced motion: draw the whole scrawl straight away
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -318,7 +323,7 @@ function tickLcd(id) {
 }
 
 function draw() {
-  // Scrawl draw-in after Generate: spread evenly over scrawlDrawInFrames, so
+  // Scrawl draw-in after Generate: spread evenly over its duration, so
   // a low-intensity scrawl gets a new segment only every few frames
   if (scrawlQueue.length > 0) {
     scrawlDrawInProgress += scrawlDrawInRate;
