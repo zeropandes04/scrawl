@@ -746,7 +746,9 @@ const eyeColors = {
   aqua: '#44A2A2',      // Aqua
   tangerine: '#FFA64D', // Tangerine
   yellow: '#FFF133',    // Yellow
-  lime: '#66BD0F'       // Lime
+  lime: '#66BD0F',      // Lime
+  magenta: '#CC0099',   // Magenta
+  pink: '#F2A6ED'       // Electric Pink
 };
 let doodleSeed = 0;  // set per eye, so two eyes of one style aren't identical
 
@@ -826,13 +828,13 @@ function drawEye(g, x, y, scale, style, seed = 0) {
     } else if (style === 'sleepy') {
       // Heavy coloured lid covering the top half
       iris(g, 0, 6, 26, 0);
-      lid(g, eyeColors.blue, 0);
+      lid(g, eyeColors.pink, 0);
     } else if (style === 'glam') {
-      // Coloured crescent lid, blue iris
-      iris(g, 0, 2, 30, eyeColors.blue);
-      lid(g, eyeColors.orange, 0.35);
+      // Magenta crescent lid, aqua iris
+      iris(g, 0, 2, 30, eyeColors.aqua);
+      lid(g, eyeColors.magenta, 0.35);
     } else if (style === 'spiky') {
-      iris(g, 0, 0, 32, eyeColors.aqua);
+      iris(g, 0, 0, 32, eyeColors.orange);
     } else if (style === 'dot') {
       // Small dot pupil
       g.fill(0);
