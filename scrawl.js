@@ -178,6 +178,11 @@ function setup() {
 }
 
 function generateScrawlface() {
+  // Generating wipes the drawing and its undo history, so check first
+  if (hasDrawings && !confirm('Start a new scrawl? Your drawing will be lost.')) {
+    return;
+  }
+
   drawingGraphics.clear();
   hasDrawings = false;
   disableClearButton();

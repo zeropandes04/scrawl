@@ -234,17 +234,25 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      gap: 16px;
+      /* Six buttons have to fit a 360px-wide phone */
+      gap: 8px;
     }
 
     .mobile-tool-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 48px;
+      /* 48px wide normally; may shrink to 40px so the row fits a 320px phone */
+      flex: 0 1 48px;
+      min-width: 40px;
       min-height: 48px;
       padding: 12px;
       border-radius: 12px;
+    }
+
+    /* The text button keeps its natural width */
+    #generate-btn-mobile {
+      flex: none;
     }
 
     .mobile-tool-btn.active {
@@ -361,11 +369,6 @@
     /* Compact so the desktop sidebar still fits a 720px-tall viewport */
     #save-btn {
       padding: 8px 24px;
-    }
-
-    /* 7th button in the 2-column grid: span the full row instead of sitting alone */
-    #save-btn-mobile {
-      grid-column: 1 / -1;
     }
 
     .mobile-control-btn:active {
@@ -1120,6 +1123,7 @@
 
         <!-- Main toolbar - always visible -->
         <div class="mobile-toolbar-main">
+          <button id="generate-btn-mobile" class="mobile-tool-btn cta-button" title="Generate new scrawl" aria-label="Generate new scrawl">New</button>
           <button id="bucket-tool-btn-mobile" class="mobile-tool-btn" title="Fill">
             <img src="icons/paint-rollers.png" alt="Fill" style="width: 24px; height: 24px;">
           </button>
@@ -1158,7 +1162,6 @@
           <div class="mobile-section">
             <div class="mobile-section-label">Controls</div>
             <div class="mobile-controls-grid">
-              <button id="generate-btn-mobile" class="mobile-control-btn">Generate</button>
               <button id="rotate-btn-mobile-controls" class="mobile-control-btn">Rotate</button>
               <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Toggle Scrawl</button>
               <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
