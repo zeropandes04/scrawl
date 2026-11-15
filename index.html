@@ -435,14 +435,21 @@
 
     /* Save sits in the History row as a 4th key, so the sidebar (with two
        rows of eye sets) still fits a 720px-tall viewport */
+    /* Two keys side by side: View (Rotate, Hide scrawl) and the eye
+       actions (Mix, Move eyes) */
+    .tools-grid.two-keys {
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
     .tools-grid.history-grid {
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
     }
 
-    /* Clear is the 5th button in the 2-column grid: where Share is hidden
-       (no file sharing) it spans the row instead of sitting alone */
-    #clear-drawings-btn-mobile:has(+ #share-btn-mobile[hidden]) {
+    /* Share (when the browser can share files) is the 5th button in the
+       2-column grid: span the row instead of sitting alone */
+    #share-btn-mobile {
       grid-column: 1 / -1;
     }
 
@@ -464,11 +471,12 @@
       justify-content: center;
     }
 
-    /* Mix: the last key in the grid, under the eye sets */
-    .eye-set-grid .mix-eyes-btn {
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 600;
+    /* Mix and Move eyes, under the eye sets */
+    .eye-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
     }
 
     .eye-set-grid img {
@@ -490,7 +498,7 @@
        nested in .tool-dropdown, so they stay square. */
     .sidebar .tools-grid > button {
       aspect-ratio: auto;
-      padding: 10px 6px;
+      padding: 8px 6px;
     }
 
     .control-group {
@@ -643,7 +651,7 @@
 
     .tool-dropdown-button {
       width: 100%;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: 10 / 9; /* a touch wider than tall, to fit a 720px-tall sidebar */
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -993,8 +1001,8 @@
          less height to work with, so tighten its spacing; overflow-y is a
          safety net rather than the norm */
       .sidebar {
-        padding: 17px 24px;
-        gap: 10px;
+        padding: 15px 24px;
+        gap: 9px;
         overflow-y: auto;
       }
 
@@ -1153,10 +1161,9 @@
 
           <div class="sidebar-section">
             <h3>View</h3>
-            <div class="tools-grid">
+            <div class="tools-grid two-keys">
               <button id="rotate-btn" title="Rotate 90°">Rotate canvas</button>
               <button id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide scrawl</button>
-              <button id="move-eyes-btn" title="Move eyes">Move eyes</button>
             </div>
           </div>
 
@@ -1174,7 +1181,10 @@
               <button type="button" data-eye-set="amber" title="Amber eyes" aria-label="Amber eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="sunny" title="Sunny eyes" aria-label="Sunny eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="blue" title="Blue eyes" aria-label="Blue eye set" aria-pressed="false"></button>
+            </div>
+            <div class="tools-grid two-keys">
               <button type="button" class="mix-eyes-btn" title="Give each eye a different random style">Mix</button>
+              <button id="move-eyes-btn" title="Drag the eyes around the canvas">Move eyes</button>
             </div>
           </div>
 
@@ -1263,7 +1273,10 @@
               <button type="button" class="mobile-control-btn" data-eye-set="amber" aria-label="Amber eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="sunny" aria-label="Sunny eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="blue" aria-label="Blue eye set" aria-pressed="false"></button>
+            </div>
+            <div class="eye-actions">
               <button type="button" class="mix-eyes-btn mobile-control-btn" title="Give each eye a different random style">Mix</button>
+              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
             </div>
           </div>
 
@@ -1273,7 +1286,6 @@
             <div class="mobile-controls-grid">
               <button id="rotate-btn-mobile-controls" class="mobile-control-btn">Rotate</button>
               <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Hide Scrawl</button>
-              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
               <button id="share-btn-mobile" class="mobile-control-btn" hidden>Share</button>
