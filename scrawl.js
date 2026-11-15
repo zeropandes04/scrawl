@@ -35,6 +35,8 @@ const maxHistorySize = 25;
 let strokePoints = 0;
 let maxStrokePoints = 20; // Points to reach full size
 let currentBrushSize = 0;
+let strokeLength = 0; // Canvas px travelled in the current stroke
+const tapSlop = 10;   // Strokes shorter than this count as a tap
 
 function setup() {
   // CRITICAL: Disable pixel density to prevent coordinate mismatch
@@ -243,13 +245,16 @@ function draw() {
 
   if ((drawMode || eraseMode) && isDrawing && mouseIsPressed && isMouseInCanvas()) {
     const current = getTransformedCoords(mouseX, mouseY);
-    const previous = getTransformedCoords(pmouseX, pmouseY);
+    // On the first frame of a touch stroke pmouseX/Y still hold the previous
+    // touch position, so start the stroke where the finger actually is
+    const previous = strokePoints === 0 ? current : getTransformedCoords(pmouseX, pmouseY);
 
     // Calculate easing for brush
     const targetSize = eraseMode ? eraserSize : brushSize;
 
     // Calculate velocity for ease-out
     const distance = dist(previous.x, previous.y, current.x, current.y);
+    strokeLength += distance;
     const velocity = constrain(distance, 0, 20);
     const velocityFactor = map(velocity, 0, 20, 0.3, 1.0); // Slow = taper, fast = full size
 
@@ -330,6 +335,7 @@ function mousePressed(event) {
     // Reset stroke for easing in
     strokePoints = 0;
     currentBrushSize = 0;
+    strokeLength = 0;
     // Save state BEFORE starting to draw so we can undo to the clean state
     saveState();
   }
@@ -346,6 +352,31 @@ function mouseReleased() {
   if (draggedEyeIndex !== -1) {
     draggedEyeIndex = -1;
     cursor(ARROW);
+  }
+
+  // A tap leaves a full-size dot. The eased stroke alone is too thin to see,
+  // which made taps invisible while still costing an undo step.
+  if (isDrawing && strokeLength < tapSlop) {
+    const pos = getTransformedCoords(mouseX, mouseY);
+    const size = eraseMode ? eraserSize : brushSize;
+
+    if (eraseMode) {
+      drawingGraphics.erase();
+    } else {
+      drawingGraphics.fill(brushColor);
+      drawingGraphics.noStroke();
+    }
+    drawingGraphics.ellipse(pos.x, pos.y, size, size);
+    if (eraseMode) {
+      drawingGraphics.noErase();
+    }
+
+    if (!hasDrawings && !eraseMode) {
+      hasDrawings = true;
+      enableClearButton();
+    }
+
+    redrawCanvas();
   }
 
   isDrawing = false;
