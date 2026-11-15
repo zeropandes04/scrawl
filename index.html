@@ -440,8 +440,9 @@
       gap: 8px;
     }
 
-    /* 7th button in the 2-column grid (when shown): span the full row instead of sitting alone */
-    #share-btn-mobile {
+    /* Clear is the 5th button in the 2-column grid: where Share is hidden
+       (no file sharing) it spans the row instead of sitting alone */
+    #clear-drawings-btn-mobile:has(+ #share-btn-mobile[hidden]) {
       grid-column: 1 / -1;
     }
 
@@ -1274,7 +1275,6 @@
               <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
-              <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
               <button id="share-btn-mobile" class="mobile-control-btn" hidden>Share</button>
             </div>
           </div>

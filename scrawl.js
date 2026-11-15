@@ -88,7 +88,6 @@ function setup() {
   select("#undo-btn").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
   select("#save-btn").mousePressed(saveImage);
-  select("#save-btn-mobile").mousePressed(saveImage);
 
   const undoBtnMobile = select("#undo-btn-mobile");
   if (undoBtnMobile) {
