@@ -454,12 +454,16 @@
       object-fit: contain;
     }
 
-    /* The LED would cover the small preview: tuck it into the corner */
+    /* The selected eye set is marked like the selected size and swatch: a
+       dark ring, and no green LED (that is for the tool keys) */
+    .eye-set-grid button.active {
+      box-shadow:
+        inset 0 1px 3px rgba(0,0,0,0.18),
+        0 0 0 2px var(--ink);
+    }
+
     .eye-set-grid button.active::after {
-      top: 3px;
-      right: 3px;
-      width: 5px;
-      height: 5px;
+      content: none;
     }
 
     /* Rows of text keys: View, History, Save */
