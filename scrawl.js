@@ -844,8 +844,8 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
   button.addEventListener('mouseup', (e) => {
     clearTimeout(longPressTimer);
     if (!isLongPress) {
-      // Short click - activate tool
-      onActivate();
+      // Short click - open the size list from the size indicator, otherwise activate tool
+      e.target.closest('.size-toggle') ? toggleDropdown() : onActivate();
     }
   });
 
@@ -867,8 +867,8 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
     e.preventDefault();
     clearTimeout(longPressTimer);
     if (!isLongPress) {
-      // Short tap - activate tool
-      onActivate();
+      // Short tap - open the size list from the size indicator, otherwise activate tool
+      e.target.closest('.size-toggle') ? toggleDropdown() : onActivate();
     }
   });
 
@@ -890,6 +890,15 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
 
     content.classList.add('show');
     button.classList.add('open');
+  }
+
+  function toggleDropdown() {
+    if (content.classList.contains('show')) {
+      content.classList.remove('show');
+      button.classList.remove('open');
+    } else {
+      openDropdown();
+    }
   }
 
   // Handle option selection

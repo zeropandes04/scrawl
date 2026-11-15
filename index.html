@@ -613,6 +613,21 @@
       flex-shrink: 0;
     }
 
+    /* Size indicator + arrow: clicking it opens the size list. The negative
+       margin enlarges the click target without changing the button layout. */
+    .size-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      margin: -4px -8px;
+      border-radius: 8px;
+    }
+
+    .size-toggle:hover {
+      background: rgba(0, 0, 0, 0.08);
+    }
+
     .custom-dropdown-content {
       position: absolute;
       top: 100%;
@@ -991,7 +1006,7 @@
               <div class="tool-dropdown" id="brush-tool-dropdown">
                 <button class="tool-dropdown-button" id="brush-tool-btn">
                   <img src="icons/paintbrush.png" alt="Paintbrush" class="tool-icon">
-                  <div style="display: flex; align-items: center; gap: 4px;">
+                  <div class="size-toggle" title="Choose size">
                     <div class="size-indicator">
                       <div class="brush-circle" id="brush-size-indicator" style="width: 8px; height: 8px;"></div>
                     </div>
@@ -1024,7 +1039,7 @@
               <div class="tool-dropdown" id="eraser-tool-dropdown">
                 <button class="tool-dropdown-button" id="eraser-tool-btn">
                   <img src="icons/eraser.png" alt="Eraser" class="tool-icon">
-                  <div style="display: flex; align-items: center; gap: 4px;">
+                  <div class="size-toggle" title="Choose size">
                     <div class="size-indicator">
                       <div class="eraser-circle" id="eraser-size-indicator" style="width: 16px; height: 16px;"></div>
                     </div>
