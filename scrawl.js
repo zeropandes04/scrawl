@@ -35,6 +35,8 @@ const maxHistorySize = 25;
 let strokePoints = 0;
 let maxStrokePoints = 20; // Points to reach full size
 let currentBrushSize = 0;
+let strokeLength = 0; // Canvas px travelled in the current stroke
+const tapSlop = 10;   // Strokes shorter than this count as a tap
 
 function setup() {
   // CRITICAL: Disable pixel density to prevent coordinate mismatch
@@ -96,14 +98,7 @@ function setup() {
   // Mobile buttons
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
-  const toggleEyesBtnMobile = select("#toggle-eyes-btn-mobile");
-  if (toggleEyesBtnMobile) {
-    toggleEyesBtnMobile.mousePressed(() => {
-      toggleEyes();
-      // Sync mobile button state (inverted logic: button active = scrawl hidden)
-      showScrawl ? toggleEyesBtnMobile.removeClass("active") : toggleEyesBtnMobile.addClass("active");
-    });
-  }
+  select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
 
   // Setup slider
   const intensitySlider = select("#intensity-slider");
@@ -111,6 +106,11 @@ function setup() {
   intensitySlider.input(() => {
     intensity = parseInt(intensitySlider.value());
     select("#intensity-value").html(intensity);
+  });
+  // Releasing the slider shows the new intensity straight away, unless that
+  // would discard a drawing (then it applies to the next Generate)
+  intensitySlider.changed(() => {
+    if (!hasDrawings) generateScrawlface();
   });
 
   // Setup brush tool dropdown
@@ -121,6 +121,8 @@ function setup() {
     (value) => {
       brushSize = parseInt(value);
       activateBrushMode();
+      updateMobileToolButtons();
+      setBrushCursor();
     },
     () => {
       activateBrushMode();
@@ -138,6 +140,8 @@ function setup() {
     (value) => {
       eraserSize = parseInt(value);
       activateEraseMode();
+      updateMobileToolButtons();
+      setBrushCursor();
     },
     () => {
       activateEraseMode();
@@ -165,12 +169,23 @@ function setup() {
       select("#intensity-slider").value(intensity);
       select("#intensity-value").html(intensity);
     });
+    intensitySliderMobile.changed(() => {
+      if (!hasDrawings) generateScrawlface();
+    });
   }
+
+  // Start with the brush selected so the canvas responds to the first touch
+  activateBrushMode();
 
   generateScrawlface();
 }
 
 function generateScrawlface() {
+  // Generating wipes the drawing and its undo history, so check first
+  if (hasDrawings && !confirm('Start a new scrawl? Your drawing will be lost.')) {
+    return;
+  }
+
   drawingGraphics.clear();
   hasDrawings = false;
   disableClearButton();
@@ -181,11 +196,7 @@ function generateScrawlface() {
   // Ensure scrawl is visible when generating new scrawl
   if (!showScrawl) {
     showScrawl = true;
-    const btn = select("#toggle-eyes-btn");
-    // Inverted logic: button inactive = scrawl visible
-    if (btn) btn.removeClass("active");
-    const btnMobile = select("#toggle-eyes-btn-mobile");
-    if (btnMobile) btnMobile.removeClass("active");
+    updateScrawlToggleButtons();
   }
 
   baseScrawlGraphics.background(bgColor);
@@ -231,8 +242,9 @@ function generateScrawlface() {
 function draw() {
   if (draggedEyeIndex !== -1 && mouseIsPressed) {
     const transformed = getTransformedCoords(mouseX, mouseY);
-    eyePositions[draggedEyeIndex].x = transformed.x;
-    eyePositions[draggedEyeIndex].y = transformed.y;
+    // Keep the whole eye on the canvas so it can't be dragged out of reach
+    eyePositions[draggedEyeIndex].x = constrain(transformed.x, eyeRadius, canvasSize - eyeRadius);
+    eyePositions[draggedEyeIndex].y = constrain(transformed.y, eyeRadius, canvasSize - eyeRadius);
     redrawCanvas();
     return;
   }
@@ -243,13 +255,16 @@ function draw() {
 
   if ((drawMode || eraseMode) && isDrawing && mouseIsPressed && isMouseInCanvas()) {
     const current = getTransformedCoords(mouseX, mouseY);
-    const previous = getTransformedCoords(pmouseX, pmouseY);
+    // On the first frame of a touch stroke pmouseX/Y still hold the previous
+    // touch position, so start the stroke where the finger actually is
+    const previous = strokePoints === 0 ? current : getTransformedCoords(pmouseX, pmouseY);
 
     // Calculate easing for brush
     const targetSize = eraseMode ? eraserSize : brushSize;
 
     // Calculate velocity for ease-out
     const distance = dist(previous.x, previous.y, current.x, current.y);
+    strokeLength += distance;
     const velocity = constrain(distance, 0, 20);
     const velocityFactor = map(velocity, 0, 20, 0.3, 1.0); // Slow = taper, fast = full size
 
@@ -297,10 +312,24 @@ function draw() {
 
 function updateCursor() {
   const transformed = getTransformedCoords(mouseX, mouseY);
-  const overEye = eyePositions.some(pos =>
-    dist(transformed.x, transformed.y, pos.x, pos.y) < eyeRadius
-  );
+  const overEye = findEyeAt(transformed.x, transformed.y) !== -1;
   cursor(overEye ? 'pointer' : ARROW);
+}
+
+// Index of the eye nearest to a point (canvas coords), or -1 if none is in reach.
+// The canvas is scaled down on small screens, so the reach grows to stay a
+// ~44px touch target.
+function findEyeAt(x, y) {
+  let reach = max(eyeRadius, 22 * canvasSize / canvas.elt.clientWidth);
+  let found = -1;
+  eyePositions.forEach((pos, i) => {
+    const d = dist(x, y, pos.x, pos.y);
+    if (d < reach) {
+      reach = d;
+      found = i;
+    }
+  });
+  return found;
 }
 
 function isMouseInCanvas() {
@@ -315,9 +344,7 @@ function mousePressed(event) {
 
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
-    const eyeIndex = eyePositions.findIndex(pos =>
-      dist(transformed.x, transformed.y, pos.x, pos.y) < eyeRadius
-    );
+    const eyeIndex = findEyeAt(transformed.x, transformed.y);
 
     if (eyeIndex !== -1) {
       draggedEyeIndex = eyeIndex;
@@ -330,6 +357,7 @@ function mousePressed(event) {
     // Reset stroke for easing in
     strokePoints = 0;
     currentBrushSize = 0;
+    strokeLength = 0;
     // Save state BEFORE starting to draw so we can undo to the clean state
     saveState();
   }
@@ -346,6 +374,31 @@ function mouseReleased() {
   if (draggedEyeIndex !== -1) {
     draggedEyeIndex = -1;
     cursor(ARROW);
+  }
+
+  // A tap leaves a full-size dot. The eased stroke alone is too thin to see,
+  // which made taps invisible while still costing an undo step.
+  if (isDrawing && strokeLength < tapSlop) {
+    const pos = getTransformedCoords(mouseX, mouseY);
+    const size = eraseMode ? eraserSize : brushSize;
+
+    if (eraseMode) {
+      drawingGraphics.erase();
+    } else {
+      drawingGraphics.fill(brushColor);
+      drawingGraphics.noStroke();
+    }
+    drawingGraphics.ellipse(pos.x, pos.y, size, size);
+    if (eraseMode) {
+      drawingGraphics.noErase();
+    }
+
+    if (!hasDrawings && !eraseMode) {
+      hasDrawings = true;
+      enableClearButton();
+    }
+
+    redrawCanvas();
   }
 
   isDrawing = false;
@@ -454,12 +507,26 @@ function saveImage() {
   saveCanvas(canvas, 'scrawlface', 'png');
 }
 
+// Hands the image to the phone's share sheet (messages, socials, ...)
+function shareImage() {
+  canvas.elt.toBlob(blob => {
+    const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
+    // Rejects when the share sheet is dismissed - nothing to do then
+    navigator.share({ files: [file] }).catch(() => {});
+  }, 'image/png');
+}
+
 function toggleEyes() {
   showScrawl = !showScrawl;
-  const btn = select("#toggle-eyes-btn");
-  // Inverted logic: button active = scrawl hidden, button inactive = scrawl visible
-  showScrawl ? btn.removeClass("active") : btn.addClass("active");
+  updateScrawlToggleButtons();
   redrawCanvas();
+}
+
+// The buttons name what pressing them will do, rather than lighting up when
+// the scrawl is hidden
+function updateScrawlToggleButtons() {
+  select("#toggle-eyes-btn").html(showScrawl ? "Hide scrawl" : "Show scrawl");
+  select("#toggle-eyes-btn-mobile").html(showScrawl ? "Hide Scrawl" : "Show Scrawl");
 }
 
 function toggleMoveEyesMode() {
@@ -501,7 +568,7 @@ function activateBrushMode() {
     if (eraserBtn) eraserBtn.classList.remove('active');
     if (bucketBtn) bucketBtn.classList.remove('active');
 
-    cursor(CROSS);
+    setBrushCursor();
     updateMobileToolButtons();
   }
 }
@@ -527,9 +594,27 @@ function activateEraseMode() {
     if (eraserBtn) eraserBtn.classList.add('active');
     if (bucketBtn) bucketBtn.classList.remove('active');
 
-    cursor(CROSS);
+    setBrushCursor();
     updateMobileToolButtons();
   }
+}
+
+// Cursor for the brush and eraser: a ring the size the tool draws on screen
+function setBrushCursor() {
+  const size = eraseMode ? eraserSize : brushSize;
+  // Even diameter (min 4px) so the hotspot lands on a whole pixel
+  const d = max(4, 2 * round(size * canvas.elt.clientWidth / canvasSize / 2));
+  const box = d + 4;
+  const c = box / 2;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${box}" height="${box}">` +
+    `<circle cx="${c}" cy="${c}" r="${d / 2 + 1}" fill="none" stroke="white"/>` +
+    `<circle cx="${c}" cy="${c}" r="${d / 2}" fill="none" stroke="black"/></svg>`;
+  canvas.elt.style.cursor = `url('data:image/svg+xml,${encodeURIComponent(svg)}') ${c} ${c}, crosshair`;
+}
+
+// The canvas is scaled to fit the window, so the ring has to be rescaled too
+function windowResized() {
+  if (drawMode || eraseMode) setBrushCursor();
 }
 
 function activateBucketMode() {
@@ -790,8 +875,8 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
   button.addEventListener('mouseup', (e) => {
     clearTimeout(longPressTimer);
     if (!isLongPress) {
-      // Short click - activate tool
-      onActivate();
+      // Short click - open the size list from the size indicator, otherwise activate tool
+      e.target.closest('.size-toggle') ? toggleDropdown() : onActivate();
     }
   });
 
@@ -813,8 +898,8 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
     e.preventDefault();
     clearTimeout(longPressTimer);
     if (!isLongPress) {
-      // Short tap - activate tool
-      onActivate();
+      // Short tap - open the size list from the size indicator, otherwise activate tool
+      e.target.closest('.size-toggle') ? toggleDropdown() : onActivate();
     }
   });
 
@@ -836,6 +921,15 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
 
     content.classList.add('show');
     button.classList.add('open');
+  }
+
+  function toggleDropdown() {
+    if (content.classList.contains('show')) {
+      content.classList.remove('show');
+      button.classList.remove('open');
+    } else {
+      openDropdown();
+    }
   }
 
   // Handle option selection
@@ -1012,16 +1106,26 @@ function setupMobileToolbar() {
   const expandedMenu = document.getElementById('mobile-expanded-menu');
 
   if (toggleMenuBtn && expandedMenu) {
+    const closeMenu = () => {
+      expandedMenu.style.display = 'none';
+      toggleMenuBtn.textContent = '⋯';
+      toggleMenuBtn.setAttribute('aria-expanded', 'false');
+    };
+
     toggleMenuBtn.addEventListener('click', () => {
       if (expandedMenu.style.display === 'none') {
         expandedMenu.style.display = 'block';
         toggleMenuBtn.textContent = '×';
         toggleMenuBtn.setAttribute('aria-expanded', 'true');
       } else {
-        expandedMenu.style.display = 'none';
-        toggleMenuBtn.textContent = '⋯';
-        toggleMenuBtn.setAttribute('aria-expanded', 'false');
+        closeMenu();
       }
+    });
+
+    // The open menu covers the canvas, so close it after actions whose
+    // result is only visible there
+    ['rotate-btn-mobile-controls', 'toggle-eyes-btn-mobile', 'move-eyes-btn-mobile', 'clear-drawings-btn-mobile'].forEach(id => {
+      document.getElementById(id).addEventListener('click', closeMenu);
     });
   }
 
@@ -1086,16 +1190,8 @@ function setupMobileToolbar() {
       mobileSizeBtns.forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
 
-      // Update brush/eraser size based on active tool
-      if (drawMode) {
-        brushSize = size;
-        // Update desktop brush indicator
-        const indicator = document.getElementById('brush-size-indicator');
-        if (indicator) {
-          indicator.style.width = size + 'px';
-          indicator.style.height = size + 'px';
-        }
-      } else if (eraseMode) {
+      // The picker edits the eraser while erasing, the brush otherwise
+      if (eraseMode) {
         eraserSize = size;
         // Update desktop eraser indicator
         const indicator = document.getElementById('eraser-size-indicator');
@@ -1103,9 +1199,25 @@ function setupMobileToolbar() {
           indicator.style.width = size + 'px';
           indicator.style.height = size + 'px';
         }
+      } else {
+        brushSize = size;
+        // Update desktop brush indicator
+        const indicator = document.getElementById('brush-size-indicator');
+        if (indicator) {
+          indicator.style.width = size + 'px';
+          indicator.style.height = size + 'px';
+        }
       }
     });
   });
+
+  // Share button: only shown where the browser can share image files
+  const shareBtn = document.getElementById('share-btn-mobile');
+  const testFile = new File([], 'scrawlface.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
+    shareBtn.hidden = false;
+    shareBtn.addEventListener('click', shareImage);
+  }
 
   // Mobile move eyes button
   const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');
@@ -1135,4 +1247,17 @@ function updateMobileToolButtons() {
   if (moveEyesBtnMobile) {
     moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
   }
+
+  // The size picker shows the eraser's size while erasing, the brush's otherwise
+  const activeSize = eraseMode ? eraserSize : brushSize;
+  document.querySelectorAll('.mobile-size-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.getAttribute('data-size')) === activeSize);
+  });
+  document.getElementById('mobile-size-label').textContent = eraseMode ? 'Eraser Size' : 'Brush Size';
+
+  // Tell assistive tech which tool is selected (desktop and mobile buttons)
+  [['bucket-tool-btn', bucketMode], ['brush-tool-btn', drawMode], ['eraser-tool-btn', eraseMode], ['move-eyes-btn', moveEyesMode]].forEach(([id, on]) => {
+    document.getElementById(id).setAttribute('aria-pressed', on);
+    document.getElementById(id + '-mobile').setAttribute('aria-pressed', on);
+  });
 }

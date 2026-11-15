@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Scrawlface - Generate Pareidolia Art</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
   <script src="scrawl.js"></script>
@@ -234,17 +234,25 @@
       align-items: center;
       justify-content: center;
       width: 100%;
-      gap: 16px;
+      /* Six buttons have to fit a 360px-wide phone */
+      gap: 8px;
     }
 
     .mobile-tool-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-width: 48px;
+      /* 48px wide normally; may shrink to 40px so the row fits a 320px phone */
+      flex: 0 1 48px;
+      min-width: 40px;
       min-height: 48px;
       padding: 12px;
       border-radius: 12px;
+    }
+
+    /* The text button keeps its natural width */
+    #generate-btn-mobile {
+      flex: none;
     }
 
     .mobile-tool-btn.active {
@@ -278,18 +286,21 @@
       margin-bottom: 10px;
     }
 
+    /* Always-visible strip above the tool buttons. The padding leaves room
+       for the selected swatch's ring, which overflow-x would otherwise clip. */
     .mobile-color-swatches {
       display: flex;
       gap: 8px;
+      width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: 8px;
+      padding: 5px;
     }
 
     .color-swatch-btn-mobile {
-      min-width: 44px;
-      width: 44px;
-      height: 44px;
+      min-width: 40px;
+      width: 40px;
+      height: 40px;
       padding: 0;
       border-radius: 8px;
       cursor: pointer;
@@ -360,8 +371,8 @@
       padding: 8px 24px;
     }
 
-    /* 7th button in the 2-column grid: span the full row instead of sitting alone */
-    #save-btn-mobile {
+    /* 7th button in the 2-column grid (when shown): span the full row instead of sitting alone */
+    #share-btn-mobile {
       grid-column: 1 / -1;
     }
 
@@ -607,6 +618,21 @@
       flex-shrink: 0;
     }
 
+    /* Size indicator + arrow: clicking it opens the size list. The negative
+       margin enlarges the click target without changing the button layout. */
+    .size-toggle {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      margin: -4px -8px;
+      border-radius: 8px;
+    }
+
+    .size-toggle:hover {
+      background: rgba(0, 0, 0, 0.08);
+    }
+
     .custom-dropdown-content {
       position: absolute;
       top: 100%;
@@ -778,7 +804,8 @@
         background: transparent;
         border-radius: 0;
         box-shadow: none;
-        margin: 0 -16px 80px;
+        /* Bottom margin clears the fixed toolbar (colour strip + tool buttons) */
+        margin: 0 -16px 140px;
       }
 
       .canvas-area {
@@ -838,6 +865,17 @@
       .bottom-toolbar {
         padding: 10px 12px;
         gap: 8px;
+      }
+    }
+
+    /* Short phones: shrink the header so the fixed toolbar doesn't cover the canvas */
+    @media (max-width: 768px) and (max-height: 620px) {
+      header {
+        padding: 12px 0 8px;
+      }
+
+      .subtitle {
+        display: none;
       }
     }
 
@@ -938,7 +976,7 @@
   <div class="container">
     <header>
       <h1>Scrawlface</h1>
-      <p class="subtitle">Create endless variations of abstract faces</p>
+      <p class="subtitle">Move the eyes, find the face, doodle on top</p>
     </header>
 
     <main>
@@ -964,16 +1002,16 @@
             <h3>Tools</h3>
             <div class="tools-grid">
               <div class="tool-dropdown" id="bucket-tool-dropdown">
-                <button class="tool-dropdown-button" id="bucket-tool-btn">
+                <button class="tool-dropdown-button" id="bucket-tool-btn" title="Fill">
                   <div style="height: 5px;"></div>
                   <img src="icons/paint-rollers.png" alt="Paint Roller" class="tool-icon">
                   <div style="height: 4px;"></div>
                 </button>
               </div>
               <div class="tool-dropdown" id="brush-tool-dropdown">
-                <button class="tool-dropdown-button" id="brush-tool-btn">
+                <button class="tool-dropdown-button" id="brush-tool-btn" title="Brush">
                   <img src="icons/paintbrush.png" alt="Paintbrush" class="tool-icon">
-                  <div style="display: flex; align-items: center; gap: 4px;">
+                  <div class="size-toggle" title="Choose size">
                     <div class="size-indicator">
                       <div class="brush-circle" id="brush-size-indicator" style="width: 8px; height: 8px;"></div>
                     </div>
@@ -1004,9 +1042,9 @@
                 </div>
               </div>
               <div class="tool-dropdown" id="eraser-tool-dropdown">
-                <button class="tool-dropdown-button" id="eraser-tool-btn">
+                <button class="tool-dropdown-button" id="eraser-tool-btn" title="Eraser">
                   <img src="icons/eraser.png" alt="Eraser" class="tool-icon">
-                  <div style="display: flex; align-items: center; gap: 4px;">
+                  <div class="size-toggle" title="Choose size">
                     <div class="size-indicator">
                       <div class="eraser-circle" id="eraser-size-indicator" style="width: 16px; height: 16px;"></div>
                     </div>
@@ -1064,7 +1102,7 @@
             <h3>View</h3>
             <div class="tools-grid">
               <button id="rotate-btn" title="Rotate 90°">Rotate canvas</button>
-              <button id="toggle-eyes-btn" title="Toggle scrawl">Toggle scrawl</button>
+              <button id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide scrawl</button>
               <button id="move-eyes-btn" title="Move eyes">Move eyes</button>
             </div>
           </div>
@@ -1084,8 +1122,28 @@
 
       <!-- Mobile bottom toolbar -->
       <div class="bottom-toolbar">
+        <!-- Colour strip - always visible so colours are one tap away -->
+        <div class="mobile-color-swatches">
+          <button type="button" class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow" aria-label="Yellow"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime" aria-label="Lime"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green" aria-label="Green"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua" aria-label="Aqua"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue" aria-label="Nano Blue"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue" aria-label="Blue"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple" aria-label="Purple"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta" aria-label="Magenta"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink" aria-label="Electric Pink"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry" aria-label="Berry"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown" aria-label="Brown"></button>
+        </div>
+
         <!-- Main toolbar - always visible -->
         <div class="mobile-toolbar-main">
+          <button id="generate-btn-mobile" class="mobile-tool-btn cta-button" title="Generate new scrawl" aria-label="Generate new scrawl">New</button>
           <button id="bucket-tool-btn-mobile" class="mobile-tool-btn" title="Fill">
             <img src="icons/paint-rollers.png" alt="Fill" style="width: 24px; height: 24px;">
           </button>
@@ -1101,31 +1159,9 @@
 
         <!-- Expandable menu - hidden by default -->
         <div class="mobile-toolbar-expanded" id="mobile-expanded-menu" style="display: none;">
-          <!-- Color Swatches -->
-          <div class="mobile-section">
-            <div class="mobile-section-label">Colours</div>
-            <div class="mobile-color-swatches">
-              <button type="button" class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow" aria-label="Yellow"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime" aria-label="Lime"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green" aria-label="Green"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua" aria-label="Aqua"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue" aria-label="Nano Blue"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue" aria-label="Blue"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple" aria-label="Purple"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta" aria-label="Magenta"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink" aria-label="Electric Pink"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry" aria-label="Berry"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown" aria-label="Brown"></button>
-            </div>
-          </div>
-
           <!-- Brush/Eraser Size -->
           <div class="mobile-section">
-            <div class="mobile-section-label">Brush Size</div>
+            <div class="mobile-section-label" id="mobile-size-label">Brush Size</div>
             <div class="mobile-size-options">
               <button class="mobile-size-btn" data-size="4" aria-label="Size 4">
                 <div style="width: 4px; height: 4px; background: #1d1d1f; border-radius: 50%;"></div>
@@ -1146,13 +1182,13 @@
           <div class="mobile-section">
             <div class="mobile-section-label">Controls</div>
             <div class="mobile-controls-grid">
-              <button id="generate-btn-mobile" class="mobile-control-btn">Generate</button>
               <button id="rotate-btn-mobile-controls" class="mobile-control-btn">Rotate</button>
-              <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Toggle Scrawl</button>
+              <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Hide Scrawl</button>
               <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
               <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
+              <button id="share-btn-mobile" class="mobile-control-btn" hidden>Share</button>
             </div>
           </div>
 
