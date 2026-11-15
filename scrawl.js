@@ -241,24 +241,8 @@ function generateScrawlface() {
   baseScrawlGraphics.strokeWeight(scrawlStrokeWeight);
   baseScrawlGraphics.noFill();
 
-  const centerX = canvasSize / 2;
-  const centerY = canvasSize / 2;
-  let x = centerX;
-  let y = centerY;
-
   // Each segment is one bezier curve; draw() draws them in a few per frame
-  scrawlQueue = [];
-  for (let i = 0; i < intensity; i++) {
-    const controlX1 = x + random(-300, 300);
-    const controlY1 = y + random(-300, 300);
-    const controlX2 = x + random(-300, 300);
-    const controlY2 = y + random(-300, 300);
-    const x2 = x + random(-20, 20);
-    const y2 = y + random(-20, 20);
-    scrawlQueue.push([x, y, controlX1, controlY1, controlX2, controlY2, x2, y2]);
-    x = x2;
-    y = y2;
-  }
+  scrawlQueue = scrawlSegments(intensity);
   fitScrawlToCanvas(scrawlQueue);
   scrawlDrawInRate = scrawlQueue.length /
     (scrawlDrawInBaseFrames + scrawlDrawInFramesPerSegment * scrawlQueue.length);
@@ -281,8 +265,71 @@ function generateScrawlface() {
   redrawCanvas();
 }
 
-// The random curves only cover about the middle half of the canvas, so
-// scale them up evenly (same shape) until the scrawl's longer side spans
+// One continuous line, like a pen that never leaves the paper: each
+// segment starts where the last one ended and wanders off across the
+// canvas. Most joins are smooth (the pen keeps its direction), some are
+// sharp corners, and now and then a segment curls into a loop.
+function scrawlSegments(count) {
+  const lo = 100;
+  const hi = canvasSize - 100;
+  const segments = [];
+  let x = random(lo, hi);
+  let y = random(lo, hi);
+  let tangent = random(TWO_PI); // direction the pen leaves (x, y) in
+
+  for (let i = 0; i < count; i++) {
+    const loop = random() < 0.15;
+    const side = random([-1, 1]);
+    // The chord (start to end) roughly follows the pen; a loop sets off
+    // at an angle to its chord, so turn the chord to match
+    let heading = loop ? tangent - side * 0.46 : tangent + random(-0.8, 0.8);
+    let len = random(120, 340);
+    let x2 = x + cos(heading) * len;
+    let y2 = y + sin(heading) * len;
+
+    // Heading off the page: aim at a random spot instead, so the line
+    // turns back and keeps roaming the whole canvas
+    if (x2 < lo || x2 > hi || y2 < lo || y2 > hi) {
+      x2 = random(lo, hi);
+      y2 = random(lo, hi);
+      heading = atan2(y2 - y, x2 - x);
+      len = dist(x, y, x2, y2);
+    }
+
+    let cx1, cy1, cx2, cy2, endTangent;
+    if (loop) {
+      // Control points crossed over: the curve swings out past its end,
+      // comes back behind its start and crosses itself
+      const ux = cos(heading), uy = sin(heading);
+      const px = -uy * side, py = ux * side;
+      cx1 = x + (ux * 2 + px) * len;
+      cy1 = y + (uy * 2 + py) * len;
+      cx2 = x + (-ux + px) * len;
+      cy2 = y + (-uy + py) * len;
+      endTangent = atan2(y2 - cy2, x2 - cx2);
+    } else {
+      endTangent = heading + random(-0.9, 0.9);
+      const h1 = random(0.25, 0.6) * len;
+      const h2 = random(0.25, 0.6) * len;
+      cx1 = x + cos(tangent) * h1;
+      cy1 = y + sin(tangent) * h1;
+      cx2 = x2 - cos(endTangent) * h2;
+      cy2 = y2 - sin(endTangent) * h2;
+    }
+    segments.push([x, y, cx1, cy1, cx2, cy2, x2, y2]);
+
+    // Next segment carries on smoothly, or doubles back at a sharp corner
+    tangent = random() < 0.3
+      ? endTangent + random([-1, 1]) * random(1.8, 2.8)
+      : endTangent;
+    x = x2;
+    y = y2;
+  }
+  return segments;
+}
+
+// The random curves rarely fill the canvas exactly, so scale them
+// evenly (same shape) until the scrawl's longer side spans
 // the canvas, less a margin, and centre it
 function fitScrawlToCanvas(segments) {
   const margin = 40;
