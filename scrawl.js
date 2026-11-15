@@ -20,6 +20,7 @@ const eyeSize = 70;
 const scrawlStrokeWeight = 1;
 
 let intensity = 20;
+let eyeSet = 'classic'; // which style the eyes are drawn in (see drawEye)
 let brushSize = 8;
 let brushColor = '#000000';
 let eraserSize = 16;
@@ -180,10 +181,8 @@ function setup() {
     });
   }
 
-  // Sticker keys (desktop and mobile share data-sticker)
-  document.querySelectorAll('[data-sticker]').forEach(btn => {
-    btn.addEventListener('click', () => toggleSticker(btn.dataset.sticker));
-  });
+  // Eye set keys (desktop and mobile share data-eye-set)
+  setupEyeSetButtons();
 
   // A short buzz when a control key is tapped, so the keys feel physical.
   // Android Chrome only; other browsers have no navigator.vibrate.
@@ -253,12 +252,10 @@ function generateScrawlface() {
   const eye2X = random(eye1X + eyeSize, min(eye1X + 130, canvasSize - eyeMargin - eyeSize));
   const eye2Y = random(eyeMargin, canvasSize - eyeMargin - eyeSize);
 
-  // A new face starts with just the eyes; stickers are added from their keys
   eyePositions = [
     {x: eye1X, y: eye1Y, scale: 1.0},
     {x: eye2X, y: eye2Y, scale: 0.9}
   ];
-  updateStickerButtons();
 
   redrawCanvas();
 }
@@ -529,14 +526,10 @@ function redrawCanvas() {
 
   pop();
 
-  // Always show eyes and stickers (stickers carry a type, eyes don't)
-  eyePositions.forEach(pos => {
+  // Always show eyes (window = the main canvas in p5 global mode)
+  eyePositions.forEach((pos, i) => {
     const rotatedPos = getRotatedPosition(pos.x, pos.y);
-    if (pos.type) {
-      drawSticker(pos.type, rotatedPos.x, rotatedPos.y);
-    } else {
-      drawEye(rotatedPos.x, rotatedPos.y, pos.scale);
-    }
+    drawEye(window, rotatedPos.x, rotatedPos.y, pos.scale, i, eyeSet);
   });
 }
 
@@ -553,100 +546,157 @@ function getRotatedPosition(x, y) {
   };
 }
 
-function drawEye(x, y, scale = 1.0) {
-  const size = eyeSize * scale;
-  const pupilSize = 40 * scale;
-  const highlightSize = 10 * scale;
-  const highlightOffset = 6 * scale;
+// ---- Eye sets ----
+// Swappable eye styles, drawn as bold hand-drawn doodles. Each set draws one
+// eye at a time given its index (0 or 1), so a set can mix eyes (Wink).
+// `g` is what to draw on: the main canvas (window) or a preview graphic.
+const eyeColors = {
+  lidBlue: '#7B9CF2',
+  lidRed: '#F0504A',
+  irisBlue: '#8ED3F5',
+  irisAqua: '#A8EBE3'
+};
+const almondW = 40;  // half the width of an almond eye
+const almondC = 33;  // control-point height of its top and bottom curves
 
-  push();
-  translate(x, y);
+function drawEye(g, x, y, scale, index, set) {
+  g.push();
+  g.translate(x, y);
+  g.scale(scale);
+  g.stroke(0);
+  g.strokeWeight(3);
+  g.strokeCap(ROUND);
+  g.strokeJoin(ROUND);
 
-  fill(255);
-  stroke(0);
-  strokeWeight(2);
-  ellipse(0, 0, size, size);
-
-  fill(0);
-  noStroke();
-  ellipse(0, 0, pupilSize, pupilSize);
-
-  fill(255);
-  ellipse(highlightOffset, -highlightOffset, highlightSize, highlightSize);
-
-  pop();
-}
-
-// Stickers are extra face parts. They live in eyePositions next to the eyes,
-// so Move face drags them the same way, and like the eyes they are not part
-// of the undo history: their key toggles them on and off instead.
-function toggleSticker(type) {
-  const wasOn = eyePositions.some(pos => pos.type === type);
-  eyePositions = eyePositions.filter(pos => pos.type !== type);
-
-  if (!wasOn) {
-    const eyes = eyePositions.filter(pos => !pos.type);
-    const place = (x, y) => ({
-      x: constrain(x, eyeRadius, canvasSize - eyeRadius),
-      y: constrain(y, eyeRadius, canvasSize - eyeRadius),
-      scale: 1.0,
-      type
-    });
-
-    if (type === 'brows') {
-      // One brow above each eye
-      eyes.forEach(eye => eyePositions.push(place(eye.x, eye.y - 55 * eye.scale)));
-    } else {
-      // Centred under the eyes: the nose close, the mouth further down
-      const midX = (eyes[0].x + eyes[1].x) / 2;
-      const lowerEyeY = max(eyes[0].y, eyes[1].y);
-      eyePositions.push(place(midX, lowerEyeY + (type === 'mouth' ? 120 : 60)));
-    }
-
-    // The next thing you'll want is to drag it into place
-    if (!moveEyesMode) toggleMoveEyesMode();
+  if (set === 'classic') {
+    // The original googly eye
+    g.strokeWeight(2);
+    g.fill(255);
+    g.ellipse(0, 0, eyeSize, eyeSize);
+    g.noStroke();
+    g.fill(0);
+    g.ellipse(0, 0, 40, 40);
+    g.fill(255);
+    g.ellipse(6, -6, 10, 10);
+  } else if (set === 'lashes' || (set === 'wink' && index === 0)) {
+    almondEye(g, 255);
+    iris(g, 0, 0, 26, 0);
+    lashes(g, -1, 5, 14);
+  } else if (set === 'wink') {
+    // Closed eye: just the lower lid with lashes hanging down
+    g.noFill();
+    g.beginShape();
+    g.vertex(-almondW, 0);
+    g.bezierVertex(-almondW / 2, almondC * 0.8, almondW / 2, almondC * 0.8, almondW, 0);
+    g.endShape();
+    lashes(g, 1, 5, 12, 0.8);
+  } else if (set === 'sleepy') {
+    // Heavy coloured lid covering the top half
+    almondEye(g, 255);
+    iris(g, 0, 6, 26, 0);
+    lid(g, eyeColors.lidBlue, 0);
+  } else if (set === 'glam') {
+    // Red crescent lid, blue iris, lower lashes
+    almondEye(g, 255);
+    iris(g, 0, 2, 30, eyeColors.irisBlue);
+    lid(g, eyeColors.lidRed, 0.35);
+    lashes(g, 1, 4, 10);
+  } else if (set === 'spiky') {
+    // Aqua iris with lashes all round
+    lashes(g, -1, 7, 14);
+    lashes(g, 1, 5, 12);
+    almondEye(g, 255);
+    iris(g, 0, 0, 30, eyeColors.irisAqua);
   }
 
-  updateStickerButtons();
-  redrawCanvas();
+  g.pop();
 }
 
-// Sticker keys stay latched (green LED) while their sticker is on the canvas
-function updateStickerButtons() {
-  document.querySelectorAll('[data-sticker]').forEach(btn => {
-    const on = eyePositions.some(pos => pos.type === btn.dataset.sticker);
+// Almond outline: two curves meeting in points at each side
+function almondEye(g, fillColor) {
+  g.fill(fillColor);
+  g.beginShape();
+  g.vertex(-almondW, 0);
+  g.bezierVertex(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
+  g.bezierVertex(almondW / 2, almondC, -almondW / 2, almondC, -almondW, 0);
+  g.endShape(CLOSE);
+}
+
+// A coloured iris (or plain black when color is 0) with a pupil and highlight
+function iris(g, x, y, size, color) {
+  g.fill(color);
+  g.ellipse(x, y, size, size);
+  g.noStroke();
+  if (color !== 0) {
+    g.fill(0);
+    g.ellipse(x, y, size * 0.4, size * 0.4);
+  }
+  g.fill(255);
+  g.ellipse(x + size * 0.2, y - size * 0.2, size * 0.25, size * 0.25);
+  g.stroke(0);
+}
+
+// Upper lid: from the top curve down to a lower curve at `depth`
+// (0 = straight across the middle, 1 = no lid)
+function lid(g, color, depth) {
+  g.fill(color);
+  g.beginShape();
+  g.vertex(-almondW, 0);
+  g.bezierVertex(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
+  g.bezierVertex(almondW / 2, -almondC * depth, -almondW / 2, -almondC * depth, -almondW, 0);
+  g.endShape(CLOSE);
+}
+
+// Lashes along the top (side -1) or bottom (side 1) curve, pointing outwards
+function lashes(g, side, count, length, curve = 1) {
+  const c = almondC * curve * side;
+  for (let i = 0; i < count; i++) {
+    const t = 0.2 + 0.6 * i / (count - 1);
+    const x = bezierPoint(-almondW, -almondW / 2, almondW / 2, almondW, t);
+    const y = bezierPoint(0, c, c, 0, t);
+    // Fan out from a point on the other side of the eye
+    const dx = x;
+    const dy = y + 20 * side;
+    const d = Math.hypot(dx, dy);
+    g.line(x, y, x + dx / d * length, y + dy / d * length);
+  }
+}
+
+// Each key shows a preview of its set (the closed eye for Wink); picking one
+// restyles both eyes. Eye sets are not part of the undo history.
+function setupEyeSetButtons() {
+  const buttons = document.querySelectorAll('[data-eye-set]');
+  const previews = {};
+
+  buttons.forEach(btn => {
+    const set = btn.dataset.eyeSet;
+    if (!previews[set]) {
+      const g = createGraphics(64, 64);
+      g.pixelDensity(2);
+      drawEye(g, 32, 32, 0.6, set === 'wink' ? 1 : 0, set);
+      previews[set] = g.elt.toDataURL();
+      g.remove();
+    }
+    const img = document.createElement('img');
+    img.src = previews[set];
+    img.alt = '';
+    btn.prepend(img);
+    btn.addEventListener('click', () => {
+      eyeSet = set;
+      updateEyeSetButtons();
+      redrawCanvas();
+    });
+  });
+
+  updateEyeSetButtons();
+}
+
+function updateEyeSetButtons() {
+  document.querySelectorAll('[data-eye-set]').forEach(btn => {
+    const on = btn.dataset.eyeSet === eyeSet;
     btn.classList.toggle('active', on);
     btn.setAttribute('aria-pressed', on);
   });
-}
-
-function drawSticker(type, x, y) {
-  push();
-  translate(x, y);
-  stroke(0);
-  strokeWeight(2);
-
-  if (type === 'mouth') {
-    // Open grin with a tongue
-    fill(0);
-    arc(0, 0, 90, 60, 0, PI, CHORD);
-    noStroke();
-    fill('#E8506A');
-    arc(0, 26, 40, 20, PI, TWO_PI, CHORD);
-  } else if (type === 'nose') {
-    fill('#F2A6A6');
-    ellipse(0, 0, 34, 26);
-    noStroke();
-    fill(255);
-    ellipse(-7, -5, 8, 6);
-  } else if (type === 'brows') {
-    noFill();
-    strokeWeight(7);
-    strokeCap(ROUND);
-    arc(0, 12, 56, 28, PI + 0.3, TWO_PI - 0.3);
-  }
-
-  pop();
 }
 
 function rotateCanvas() {
@@ -1279,7 +1329,7 @@ function setupMobileToolbar() {
     ['rotate-btn-mobile-controls', 'toggle-eyes-btn-mobile', 'move-eyes-btn-mobile', 'clear-drawings-btn-mobile'].forEach(id => {
       document.getElementById(id).addEventListener('click', closeMenu);
     });
-    expandedMenu.querySelectorAll('[data-sticker]').forEach(btn => btn.addEventListener('click', closeMenu));
+    expandedMenu.querySelectorAll('[data-eye-set]').forEach(btn => btn.addEventListener('click', closeMenu));
   }
 
   // Mobile tool buttons

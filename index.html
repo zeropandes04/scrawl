@@ -443,14 +443,39 @@
       grid-column: 1 / -1;
     }
 
-    /* Sticker keys: one short row of three */
-    .sticker-grid {
+    /* Eye set keys: one row of six small square keys, each showing a
+       preview image of its eye */
+    .eye-set-grid {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 6px;
     }
 
-    /* Text keys (View, Stickers, History) are short rather than square so
+    .eye-set-grid button {
+      min-width: 0;
+      min-height: 0;
+      aspect-ratio: 1 / 1;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .eye-set-grid img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    /* The LED would cover the small preview: tuck it into the corner */
+    .eye-set-grid button.active::after {
+      top: 3px;
+      right: 3px;
+      width: 5px;
+      height: 5px;
+    }
+
+    /* Text keys (View, History) are short rather than square so
        the sidebar still fits a 720px-tall viewport. The icon tool keys are
        nested in .tool-dropdown, so they stay square. */
     .sidebar .tools-grid > button {
@@ -1120,16 +1145,19 @@
             <div class="tools-grid">
               <button id="rotate-btn" title="Rotate 90°">Rotate canvas</button>
               <button id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide scrawl</button>
-              <button id="move-eyes-btn" title="Drag the eyes and stickers">Move face</button>
+              <button id="move-eyes-btn" title="Move eyes">Move eyes</button>
             </div>
           </div>
 
           <div class="sidebar-section">
-            <h3>Stickers</h3>
-            <div class="tools-grid sticker-grid">
-              <button data-sticker="mouth" title="Add or remove a mouth" aria-pressed="false">Mouth</button>
-              <button data-sticker="nose" title="Add or remove a nose" aria-pressed="false">Nose</button>
-              <button data-sticker="brows" title="Add or remove eyebrows" aria-pressed="false">Brows</button>
+            <h3>Eyes</h3>
+            <div class="eye-set-grid">
+              <button type="button" data-eye-set="classic" title="Classic eyes" aria-label="Classic eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="lashes" title="Lashes eyes" aria-label="Lashes eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="sleepy" title="Sleepy eyes" aria-label="Sleepy eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="glam" title="Glam eyes" aria-label="Glam eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="spiky" title="Spiky eyes" aria-label="Spiky eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="wink" title="Wink eyes" aria-label="Wink eye set" aria-pressed="false"></button>
             </div>
           </div>
 
@@ -1204,13 +1232,16 @@
             </div>
           </div>
 
-          <!-- Stickers: extra face parts, toggled on/off -->
+          <!-- Eye sets: swappable eye styles (previews drawn by scrawl.js) -->
           <div class="mobile-section">
-            <div class="mobile-section-label">Stickers</div>
-            <div class="sticker-grid">
-              <button class="mobile-control-btn" data-sticker="mouth" aria-pressed="false">Mouth</button>
-              <button class="mobile-control-btn" data-sticker="nose" aria-pressed="false">Nose</button>
-              <button class="mobile-control-btn" data-sticker="brows" aria-pressed="false">Brows</button>
+            <div class="mobile-section-label">Eyes</div>
+            <div class="eye-set-grid">
+              <button type="button" class="mobile-control-btn" data-eye-set="classic" aria-label="Classic eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="lashes" aria-label="Lashes eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="sleepy" aria-label="Sleepy eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="glam" aria-label="Glam eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="spiky" aria-label="Spiky eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="wink" aria-label="Wink eye set" aria-pressed="false"></button>
             </div>
           </div>
 
@@ -1220,7 +1251,7 @@
             <div class="mobile-controls-grid">
               <button id="rotate-btn-mobile-controls" class="mobile-control-btn">Rotate</button>
               <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Hide Scrawl</button>
-              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Face</button>
+              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
               <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
