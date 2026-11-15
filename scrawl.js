@@ -219,6 +219,11 @@ function generateScrawlface() {
   hasDrawings = false;
   disableClearButton();
 
+  // Generate can come mid-press (N key): drop the stroke or eye drag in progress
+  isDrawing = false;
+  pressChangedDrawing = false;
+  draggedEyeIndex = -1;
+
   // A new scrawl starts with the whole canvas in view
   viewZoom = 1;
   viewPan = { x: 0, y: 0 };
@@ -249,7 +254,7 @@ function generateScrawlface() {
   scrawlDrawInProgress = 0;
   // Reduced motion: draw the whole scrawl straight away
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    drawScrawlSegments(scrawlQueue.length);
+    finishScrawlDrawIn();
   }
 
   const eye1X = random(eyeMargin, canvasSize - eyeMargin - eyeSize - 60);
@@ -364,6 +369,12 @@ function fitScrawlToCanvas(segments) {
 // Draws the next `count` queued scrawl segments onto the scrawl layer
 function drawScrawlSegments(count) {
   scrawlQueue.splice(0, count).forEach(seg => baseScrawlGraphics.bezier(...seg));
+}
+
+// Skips the rest of the draw-in. Fill and export need the whole scrawl:
+// a fill started mid-animation would leak through lines not drawn yet.
+function finishScrawlDrawIn() {
+  drawScrawlSegments(scrawlQueue.length);
 }
 
 // Flashes an intensity readout so the change is noticed
@@ -553,7 +564,8 @@ function startPinch(touches) {
   const a = touchPoint(touches[0]);
   const b = touchPoint(touches[1]);
   pinch = {
-    distance: dist(a.x, a.y, b.x, b.y),
+    // At least 1px: two touches reported at the same point would divide by zero
+    distance: max(1, dist(a.x, a.y, b.x, b.y)),
     angle: atan2(b.y - a.y, b.x - a.x),
     // The point of the drawing between the fingers; it stays between them
     anchor: getTransformedCoords((a.x + b.x) / 2, (a.y + b.y) / 2),
@@ -640,25 +652,25 @@ function mouseReleased() {
 }
 
 function keyPressed() {
-  // Undo: Cmd+Z (Mac) or Ctrl+Z (Windows/Linux)
-  if ((keyCode === 90) && (keyIsDown(CONTROL) || keyIsDown(91) || keyIsDown(93))) {
-    // Check for Shift key for redo
-    if (keyIsDown(SHIFT)) {
-      redo();
-    } else {
-      undo();
+  // Ctrl (Windows/Linux) or Cmd (Mac; key codes 91/93 are the left/right Cmd keys)
+  const cmd = keyIsDown(CONTROL) || keyIsDown(91) || keyIsDown(93);
+
+  // Undo: Cmd+Z. Redo: Cmd+Shift+Z or Cmd+Y
+  if (cmd && (keyCode === 90 || keyCode === 89)) {
+    // Not mid-stroke: the stroke's undo point is already saved, so undoing
+    // now would split it, with the rest of the stroke left un-undoable
+    if (!isDrawing) {
+      if (keyCode === 89 || keyIsDown(SHIFT)) {
+        redo();
+      } else {
+        undo();
+      }
     }
     return false; // Prevent default browser behavior
   }
 
-  // Alternative redo: Cmd+Y or Ctrl+Y
-  if ((keyCode === 89) && (keyIsDown(CONTROL) || keyIsDown(91) || keyIsDown(93))) {
-    redo();
-    return false;
-  }
-
   // Tool shortcuts (desktop): B brush, E eraser, F fill, V eyes, N new scrawl
-  if (keyIsDown(CONTROL) || keyIsDown(91) || keyIsDown(93) || keyIsDown(ALT)) return;
+  if (cmd || keyIsDown(ALT)) return;
   const tool = { b: 'brush', e: 'eraser', f: 'fill', v: 'eyes' }[key.toLowerCase()];
   if (tool) setTool(tool);
   if (key.toLowerCase() === 'n') generateScrawlface();
@@ -747,7 +759,6 @@ const eyeSets = {
   frog: ['frog', 'frog'],
   cat: ['cat', 'cat']
 };
-// The eyes are drawn in black and white only
 let doodleSeed = 0;  // set per eye, so two eyes of one style aren't identical
 
 // Every eye is two curves meeting in a point at each side. A shape says how
@@ -1129,6 +1140,7 @@ function exportImage() {
   // Draw one frame with the zoom taken out, grab the square middle of the
   // canvas (exactly the drawing), then put the view back. It all happens
   // within one frame, so nothing flickers on screen.
+  finishScrawlDrawIn();
   const zoom = viewZoom;
   const pan = viewPan;
   viewZoom = 1;
@@ -1148,6 +1160,7 @@ function saveImage() {
 // Hands the image to the phone's share sheet (messages, socials, ...)
 function shareImage() {
   exportImage().canvas.toBlob(blob => {
+    if (!blob) return; // the browser couldn't encode the image
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
     // Rejects when the share sheet is dismissed - nothing to do then
     navigator.share({ files: [file] }).catch(() => {});
@@ -1241,14 +1254,20 @@ function clearDrawings() {
   redrawCanvas();
 }
 
+// Enables or disables the buttons with the given ids (sidebar and mobile twins)
+function setButtonsDisabled(ids, disabled) {
+  ids.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.disabled = disabled;
+  });
+}
+
 function enableClearButton() {
-  select("#clear-drawings-btn").removeAttribute("disabled");
-  select("#clear-drawings-btn-mobile").removeAttribute("disabled");
+  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], false);
 }
 
 function disableClearButton() {
-  select("#clear-drawings-btn").attribute("disabled", "");
-  select("#clear-drawings-btn-mobile").attribute("disabled", "");
+  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], true);
 }
 
 // startX/startY are a position on the drawing (see getTransformedCoords).
@@ -1257,6 +1276,8 @@ function floodFill(startX, startY, fillColor) {
   startX = Math.floor(startX);
   startY = Math.floor(startY);
   if (startX < 0 || startX >= canvasSize || startY < 0 || startY >= canvasSize) return;
+
+  finishScrawlDrawIn();
 
   // Max per-channel difference from the clicked colour that still counts as
   // "the same area". Absorbs the soft anti-aliased edges of lines without
@@ -1468,42 +1489,8 @@ function checkIfDrawingHasContent() {
 }
 
 function updateUndoRedoButtons() {
-  const undoBtn = select("#undo-btn");
-  const redoBtn = select("#redo-btn");
-  const undoBtnMobile = select("#undo-btn-mobile");
-  const redoBtnMobile = select("#redo-btn-mobile");
-
-  if (undoBtn) {
-    if (historyStack.length > 0) {
-      undoBtn.removeAttribute("disabled");
-    } else {
-      undoBtn.attribute("disabled", "");
-    }
-  }
-
-  if (redoBtn) {
-    if (redoStack.length > 0) {
-      redoBtn.removeAttribute("disabled");
-    } else {
-      redoBtn.attribute("disabled", "");
-    }
-  }
-
-  if (undoBtnMobile) {
-    if (historyStack.length > 0) {
-      undoBtnMobile.removeAttribute("disabled");
-    } else {
-      undoBtnMobile.attribute("disabled", "");
-    }
-  }
-
-  if (redoBtnMobile) {
-    if (redoStack.length > 0) {
-      redoBtnMobile.removeAttribute("disabled");
-    } else {
-      redoBtnMobile.attribute("disabled", "");
-    }
-  }
+  setButtonsDisabled(['undo-btn', 'undo-btn-mobile'], historyStack.length === 0);
+  setButtonsDisabled(['redo-btn', 'redo-btn-mobile'], redoStack.length === 0);
 }
 
 function clearHistory() {
