@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=17"></script>
+  <script src="scrawl.js?v=18"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -486,10 +486,14 @@
        - collapsed: a grab handle, one row of options for the selected
          tool, and the tool row, always within thumb reach;
        - expanded: the less frequent controls slide up above them, behind a
-         scrim. Open/close by tapping or swiping the handle; close by
-         tapping the scrim, pressing Escape or picking a tool. */
+         scrim. Open/close by tapping the handle or swiping up/down
+         anywhere on the bar; close by tapping the scrim, pressing Escape
+         or picking a tool. */
     .bottom-toolbar {
       display: none;
+      /* Vertical swipes on the bar are ours (they open and close the
+         sheet); sideways ones still scroll the options strip */
+      touch-action: pan-x;
     }
 
     .sheet-scrim {
@@ -508,12 +512,21 @@
       background: transparent;
       box-shadow: none;
       border-radius: 0;
+      position: relative;
       touch-action: none; /* the swipe is ours, not a page scroll */
+    }
+
+    /* The handle is only 24px tall: extend its touch area a little above
+       the bar so it is easier to hit */
+    .sheet-handle::after {
+      content: '';
+      position: absolute;
+      inset: -14px 0 0;
     }
 
     .sheet-handle::before {
       content: '';
-      width: 36px;
+      width: 44px;
       height: 5px;
       border-radius: 3px;
       background: var(--key-edge);
@@ -542,6 +555,7 @@
       min-height: 0;
       max-height: 50vh;
       overflow-y: auto;
+      touch-action: pan-y; /* the open sheet's own content scrolls */
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
     }
