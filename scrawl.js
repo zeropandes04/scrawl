@@ -834,7 +834,9 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       iris(g, 0, 0, 30, eyeColors.aqua);
       lid(g, eyeColors.magenta, 0.35);
     } else if (style === 'spiky') {
-      iris(g, 0, 0, 32, eyeColors.red);
+      // Bloodshot: red veins on the white, around a blue iris
+      veins(g);
+      iris(g, 0, 0, 28, eyeColors.blue);
     } else if (style === 'dot') {
       // Small dot pupil
       g.fill(0);
@@ -949,6 +951,31 @@ function iris(g, x, y, size, color) {
   g.fill(255);
   doodleEllipse(g, x + size * 0.2, y - size * 0.2, size * 0.28, size * 0.25, 7);
   g.stroke(0);
+}
+
+// Thin red veins creeping in from the edge of the eye white. Drawn inside
+// the eye's clip, before the iris, so both trim them.
+function veins(g) {
+  const { w, top, bottom } = eyeShape;
+  const count = 9;
+  g.push();
+  g.noFill();
+  g.stroke(eyeColors.red);
+  g.strokeWeight(1.2);
+  for (let i = 0; i < count; i++) {
+    const angle = TWO_PI * (i + 0.3 * wobble(40 + i)) / count;
+    // Start on the edge and head for the middle, stopping part of the way
+    const x0 = cos(angle) * w;
+    const y0 = sin(angle) * (sin(angle) < 0 ? top : bottom) * 0.8;
+    const reach = 0.45 + 0.15 * wobble(50 + i);
+    // Sideways wiggle, so no vein is a straight line
+    const bx = -sin(angle) * 6 * wobble(60 + i);
+    const by = cos(angle) * 6 * wobble(60 + i);
+    g.bezier(x0, y0, x0 * 0.85 + bx, y0 * 0.85 + by, x0 * 0.65 - bx, y0 * 0.65 - by, x0 * reach, y0 * reach);
+    // A short branch forking off part of the way in
+    g.line(x0 * 0.72, y0 * 0.72, x0 * 0.58 + 5 * wobble(70 + i), y0 * 0.58 + 5 * wobble(80 + i));
+  }
+  g.pop();
 }
 
 // Upper lid: from the top curve down to a lower curve at `depth`
