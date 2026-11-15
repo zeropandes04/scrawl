@@ -1217,4 +1217,10 @@ function updateMobileToolButtons() {
     btn.classList.toggle('selected', parseInt(btn.getAttribute('data-size')) === activeSize);
   });
   document.getElementById('mobile-size-label').textContent = eraseMode ? 'Eraser Size' : 'Brush Size';
+
+  // Tell assistive tech which tool is selected (desktop and mobile buttons)
+  [['bucket-tool-btn', bucketMode], ['brush-tool-btn', drawMode], ['eraser-tool-btn', eraseMode], ['move-eyes-btn', moveEyesMode]].forEach(([id, on]) => {
+    document.getElementById(id).setAttribute('aria-pressed', on);
+    document.getElementById(id + '-mobile').setAttribute('aria-pressed', on);
+  });
 }
