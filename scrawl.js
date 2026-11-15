@@ -20,7 +20,7 @@ const eyeSize = 70;
 const scrawlStrokeWeight = 1;
 
 let intensity = 20;
-let eyeSet = 'classic'; // which style the eyes are drawn in (see drawEye)
+let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
 let brushSize = 8;
 let brushColor = '#000000';
 let eraserSize = 16;
@@ -529,7 +529,7 @@ function redrawCanvas() {
   // Always show eyes (window = the main canvas in p5 global mode)
   eyePositions.forEach((pos, i) => {
     const rotatedPos = getRotatedPosition(pos.x, pos.y);
-    drawEye(window, rotatedPos.x, rotatedPos.y, pos.scale, i, eyeSet);
+    drawEye(window, rotatedPos.x, rotatedPos.y, pos.scale, eyeStyles[i]);
   });
 }
 
@@ -546,10 +546,19 @@ function getRotatedPosition(x, y) {
   };
 }
 
-// ---- Eye sets ----
-// Swappable eye styles, drawn as bold hand-drawn doodles. Each set draws one
-// eye at a time given its index (0 or 1), so a set can mix eyes (Wink).
+// ---- Eye styles ----
+// Swappable eye styles, drawn as bold hand-drawn doodles. Each eye has its
+// own style, so the two can differ. A set is a ready-made pair (Wink is an
+// open and a closed eye); Mix picks a random pair.
 // `g` is what to draw on: the main canvas (window) or a preview graphic.
+const eyeSets = {
+  classic: ['classic', 'classic'],
+  lashes: ['lashes', 'lashes'],
+  sleepy: ['sleepy', 'sleepy'],
+  glam: ['glam', 'glam'],
+  spiky: ['spiky', 'spiky'],
+  wink: ['lashes', 'closed']
+};
 const eyeColors = {
   lidBlue: '#7B9CF2',
   lidRed: '#F0504A',
@@ -559,7 +568,7 @@ const eyeColors = {
 const almondW = 40;  // half the width of an almond eye
 const almondC = 33;  // control-point height of its top and bottom curves
 
-function drawEye(g, x, y, scale, index, set) {
+function drawEye(g, x, y, scale, style) {
   g.push();
   g.translate(x, y);
   g.scale(scale);
@@ -568,7 +577,7 @@ function drawEye(g, x, y, scale, index, set) {
   g.strokeCap(ROUND);
   g.strokeJoin(ROUND);
 
-  if (set === 'classic') {
+  if (style === 'classic') {
     // The original googly eye
     g.strokeWeight(2);
     g.fill(255);
@@ -578,11 +587,11 @@ function drawEye(g, x, y, scale, index, set) {
     g.ellipse(0, 0, 40, 40);
     g.fill(255);
     g.ellipse(6, -6, 10, 10);
-  } else if (set === 'lashes' || (set === 'wink' && index === 0)) {
+  } else if (style === 'lashes') {
     almondEye(g, 255);
     iris(g, 0, 0, 26, 0);
     lashes(g, -1, 5, 14);
-  } else if (set === 'wink') {
+  } else if (style === 'closed') {
     // Closed eye: just the lower lid with lashes hanging down
     g.noFill();
     g.beginShape();
@@ -590,18 +599,18 @@ function drawEye(g, x, y, scale, index, set) {
     g.bezierVertex(-almondW / 2, almondC * 0.8, almondW / 2, almondC * 0.8, almondW, 0);
     g.endShape();
     lashes(g, 1, 5, 12, 0.8);
-  } else if (set === 'sleepy') {
+  } else if (style === 'sleepy') {
     // Heavy coloured lid covering the top half
     almondEye(g, 255);
     iris(g, 0, 6, 26, 0);
     lid(g, eyeColors.lidBlue, 0);
-  } else if (set === 'glam') {
+  } else if (style === 'glam') {
     // Red crescent lid, blue iris, lower lashes
     almondEye(g, 255);
     iris(g, 0, 2, 30, eyeColors.irisBlue);
     lid(g, eyeColors.lidRed, 0.35);
     lashes(g, 1, 4, 10);
-  } else if (set === 'spiky') {
+  } else if (style === 'spiky') {
     // Aqua iris with lashes all round
     lashes(g, -1, 7, 14);
     lashes(g, 1, 5, 12);
@@ -663,17 +672,16 @@ function lashes(g, side, count, length, curve = 1) {
 }
 
 // Each key shows a preview of its set (the closed eye for Wink); picking one
-// restyles both eyes. Eye sets are not part of the undo history.
+// restyles both eyes. Eye styles are not part of the undo history.
 function setupEyeSetButtons() {
-  const buttons = document.querySelectorAll('[data-eye-set]');
   const previews = {};
 
-  buttons.forEach(btn => {
+  document.querySelectorAll('[data-eye-set]').forEach(btn => {
     const set = btn.dataset.eyeSet;
     if (!previews[set]) {
       const g = createGraphics(64, 64);
       g.pixelDensity(2);
-      drawEye(g, 32, 32, 0.6, set === 'wink' ? 1 : 0, set);
+      drawEye(g, 32, 32, 0.6, eyeSets[set][1]);
       previews[set] = g.elt.toDataURL();
       g.remove();
     }
@@ -681,19 +689,38 @@ function setupEyeSetButtons() {
     img.src = previews[set];
     img.alt = '';
     btn.prepend(img);
-    btn.addEventListener('click', () => {
-      eyeSet = set;
-      updateEyeSetButtons();
-      redrawCanvas();
-    });
+    btn.addEventListener('click', () => setEyeStyles(eyeSets[set]));
+  });
+
+  document.querySelectorAll('.mix-eyes-btn').forEach(btn => {
+    btn.addEventListener('click', mixEyes);
   });
 
   updateEyeSetButtons();
 }
 
+// Gives each eye a different random style (never both closed, never the
+// same pair as now, so every press visibly changes something)
+function mixEyes() {
+  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed'];
+  let pair;
+  do {
+    pair = shuffle(styles).slice(0, 2);
+  } while (pair[0] === eyeStyles[0] && pair[1] === eyeStyles[1]);
+  setEyeStyles(pair);
+}
+
+function setEyeStyles(styles) {
+  eyeStyles = [...styles];
+  updateEyeSetButtons();
+  redrawCanvas();
+}
+
+// A set key is lit only while the eyes are exactly that set
 function updateEyeSetButtons() {
   document.querySelectorAll('[data-eye-set]').forEach(btn => {
-    const on = btn.dataset.eyeSet === eyeSet;
+    const [a, b] = eyeSets[btn.dataset.eyeSet];
+    const on = eyeStyles[0] === a && eyeStyles[1] === b;
     btn.classList.toggle('active', on);
     btn.setAttribute('aria-pressed', on);
   });
@@ -1329,7 +1356,7 @@ function setupMobileToolbar() {
     ['rotate-btn-mobile-controls', 'toggle-eyes-btn-mobile', 'move-eyes-btn-mobile', 'clear-drawings-btn-mobile'].forEach(id => {
       document.getElementById(id).addEventListener('click', closeMenu);
     });
-    expandedMenu.querySelectorAll('[data-eye-set]').forEach(btn => btn.addEventListener('click', closeMenu));
+    expandedMenu.querySelectorAll('[data-eye-set], .mix-eyes-btn').forEach(btn => btn.addEventListener('click', closeMenu));
   }
 
   // Mobile tool buttons
