@@ -11,6 +11,7 @@ let baseScrawlGraphics;
 let drawingGraphics;
 let eyePositions = [];
 let draggedEyeIndex = -1;
+let dragOffset = { x: 0, y: 0 }; // eye centre minus grab point, so the eye doesn't jump to the finger
 let hasDrawings = false;
 let isDrawing = false;
 const eyeRadius = 35;
@@ -19,7 +20,7 @@ const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
 
-let intensity = 20;
+let intensity = 10;
 let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
 let brushSize = 8;
 let brushColor = '#000000';
@@ -315,8 +316,8 @@ function draw() {
   if (draggedEyeIndex !== -1 && mouseIsPressed) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     // Keep the whole eye on the canvas so it can't be dragged out of reach
-    eyePositions[draggedEyeIndex].x = constrain(transformed.x, eyeRadius, canvasSize - eyeRadius);
-    eyePositions[draggedEyeIndex].y = constrain(transformed.y, eyeRadius, canvasSize - eyeRadius);
+    eyePositions[draggedEyeIndex].x = constrain(transformed.x + dragOffset.x, eyeRadius, canvasSize - eyeRadius);
+    eyePositions[draggedEyeIndex].y = constrain(transformed.y + dragOffset.y, eyeRadius, canvasSize - eyeRadius);
     redrawCanvas();
     return;
   }
@@ -420,6 +421,10 @@ function mousePressed(event) {
 
     if (eyeIndex !== -1) {
       draggedEyeIndex = eyeIndex;
+      dragOffset = {
+        x: eyePositions[eyeIndex].x - transformed.x,
+        y: eyePositions[eyeIndex].y - transformed.y
+      };
       cursor(MOVE);
     }
   }
