@@ -722,8 +722,8 @@ function getRotatedPosition(x, y) {
 
 // ---- Eye styles ----
 // Swappable eye styles, drawn as bold hand-drawn doodles. Each eye has its
-// own style, so the two can differ. A set is a ready-made pair (Wink is an
-// open and a closed eye); Mix picks a random pair.
+// own style, so the two can differ. A set is a ready-made pair (Patch is an
+// open eye and an eye patch); Mix picks a random pair.
 // `g` is what to draw on: the main canvas (window) or a preview graphic.
 const eyeSets = {
   classic: ['classic', 'classic'],
@@ -731,7 +731,7 @@ const eyeSets = {
   sleepy: ['sleepy', 'sleepy'],
   glam: ['glam', 'glam'],
   spiky: ['spiky', 'spiky'],
-  wink: ['lashes', 'closed'],
+  patch: ['lashes', 'patch'],
   dot: ['dot', 'dot'],
   side: ['side', 'side'],
   goat: ['goat', 'goat'],
@@ -770,7 +770,7 @@ const eyeShapes = {
   slanted:  { w: 46, top: 24, bottom: 24, kl: 0.3, kr: 0.7, tilt: 0.3 }
 };
 const eyeStyleShapes = {
-  lashes: 'almond', closed: 'almond', sleepy: 'lens', glam: 'upturned',
+  lashes: 'almond', sleepy: 'lens', glam: 'upturned',
   spiky: 'round', dot: 'slit', side: 'teardrop', goat: 'wide',
   sunny: 'dome', frog: 'orb', cat: 'slanted'
 };
@@ -805,16 +805,26 @@ function drawEye(g, x, y, scale, style, seed = 0) {
     doodleEllipse(g, 1, 1, 40, 40, 3);
     g.fill(255);
     doodleEllipse(g, 7, -6, 11, 10, 4);
-  } else if (style === 'closed') {
-    // Closed eye: just the lower lid with lashes hanging down
-    const { w, bottom, kl, kr } = eyeShape;
+  } else if (style === 'patch') {
+    // Pirate eye patch: a black shield with its strap running off both sides
+    g.line(-26, -20, -64, -40);
+    g.line(26, -20, 64, -40);
+    g.fill(0);
+    const patch = [[-30, -22], [0, -27], [30, -22], [33, 0], [20, 24], [0, 31], [-20, 24], [-33, 0]];
+    g.beginShape();
+    for (let i = 0; i < patch.length + 3; i++) {
+      const k = i % patch.length;
+      g.curveVertex(patch[k][0] + 2 * wobble(70 + k), patch[k][1] + 2 * wobble(80 + k));
+    }
+    g.endShape();
+    // The pen going round a second time
     g.noFill();
-    g.bezier(-w, 0, -w * kl, bottom * 0.8, w * kr, bottom * 0.8, w, 0);
-    // The pen going over the lid a second time
     g.strokeWeight(1.5);
-    g.bezier(-w - 3, -2, -w * kl, bottom * 0.8 + 3, w * kr, bottom * 0.8 - 1, w + 4, -1);
-    g.strokeWeight(3);
-    lashes(g, 1, 5, 12, 0.8);
+    doodleEllipse(g, 1, 1, 72, 64, 2);
+    // A glint, so the black doesn't read as a hole
+    g.stroke(255);
+    g.strokeWeight(2);
+    g.bezier(-18, -10, -15, -17, -8, -19, -2, -19);
   } else {
     // Open eyes: the outline, then everything inside it (clipped to the
     // shape so nothing pokes out), then the outline again and the lashes
@@ -1043,7 +1053,7 @@ function lashes(g, side, count, length, curve = 1) {
   }
 }
 
-// Each key shows a preview of its set (the closed eye for Wink); picking one
+// Each key shows a preview of its set (the patch for Patch); picking one
 // restyles both eyes. Eye styles are not part of the undo history.
 function setupEyeSetButtons() {
   const previews = {};
@@ -1071,10 +1081,10 @@ function setupEyeSetButtons() {
   updateEyeSetButtons();
 }
 
-// Gives each eye a different random style (never both closed, never the
+// Gives each eye a different random style (never the
 // same pair as now, so every press visibly changes something)
 function mixEyes() {
-  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed',
+  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'patch',
                   'dot', 'side', 'goat', 'frog', 'sunny', 'cat'];
   let pair;
   do {
