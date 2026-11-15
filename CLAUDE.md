@@ -34,6 +34,7 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 
 - **Undo/redo is the most fragile part.** The memento pattern implementation in `scrawl.js` is the most likely source of regressions. Approach changes here carefully.
 - **Touch events on mobile canvas are risky.** p5.js touch handling can conflict with default browser scroll/zoom behaviour. Test on a real small viewport, not just DevTools resize.
+- **Bump the script version.** `index.html` loads `scrawl.js?v=N`. Increase `N` in every change that touches `scrawl.js`, otherwise browsers can pair the new page with a cached old script (this showed up as a stretched canvas on mobile).
 - **Inline CSS in `index.html`.** All styles live in a single `<style>` block. Changes can have unexpected cascade effects — check mobile toolbar and desktop sidebar together.
 
 ## Success looks like
