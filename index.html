@@ -9,7 +9,7 @@
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
-       that press in, monospaced micro-labels and coloured knobs. */
+       that press in, monospaced micro-labels and a fader with an LCD readout. */
     :root {
       --chassis: #d7d6d1;      /* device panel */
       --chassis-edge: #bdbcb6;
@@ -355,6 +355,7 @@
     }
 
     .mobile-section-label {
+      display: block;
       margin-bottom: 10px;
     }
 
@@ -448,94 +449,68 @@
       gap: 12px;
     }
 
-    /* ---- Knob ----
-       The range input stays in the page (hidden) as the source of truth;
-       the knob drives it. --angle is set from scrawl.js (-135deg..135deg). */
-    .knob-input {
-      display: none;
-    }
-
-    .knob-row {
+    /* ---- Fader ----
+       The intensity range input, styled as a hardware fader: a dark
+       groove and a large blue cap that is easy to grab on touch. */
+    .fader-row {
       display: flex;
       align-items: center;
       gap: 14px;
     }
 
-    .knob {
-      --angle: 0deg;
-      --knob-color: var(--te-blue);
-      position: relative;
-      flex: none;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      /* Recessed well with a tick scale around it */
-      background:
-        radial-gradient(circle, transparent 0 25px, var(--chassis) 25px),
-        repeating-conic-gradient(from -135deg, var(--muted) 0 1.5deg, transparent 1.5deg 27deg);
-      -webkit-mask: radial-gradient(circle, #000 0 28px, transparent 28px);
-              mask: radial-gradient(circle, #000 0 28px, transparent 28px);
-      cursor: grab;
+    input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      height: 32px; /* touch target; the visible groove is thinner */
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
       touch-action: none;
-      outline: none;
     }
 
-    .knob.turning {
-      cursor: grabbing;
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--screen);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.7);
     }
 
-    /* Hide the ticks in the unused bottom quarter */
-    .knob::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 50%;
-      background: conic-gradient(from 135deg, var(--chassis) 0 90deg, transparent 90deg);
+    input[type="range"]::-moz-range-track {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--screen);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.7);
     }
 
-    /* Knurled cap */
-    .knob-cap {
-      position: absolute;
-      inset: 6px;
-      border-radius: 50%;
-      background:
-        repeating-conic-gradient(rgba(0,0,0,0.18) 0 6deg, rgba(255,255,255,0.08) 6deg 12deg),
-        var(--knob-color);
-      box-shadow:
-        0 3px 5px rgba(0,0,0,0.35),
-        0 1px 1px rgba(0,0,0,0.3);
-      transform: rotate(var(--angle));
-      transition: transform 0.06s linear;
+    /* Blue fader cap with a white centre line */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 30px;
+      margin-top: -11px; /* centre on the 8px track */
+      border-radius: 5px;
+      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-blue);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 #1d4f9e, 0 3px 5px rgba(0,0,0,0.3);
     }
 
-    /* Smooth top face */
-    .knob-cap::before {
-      content: '';
-      position: absolute;
-      inset: 4px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 40% 30%, rgba(255,255,255,0.35), transparent 60%), var(--knob-color);
-      box-shadow: inset 0 -2px 3px rgba(0,0,0,0.2);
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 30px;
+      border: none;
+      border-radius: 5px;
+      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-blue);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 #1d4f9e, 0 3px 5px rgba(0,0,0,0.3);
     }
 
-    /* Pointer line */
-    .knob-cap::after {
-      content: '';
-      position: absolute;
-      left: 50%;
-      top: 6px;
-      width: 3px;
-      height: 12px;
-      margin-left: -1.5px;
-      border-radius: 2px;
-      background: #ffffff;
+    input[type="range"]:focus-visible {
+      outline: 2px solid var(--te-blue);
+      outline-offset: 2px;
+      border-radius: 4px;
     }
 
-    .knob:focus-visible .knob-cap {
-      box-shadow: 0 0 0 2px var(--chassis), 0 0 0 4px var(--knob-color);
-    }
-
-    /* Tiny OLED-style readout next to the knob */
+    /* Tiny OLED-style readout next to the fader */
     .lcd {
       display: inline-flex;
       align-items: center;
@@ -949,18 +924,9 @@
         gap: 12px;
       }
 
-      /* Intensity label + readout on the left, knob on the right */
       .canvas-controls .control-group {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
         max-width: none;
-      }
-
-      .canvas-controls .control-group label {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
+        gap: 4px;
       }
 
       /* The sidebar also carries the generate/intensity controls and has
@@ -1006,10 +972,10 @@
           <div class="canvas-controls">
             <button id="generate-btn" class="cta-button">Generate New Scrawl</button>
             <div class="control-group">
-              <label id="intensity-label">Intensity <span class="lcd" id="intensity-value">20</span></label>
-              <input type="range" class="knob-input" id="intensity-slider" min="10" max="40" value="20" step="1">
-              <div class="knob" id="intensity-knob" role="slider" tabindex="0" aria-labelledby="intensity-label" aria-valuemin="10" aria-valuemax="40" aria-valuenow="20">
-                <div class="knob-cap"></div>
+              <label for="intensity-slider">Intensity</label>
+              <div class="fader-row">
+                <input type="range" id="intensity-slider" min="10" max="40" value="20" step="1">
+                <span class="lcd" id="intensity-value">20</span>
               </div>
             </div>
           </div>
@@ -1210,12 +1176,9 @@
 
           <!-- Intensity Slider -->
           <div class="mobile-section">
-            <div class="mobile-section-label" id="intensity-label-mobile">Intensity</div>
-            <div class="knob-row">
-              <input type="range" class="knob-input" id="intensity-slider-mobile" min="10" max="40" value="20" step="1">
-              <div class="knob" id="intensity-knob-mobile" role="slider" tabindex="0" aria-labelledby="intensity-label-mobile" aria-valuemin="10" aria-valuemax="40" aria-valuenow="20">
-                <div class="knob-cap"></div>
-              </div>
+            <label class="mobile-section-label" for="intensity-slider-mobile">Intensity</label>
+            <div class="fader-row">
+              <input type="range" id="intensity-slider-mobile" min="10" max="40" value="20" step="1">
               <span class="lcd" id="intensity-value-mobile">20</span>
             </div>
           </div>
