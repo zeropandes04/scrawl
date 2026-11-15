@@ -755,18 +755,18 @@ let doodleSeed = 0;  // set per eye, so two eyes of one style aren't identical
 // Every eye is two curves meeting in a point at each side. A shape says how
 // wide it is (w = half the width), how far the top and bottom curves bulge,
 // how rounded each end is (kl/kr: 0.5 = pointed almond, towards 1 = round)
-// and how much it slants (tilt, in radians; outer corner up).
+// and how much it slants (tilt, in radians; positive = outer corner up).
 const eyeShapes = {
   almond:   { w: 40, top: 33, bottom: 33, kl: 0.5, kr: 0.5 },
-  lens:     { w: 44, top: 24, bottom: 26, kl: 0.5, kr: 0.5 },    // wide and flat
-  upturned: { w: 42, top: 36, bottom: 22, kl: 0.45, kr: 0.55, tilt: 0.16 },
-  round:    { w: 34, top: 44, bottom: 44, kl: 0.8, kr: 0.8 },
-  slit:     { w: 44, top: 17, bottom: 17, kl: 0.5, kr: 0.5 },    // narrowed
-  teardrop: { w: 40, top: 34, bottom: 34, kl: 0.2, kr: 0.95 },   // pointed left, round right
-  smile:    { w: 38, top: 12, bottom: 44, kl: 0.6, kr: 0.6 },    // flat top, deep bottom
-  dome:     { w: 40, top: 44, bottom: 14, kl: 0.6, kr: 0.6 },    // deep top, flat bottom
-  big:      { w: 36, top: 42, bottom: 42, kl: 0.85, kr: 0.85 },  // big and round
-  slanted:  { w: 44, top: 27, bottom: 27, kl: 0.45, kr: 0.45, tilt: 0.22 }
+  lens:     { w: 48, top: 22, bottom: 24, kl: 0.5, kr: 0.5, tilt: -0.12 }, // wide, flat, drooping
+  upturned: { w: 44, top: 40, bottom: 18, kl: 0.35, kr: 0.6, tilt: 0.2 },
+  round:    { w: 32, top: 46, bottom: 46, kl: 0.95, kr: 0.95 },
+  slit:     { w: 48, top: 14, bottom: 14, kl: 0.5, kr: 0.5 },    // long and narrowed
+  teardrop: { w: 42, top: 36, bottom: 36, kl: 0.05, kr: 1.1 },   // pointed left, round right
+  smile:    { w: 36, top: 6, bottom: 50, kl: 0.7, kr: 0.7 },     // flat top, deep bottom
+  dome:     { w: 42, top: 52, bottom: 8, kl: 0.7, kr: 0.7 },     // deep top, flat bottom
+  big:      { w: 40, top: 50, bottom: 50, kl: 0.9, kr: 0.9 },    // big and round
+  slanted:  { w: 46, top: 24, bottom: 24, kl: 0.3, kr: 0.7, tilt: 0.3 }
 };
 const eyeStyleShapes = {
   lashes: 'almond', closed: 'almond', sleepy: 'lens', glam: 'upturned',
@@ -831,7 +831,7 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       lid(g, eyeColors.pink, 0);
     } else if (style === 'glam') {
       // Magenta crescent lid, aqua iris
-      iris(g, 0, 2, 30, eyeColors.aqua);
+      iris(g, 0, 0, 30, eyeColors.aqua);
       lid(g, eyeColors.magenta, 0.35);
     } else if (style === 'spiky') {
       iris(g, 0, 0, 32, eyeColors.orange);
@@ -863,7 +863,7 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       doodleEllipse(g, 9, -8, 7, 6, 4);
     } else if (style === 'sunny') {
       // Yellow lid over a black iris
-      iris(g, 0, -2, 26, 0);
+      iris(g, 0, -6, 26, 0);
       lid(g, eyeColors.yellow, 0.45);
     }
     ctx.restore();
