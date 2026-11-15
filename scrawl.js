@@ -561,7 +561,6 @@ const eyeSets = {
   dot: ['dot', 'dot'],
   side: ['side', 'side'],
   amber: ['amber', 'amber'],
-  lowlid: ['lowlid', 'lowlid'],
   sunny: ['sunny', 'sunny'],
   blue: ['blue', 'blue']
 };
@@ -656,16 +655,6 @@ function drawEye(g, x, y, scale, style) {
     g.noStroke();
     g.fill(255);
     g.ellipse(3, -3, 4, 4);
-  } else if (style === 'lowlid') {
-    // Blue lower lid pushing the iris up
-    almondEye(g, 255);
-    iris(g, 0, -4, 26, 0);
-    g.fill(eyeColors.lidBlue);
-    g.beginShape();
-    g.vertex(-almondW, 0);
-    g.bezierVertex(-almondW / 2, almondC, almondW / 2, almondC, almondW, 0);
-    g.bezierVertex(almondW / 2, almondC * 0.2, -almondW / 2, almondC * 0.2, -almondW, 0);
-    g.endShape(CLOSE);
   } else if (style === 'sunny') {
     // Yellow lid, black iris, lower lashes
     almondEye(g, 255);
@@ -760,7 +749,7 @@ function setupEyeSetButtons() {
 // same pair as now, so every press visibly changes something)
 function mixEyes() {
   const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed',
-                  'dot', 'side', 'amber', 'blue', 'lowlid', 'sunny'];
+                  'dot', 'side', 'amber', 'blue', 'sunny'];
   let pair;
   do {
     pair = shuffle(styles).slice(0, 2);

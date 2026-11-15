@@ -445,37 +445,6 @@
       grid-column: 1 / -1;
     }
 
-    /* Section label with a small key on the right (Eyes + Mix) */
-    .section-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .section-head .mobile-section-label {
-      margin-bottom: 0;
-    }
-
-    .mobile-section .section-head {
-      margin-bottom: 10px;
-    }
-
-    .sidebar .mix-eyes-btn,
-    .mix-eyes-btn {
-      width: auto;
-      min-width: 0;
-      padding: 3px 10px;
-      font-family: var(--mono);
-      font-size: 11px;
-      font-weight: 500;
-      border-radius: 5px;
-    }
-
-    /* Bigger tap target on phones without a bigger key */
-    .mobile-section .mix-eyes-btn {
-      padding: 6px 14px;
-    }
-
     /* Eye set keys: rows of six small square keys, each showing a
        preview image of its eye */
     .eye-set-grid {
@@ -492,6 +461,13 @@
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* Mix: the last key in the grid, under the eye sets */
+    .eye-set-grid .mix-eyes-btn {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
     }
 
     .eye-set-grid img {
@@ -1183,10 +1159,7 @@
           </div>
 
           <div class="sidebar-section">
-            <div class="section-head">
-              <h3>Eyes</h3>
-              <button type="button" class="mix-eyes-btn" title="Give each eye a different random style">Mix</button>
-            </div>
+            <h3>Eyes</h3>
             <div class="eye-set-grid">
               <button type="button" data-eye-set="classic" title="Classic eyes" aria-label="Classic eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="lashes" title="Lashes eyes" aria-label="Lashes eye set" aria-pressed="false"></button>
@@ -1197,9 +1170,9 @@
               <button type="button" data-eye-set="dot" title="Dot eyes" aria-label="Dot eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="side" title="Side-eye eyes" aria-label="Side-eye eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="amber" title="Amber eyes" aria-label="Amber eye set" aria-pressed="false"></button>
-              <button type="button" data-eye-set="lowlid" title="Low lid eyes" aria-label="Low lid eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="sunny" title="Sunny eyes" aria-label="Sunny eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="blue" title="Blue eyes" aria-label="Blue eye set" aria-pressed="false"></button>
+              <button type="button" class="mix-eyes-btn" title="Give each eye a different random style">Mix</button>
             </div>
           </div>
 
@@ -1275,10 +1248,7 @@
 
           <!-- Eye sets: swappable eye styles (previews drawn by scrawl.js) -->
           <div class="mobile-section">
-            <div class="section-head">
-              <div class="mobile-section-label">Eyes</div>
-              <button type="button" class="mix-eyes-btn" title="Give each eye a different random style">Mix</button>
-            </div>
+            <div class="mobile-section-label">Eyes</div>
             <div class="eye-set-grid">
               <button type="button" class="mobile-control-btn" data-eye-set="classic" aria-label="Classic eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="lashes" aria-label="Lashes eye set" aria-pressed="false"></button>
@@ -1289,9 +1259,9 @@
               <button type="button" class="mobile-control-btn" data-eye-set="dot" aria-label="Dot eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="side" aria-label="Side-eye eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="amber" aria-label="Amber eye set" aria-pressed="false"></button>
-              <button type="button" class="mobile-control-btn" data-eye-set="lowlid" aria-label="Low lid eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="sunny" aria-label="Sunny eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="blue" aria-label="Blue eye set" aria-pressed="false"></button>
+              <button type="button" class="mix-eyes-btn mobile-control-btn" title="Give each eye a different random style">Mix</button>
             </div>
           </div>
 
