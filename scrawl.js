@@ -123,6 +123,7 @@ function setup() {
     (value) => {
       brushSize = parseInt(value);
       activateBrushMode();
+      updateMobileToolButtons();
     },
     () => {
       activateBrushMode();
@@ -140,6 +141,7 @@ function setup() {
     (value) => {
       eraserSize = parseInt(value);
       activateEraseMode();
+      updateMobileToolButtons();
     },
     () => {
       activateEraseMode();
@@ -1118,19 +1120,19 @@ function setupMobileToolbar() {
       mobileSizeBtns.forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
 
-      // Update brush/eraser size based on active tool
-      if (drawMode) {
-        brushSize = size;
-        // Update desktop brush indicator
-        const indicator = document.getElementById('brush-size-indicator');
+      // The picker edits the eraser while erasing, the brush otherwise
+      if (eraseMode) {
+        eraserSize = size;
+        // Update desktop eraser indicator
+        const indicator = document.getElementById('eraser-size-indicator');
         if (indicator) {
           indicator.style.width = size + 'px';
           indicator.style.height = size + 'px';
         }
-      } else if (eraseMode) {
-        eraserSize = size;
-        // Update desktop eraser indicator
-        const indicator = document.getElementById('eraser-size-indicator');
+      } else {
+        brushSize = size;
+        // Update desktop brush indicator
+        const indicator = document.getElementById('brush-size-indicator');
         if (indicator) {
           indicator.style.width = size + 'px';
           indicator.style.height = size + 'px';
@@ -1167,4 +1169,11 @@ function updateMobileToolButtons() {
   if (moveEyesBtnMobile) {
     moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
   }
+
+  // The size picker shows the eraser's size while erasing, the brush's otherwise
+  const activeSize = eraseMode ? eraserSize : brushSize;
+  document.querySelectorAll('.mobile-size-btn').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.getAttribute('data-size')) === activeSize);
+  });
+  document.getElementById('mobile-size-label').textContent = eraseMode ? 'Eraser Size' : 'Brush Size';
 }
