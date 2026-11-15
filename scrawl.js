@@ -25,6 +25,7 @@ let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
 let brushSize = 8;
 let brushColor = '#000000';
 let eraserSize = 16;
+let brushSizesShown = false; // mobile strip: brush sizes instead of colours
 
 // Scrawl segments still to be drawn by the draw-in animation
 let scrawlQueue = [];
@@ -79,100 +80,41 @@ function setup() {
   drawingGraphics.clear();
   background(bgColor);
 
-  // Desktop buttons
+  // Desktop and mobile keys that do the same thing
   select("#generate-btn").mousePressed(generateScrawlface);
+  select("#generate-btn-mobile").mousePressed(generateScrawlface);
   select("#rotate-btn").mousePressed(rotateCanvas);
+  select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
-  select("#move-eyes-btn").mousePressed(toggleMoveEyesMode);
+  select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
+  select("#undo-btn-mobile").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
+  select("#redo-btn-mobile").mousePressed(redo);
   select("#save-btn").mousePressed(saveImage);
+  select("#save-btn-mobile").mousePressed(saveImage);
 
-  const undoBtnMobile = select("#undo-btn-mobile");
-  if (undoBtnMobile) {
-    undoBtnMobile.mousePressed(undo);
-  }
-
-  const redoBtnMobile = select("#redo-btn-mobile");
-  if (redoBtnMobile) {
-    redoBtnMobile.mousePressed(redo);
-  }
-
-  // Mobile buttons
-  select("#generate-btn-mobile").mousePressed(generateScrawlface);
-  select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
-  select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
-
-  // Setup slider
-  const intensitySlider = select("#intensity-slider");
-
-  intensitySlider.input(() => {
-    intensity = parseInt(intensitySlider.value());
-    select("#intensity-value").html(intensity);
-    tickLcd("intensity-value");
+  // Intensity faders (sidebar and sheet) stay in sync. The value only
+  // applies at the next Generate.
+  ['intensity-slider', 'intensity-slider-mobile'].forEach(id => {
+    const slider = document.getElementById(id);
+    slider.addEventListener('input', () => {
+      intensity = parseInt(slider.value);
+      ['', '-mobile'].forEach(suffix => {
+        document.getElementById('intensity-slider' + suffix).value = intensity;
+        document.getElementById('intensity-value' + suffix).textContent = intensity;
+      });
+      tickLcd(id.replace('slider', 'value'));
+    });
   });
-  // The slider only sets the intensity; it applies at the next Generate
 
-  // Setup brush tool dropdown
-  setupToolDropdown(
-    'brush-tool-dropdown',
-    'brush-tool-btn',
-    'brush-size-indicator',
-    (value) => {
-      brushSize = parseInt(value);
-      activateBrushMode();
-      updateMobileToolButtons();
-      setBrushCursor();
-    },
-    () => {
-      activateBrushMode();
-    }
-  );
+  // Tool, size and colour keys, Share
+  setupToolbar();
 
-  // Setup color swatches palette
-  setupColorSwatches();
-
-  // Setup eraser tool dropdown
-  setupToolDropdown(
-    'eraser-tool-dropdown',
-    'eraser-tool-btn',
-    'eraser-size-indicator',
-    (value) => {
-      eraserSize = parseInt(value);
-      activateEraseMode();
-      updateMobileToolButtons();
-      setBrushCursor();
-    },
-    () => {
-      activateEraseMode();
-    }
-  );
-
-  // Setup bucket tool button
-  const bucketBtn = document.getElementById('bucket-tool-btn');
-  if (bucketBtn) {
-    bucketBtn.addEventListener('click', () => {
-      activateBucketMode();
-    });
-  }
-
-  // Setup mobile toolbar
-  setupMobileToolbar();
-
-  // Setup mobile intensity slider
-  const intensitySliderMobile = select("#intensity-slider-mobile");
-  if (intensitySliderMobile) {
-    intensitySliderMobile.input(() => {
-      intensity = parseInt(intensitySliderMobile.value());
-      select("#intensity-value-mobile").html(intensity);
-      tickLcd("intensity-value-mobile");
-      // Sync with desktop slider
-      select("#intensity-slider").value(intensity);
-      select("#intensity-value").html(intensity);
-    });
-  }
+  // Mobile bottom sheet: open/close
+  setupMobileSheet();
 
   // Eye set keys (desktop and mobile share data-eye-set)
   setupEyeSetButtons();
@@ -186,7 +128,7 @@ function setup() {
   });
 
   // Start with the brush selected so the canvas responds to the first touch
-  activateBrushMode();
+  setTool('brush');
 
   generateScrawlface();
 }
@@ -491,6 +433,12 @@ function keyPressed() {
     redo();
     return false;
   }
+
+  // Tool shortcuts (desktop): B brush, E eraser, F fill, V eyes, N new scrawl
+  if (keyIsDown(CONTROL) || keyIsDown(91) || keyIsDown(93) || keyIsDown(ALT)) return;
+  const tool = { b: 'brush', e: 'eraser', f: 'fill', v: 'eyes' }[key.toLowerCase()];
+  if (tool) setTool(tool);
+  if (key.toLowerCase() === 'n') generateScrawlface();
 }
 
 function getTransformedCoords(mx, my) {
@@ -809,78 +757,33 @@ function toggleEyes() {
 // The buttons name what pressing them will do, rather than lighting up when
 // the scrawl is hidden
 function updateScrawlToggleButtons() {
-  select("#toggle-eyes-btn").html(showScrawl ? "Hide scrawl" : "Show scrawl");
-  select("#toggle-eyes-btn-mobile").html(showScrawl ? "Hide Scrawl" : "Show Scrawl");
+  const label = showScrawl ? "Hide scrawl" : "Show scrawl";
+  select("#toggle-eyes-btn").html(label);
+  select("#toggle-eyes-btn-mobile").html(label);
 }
 
-function toggleMoveEyesMode() {
-  moveEyesMode = !moveEyesMode;
-  const btn = select("#move-eyes-btn");
-  moveEyesMode ? btn.addClass("active") : btn.removeClass("active");
+// ---- Tools ----
+// Exactly one tool is selected: brush, eraser, fill or eyes (drag the eyes).
+function setTool(tool) {
+  drawMode = tool === 'brush';
+  eraseMode = tool === 'eraser';
+  bucketMode = tool === 'fill';
+  moveEyesMode = tool === 'eyes';
+  brushSizesShown = false;
 
-  // Deactivate all drawing tools when entering move eyes mode
-  if (moveEyesMode) {
-    deactivateAllTools();
-  }
-
-  // Reset cursor when exiting move eyes mode
-  if (!moveEyesMode) {
-    cursor(ARROW);
-  }
-
-  updateMobileToolButtons();
-}
-
-function activateBrushMode() {
-  if (!drawMode) {
-    drawMode = true;
-    eraseMode = false;
-    bucketMode = false;
-
-    // Deactivate move eyes mode
-    if (moveEyesMode) {
-      moveEyesMode = false;
-      const moveEyesBtn = select("#move-eyes-btn");
-      if (moveEyesBtn) moveEyesBtn.removeClass("active");
-    }
-
-    const brushBtn = document.getElementById('brush-tool-btn');
-    const eraserBtn = document.getElementById('eraser-tool-btn');
-    const bucketBtn = document.getElementById('bucket-tool-btn');
-
-    if (brushBtn) brushBtn.classList.add('active');
-    if (eraserBtn) eraserBtn.classList.remove('active');
-    if (bucketBtn) bucketBtn.classList.remove('active');
-
+  if (drawMode || eraseMode) {
     setBrushCursor();
-    updateMobileToolButtons();
+  } else {
+    cursor(bucketMode ? CROSS : ARROW);
   }
+  updateToolButtons();
 }
 
-function activateEraseMode() {
-  if (!eraseMode) {
-    eraseMode = true;
-    drawMode = false;
-    bucketMode = false;
-
-    // Deactivate move eyes mode
-    if (moveEyesMode) {
-      moveEyesMode = false;
-      const moveEyesBtn = select("#move-eyes-btn");
-      if (moveEyesBtn) moveEyesBtn.removeClass("active");
-    }
-
-    const brushBtn = document.getElementById('brush-tool-btn');
-    const eraserBtn = document.getElementById('eraser-tool-btn');
-    const bucketBtn = document.getElementById('bucket-tool-btn');
-
-    if (brushBtn) brushBtn.classList.remove('active');
-    if (eraserBtn) eraserBtn.classList.add('active');
-    if (bucketBtn) bucketBtn.classList.remove('active');
-
-    setBrushCursor();
-    updateMobileToolButtons();
-  }
+function currentTool() {
+  if (drawMode) return 'brush';
+  if (eraseMode) return 'eraser';
+  if (bucketMode) return 'fill';
+  return 'eyes';
 }
 
 // Cursor for the brush and eraser: a ring the size the tool draws on screen
@@ -899,49 +802,6 @@ function setBrushCursor() {
 // The canvas is scaled to fit the window, so the ring has to be rescaled too
 function windowResized() {
   if (drawMode || eraseMode) setBrushCursor();
-}
-
-function activateBucketMode() {
-  if (!bucketMode) {
-    bucketMode = true;
-    drawMode = false;
-    eraseMode = false;
-
-    // Deactivate move eyes mode
-    if (moveEyesMode) {
-      moveEyesMode = false;
-      const moveEyesBtn = select("#move-eyes-btn");
-      if (moveEyesBtn) moveEyesBtn.removeClass("active");
-    }
-
-    const brushBtn = document.getElementById('brush-tool-btn');
-    const eraserBtn = document.getElementById('eraser-tool-btn');
-    const bucketBtn = document.getElementById('bucket-tool-btn');
-
-    if (brushBtn) brushBtn.classList.remove('active');
-    if (eraserBtn) eraserBtn.classList.remove('active');
-    if (bucketBtn) bucketBtn.classList.add('active');
-
-    cursor(CROSS);
-    updateMobileToolButtons();
-  }
-}
-
-function deactivateAllTools() {
-  drawMode = false;
-  eraseMode = false;
-  bucketMode = false;
-
-  const brushBtn = document.getElementById('brush-tool-btn');
-  const eraserBtn = document.getElementById('eraser-tool-btn');
-  const bucketBtn = document.getElementById('bucket-tool-btn');
-
-  if (brushBtn) brushBtn.classList.remove('active');
-  if (eraserBtn) eraserBtn.classList.remove('active');
-  if (bucketBtn) bucketBtn.classList.remove('active');
-
-  cursor(ARROW);
-  updateMobileToolButtons();
 }
 
 function clearDrawings() {
@@ -1136,146 +996,6 @@ function getComplementaryColor(color) {
   return [255 - color[0], 255 - color[1], 255 - color[2]];
 }
 
-function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) {
-  const dropdown = document.getElementById(dropdownId);
-  const button = document.getElementById(buttonId);
-  const content = dropdown.querySelector('.custom-dropdown-content');
-  const label = document.getElementById(labelId);
-  const options = dropdown.querySelectorAll('.custom-dropdown-option');
-
-  let longPressTimer = null;
-  let isLongPress = false;
-
-  // Long-press handling for mouse
-  button.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    isLongPress = false;
-    longPressTimer = setTimeout(() => {
-      isLongPress = true;
-      openDropdown();
-    }, 500);
-  });
-
-  button.addEventListener('mouseup', (e) => {
-    clearTimeout(longPressTimer);
-    if (!isLongPress) {
-      // Short click - open the size list from the size indicator, otherwise activate tool
-      e.target.closest('.size-toggle') ? toggleDropdown() : onActivate();
-    }
-  });
-
-  button.addEventListener('mouseleave', (e) => {
-    clearTimeout(longPressTimer);
-  });
-
-  // Long-press handling for touch
-  button.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    isLongPress = false;
-    longPressTimer = setTimeout(() => {
-      isLongPress = true;
-      openDropdown();
-    }, 500);
-  });
-
-  button.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    clearTimeout(longPressTimer);
-    if (!isLongPress) {
-      // Short tap - open the size list from the size indicator, otherwise activate tool
-      e.target.closest('.size-toggle') ? toggleDropdown() : onActivate();
-    }
-  });
-
-  button.addEventListener('touchcancel', (e) => {
-    clearTimeout(longPressTimer);
-  });
-
-  // Function to open dropdown
-  function openDropdown() {
-    // Close all other dropdowns
-    document.querySelectorAll('.custom-dropdown-content.show').forEach(el => {
-      el.classList.remove('show');
-      const parentDropdown = el.closest('.tool-dropdown, .custom-dropdown');
-      if (parentDropdown) {
-        const btn = parentDropdown.querySelector('.tool-dropdown-button, .custom-dropdown-button');
-        if (btn) btn.classList.remove('open');
-      }
-    });
-
-    content.classList.add('show');
-    button.classList.add('open');
-  }
-
-  function toggleDropdown() {
-    if (content.classList.contains('show')) {
-      content.classList.remove('show');
-      button.classList.remove('open');
-    } else {
-      openDropdown();
-    }
-  }
-
-  // Handle option selection
-  options.forEach(option => {
-    option.addEventListener('click', () => {
-      const value = option.getAttribute('data-value');
-
-      // Update selected state
-      options.forEach(opt => opt.classList.remove('selected'));
-      option.classList.add('selected');
-
-      // Update size indicator circle
-      if (label) {
-        setSizeIndicator(label, parseInt(value));
-      }
-
-      // Close dropdown
-      content.classList.remove('show');
-      button.classList.remove('open');
-
-      // Call callback
-      onSelect(value);
-    });
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target)) {
-      content.classList.remove('show');
-      button.classList.remove('open');
-    }
-  });
-}
-
-// The dot under the brush/eraser icon shows the size 1:1 up to 16px; the
-// big sizes (24, 32) are shown at half the extra so the dot fits the key
-function setSizeIndicator(dot, size) {
-  const d = size <= 16 ? size : 16 + (size - 16) / 2;
-  dot.style.width = d + 'px';
-  dot.style.height = d + 'px';
-}
-
-function setupColorSwatches() {
-  const swatches = document.querySelectorAll('.color-swatch-btn');
-
-  swatches.forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      const color = swatch.getAttribute('data-color');
-
-      // Update selected state
-      swatches.forEach(s => s.classList.remove('selected'));
-      swatch.classList.add('selected');
-
-      // Update brush color
-      brushColor = color;
-
-      // Update brush size indicator color
-      document.getElementById('brush-size-indicator').style.background = color;
-    });
-  });
-}
-
 // Memento pattern implementation
 function saveState() {
   // Create a memento (snapshot) of the current drawing state
@@ -1390,163 +1110,152 @@ function clearHistory() {
   updateUndoRedoButtons();
 }
 
-function setupMobileToolbar() {
-  // Toggle mobile menu
-  const toggleMenuBtn = document.getElementById('toggle-mobile-menu');
-  const expandedMenu = document.getElementById('mobile-expanded-menu');
-
-  if (toggleMenuBtn && expandedMenu) {
-    const closeMenu = () => {
-      expandedMenu.style.display = 'none';
-      toggleMenuBtn.textContent = '⋯';
-      toggleMenuBtn.setAttribute('aria-expanded', 'false');
-    };
-
-    toggleMenuBtn.addEventListener('click', () => {
-      if (expandedMenu.style.display === 'none') {
-        expandedMenu.style.display = 'block';
-        toggleMenuBtn.textContent = '×';
-        toggleMenuBtn.setAttribute('aria-expanded', 'true');
-      } else {
-        closeMenu();
-      }
-    });
-
-    // The open menu covers the canvas, so close it after actions whose
-    // result is only visible there
-    ['rotate-btn-mobile-controls', 'toggle-eyes-btn-mobile', 'move-eyes-btn-mobile', 'clear-drawings-btn-mobile'].forEach(id => {
-      document.getElementById(id).addEventListener('click', closeMenu);
-    });
-    expandedMenu.querySelectorAll('[data-eye-set], .mix-eyes-btn').forEach(btn => btn.addEventListener('click', closeMenu));
-  }
-
-  // Mobile tool buttons
-  const brushBtnMobile = document.getElementById('brush-tool-btn-mobile');
-  const bucketBtnMobile = document.getElementById('bucket-tool-btn-mobile');
-  const eraserBtnMobile = document.getElementById('eraser-tool-btn-mobile');
-
-  if (brushBtnMobile) {
-    brushBtnMobile.addEventListener('click', () => {
-      activateBrushMode();
-    });
-  }
-
-  if (bucketBtnMobile) {
-    bucketBtnMobile.addEventListener('click', () => {
-      activateBucketMode();
-    });
-  }
-
-  if (eraserBtnMobile) {
-    eraserBtnMobile.addEventListener('click', () => {
-      activateEraseMode();
-    });
-  }
-
-  // Mobile color swatches
-  const mobileSwatches = document.querySelectorAll('.color-swatch-btn-mobile');
-  mobileSwatches.forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      const color = swatch.getAttribute('data-color');
-
-      // Update selected state
-      mobileSwatches.forEach(s => s.classList.remove('selected'));
-      swatch.classList.add('selected');
-
-      // Update brush color
-      brushColor = color;
-
-      // Sync with desktop swatch
-      const desktopSwatches = document.querySelectorAll('.color-swatch-btn');
-      desktopSwatches.forEach(s => {
-        if (s.getAttribute('data-color') === color) {
-          s.classList.add('selected');
-        } else {
-          s.classList.remove('selected');
-        }
-      });
-
-      // Update brush size indicator color
-      document.getElementById('brush-size-indicator').style.background = color;
-    });
+// The sidebar and the mobile bar share data-tool, data-size and data-color,
+// so one handler drives both and their state never drifts apart.
+function setupToolbar() {
+  document.querySelectorAll('button[data-tool]').forEach(btn => {
+    btn.addEventListener('click', () => setTool(btn.dataset.tool));
   });
 
-  // Mobile size buttons
-  const mobileSizeBtns = document.querySelectorAll('.mobile-size-btn');
-  mobileSizeBtns.forEach(btn => {
+  // Size keys set the size of the tool in use (they show for brush and eraser)
+  document.querySelectorAll('[data-size]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const size = parseInt(btn.getAttribute('data-size'));
-
-      // Update selected state
-      mobileSizeBtns.forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-
-      // The picker edits the eraser while erasing, the brush otherwise
+      const size = parseInt(btn.dataset.size);
       if (eraseMode) {
         eraserSize = size;
-        // Update desktop eraser indicator
-        const indicator = document.getElementById('eraser-size-indicator');
-        if (indicator) {
-          setSizeIndicator(indicator, size);
-        }
       } else {
         brushSize = size;
-        // Update desktop brush indicator
-        const indicator = document.getElementById('brush-size-indicator');
-        if (indicator) {
-          setSizeIndicator(indicator, size);
-        }
       }
+      brushSizesShown = false; // mobile: back to the colours
+      setBrushCursor();
+      updateToolButtons();
     });
   });
 
-  // Share button: only shown where the browser can share image files
-  const shareBtn = document.getElementById('share-btn-mobile');
+  document.querySelectorAll('[data-color]').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      brushColor = swatch.dataset.color;
+      document.querySelectorAll('[data-color]').forEach(s => {
+        s.classList.toggle('selected', s.dataset.color === brushColor);
+      });
+      // Size dots and the mobile colour chip are drawn in the brush colour
+      document.documentElement.style.setProperty('--brush-color', brushColor);
+    });
+  });
+
+  // Mobile strip, brush only: the leading chip swaps between the colours
+  // and the sizes (it shows the current value of the other one)
+  document.getElementById('size-chip').addEventListener('click', () => {
+    brushSizesShown = true;
+    updateToolButtons();
+  });
+  document.getElementById('colour-chip').addEventListener('click', () => {
+    brushSizesShown = false;
+    updateToolButtons();
+  });
+
+  // Share: only shown where the browser can share image files
   const testFile = new File([], 'scrawlface.png', { type: 'image/png' });
   if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
-    shareBtn.hidden = false;
-    shareBtn.addEventListener('click', shareImage);
-  }
-
-  // Mobile move eyes button
-  const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');
-  if (moveEyesBtnMobile) {
-    moveEyesBtnMobile.addEventListener('click', () => {
-      toggleMoveEyesMode();
+    document.querySelectorAll('.share-btn').forEach(btn => {
+      btn.hidden = false;
+      btn.addEventListener('click', shareImage);
     });
   }
 }
 
-function updateMobileToolButtons() {
-  const brushBtnMobile = document.getElementById('brush-tool-btn-mobile');
-  const bucketBtnMobile = document.getElementById('bucket-tool-btn-mobile');
-  const eraserBtnMobile = document.getElementById('eraser-tool-btn-mobile');
+// Reflects the selected tool and its size on every key, and shows only the
+// options that apply to it
+function updateToolButtons() {
+  const tool = currentTool();
+  document.body.dataset.activeTool = tool;
 
-  if (brushBtnMobile) {
-    brushBtnMobile.classList.toggle('active', drawMode);
-  }
-  if (bucketBtnMobile) {
-    bucketBtnMobile.classList.toggle('active', bucketMode);
-  }
-  if (eraserBtnMobile) {
-    eraserBtnMobile.classList.toggle('active', eraseMode);
-  }
-
-  const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');
-  if (moveEyesBtnMobile) {
-    moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
-  }
-
-  // The size picker shows the eraser's size while erasing, the brush's otherwise
-  const activeSize = eraseMode ? eraserSize : brushSize;
-  document.querySelectorAll('.mobile-size-btn').forEach(btn => {
-    btn.classList.toggle('selected', parseInt(btn.getAttribute('data-size')) === activeSize);
+  document.querySelectorAll('button[data-tool]').forEach(btn => {
+    const on = btn.dataset.tool === tool;
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on);
   });
-  document.getElementById('mobile-size-label').textContent = eraseMode ? 'Eraser Size' : 'Brush Size';
 
-  // Tell assistive tech which tool is selected (desktop and mobile buttons)
-  [['bucket-tool-btn', bucketMode], ['brush-tool-btn', drawMode], ['eraser-tool-btn', eraseMode], ['move-eyes-btn', moveEyesMode]].forEach(([id, on]) => {
-    document.getElementById(id).setAttribute('aria-pressed', on);
-    document.getElementById(id + '-mobile').setAttribute('aria-pressed', on);
+  const size = eraseMode ? eraserSize : brushSize;
+  document.querySelectorAll('[data-size]').forEach(btn => {
+    btn.classList.toggle('selected', parseInt(btn.dataset.size) === size);
+  });
+
+  // Mobile size chip: a dot at the brush size (capped to fit the chip)
+  const chipDot = document.querySelector('#size-chip .dot');
+  const d = min(brushSize, 24) + 'px';
+  chipDot.style.width = d;
+  chipDot.style.height = d;
+
+  // Sidebar option groups and strip chips: data-for lists their tools
+  document.querySelectorAll('[data-for]').forEach(el => {
+    el.hidden = !el.dataset.for.split(' ').includes(tool);
+  });
+
+  // Mobile strip: one row of options for the tool
+  let strip = 'colours';
+  if (tool === 'eyes') strip = 'eyes';
+  if (tool === 'eraser' || (tool === 'brush' && brushSizesShown)) strip = 'sizes';
+  document.querySelectorAll('[data-strip]').forEach(row => {
+    row.hidden = row.dataset.strip !== strip;
+  });
+}
+
+// Mobile bottom sheet. Collapsed it shows the options strip and the tool
+// row; expanded, the less frequent controls slide up above them.
+function setupMobileSheet() {
+  const bar = document.getElementById('bottom-toolbar');
+  const handle = document.getElementById('toggle-mobile-menu');
+  const sheet = document.getElementById('mobile-expanded-menu');
+  const scrim = document.getElementById('sheet-scrim');
+
+  const setOpen = (open) => {
+    bar.classList.toggle('open', open);
+    scrim.classList.toggle('show', open);
+    handle.setAttribute('aria-expanded', open);
+    handle.setAttribute('aria-label', open ? 'Fewer options' : 'More options');
+    sheet.inert = !open; // closed: its keys can't be focused or tapped
+  };
+  setOpen(false);
+
+  // The handle: tap (or Enter/Space) toggles, a swipe up opens, down closes
+  let startY = null;
+  let swiped = false;
+  handle.addEventListener('pointerdown', (e) => {
+    startY = e.clientY;
+    swiped = false;
+  });
+  handle.addEventListener('pointermove', (e) => {
+    if (startY === null || swiped) return;
+    const dy = e.clientY - startY;
+    if (Math.abs(dy) > 12) {
+      swiped = true;
+      setOpen(dy < 0);
+    }
+  });
+  handle.addEventListener('pointerup', () => { startY = null; });
+  handle.addEventListener('pointercancel', () => { startY = null; });
+  handle.addEventListener('click', () => {
+    if (swiped) {
+      swiped = false;
+      return;
+    }
+    setOpen(!bar.classList.contains('open'));
+  });
+
+  scrim.addEventListener('click', () => setOpen(false));
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+
+  // Picking a tool, colour or size means "back to the canvas", and so do
+  // the sheet keys marked .closes-sheet (their result shows on the canvas,
+  // which the open sheet covers)
+  bar.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn || btn === handle) return;
+    if (!sheet.contains(btn) || btn.classList.contains('closes-sheet')) {
+      setOpen(false);
+    }
   });
 }
