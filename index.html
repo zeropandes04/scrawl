@@ -969,7 +969,7 @@
         <aside class="sidebar" aria-label="Tools">
           <div class="sidebar-section">
             <h3>Scrawl</h3>
-            <button id="generate-btn" class="cta-button" title="Generate a new scrawl (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/></svg>New scrawl</button>
+            <button id="generate-btn" class="cta-button" title="Generate a new scrawl (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(-14 12 12)"><rect x="4.5" y="4.5" width="15" height="15" rx="3.5"/><circle cx="8.6" cy="8.6" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r="1.4" fill="currentColor" stroke="none"/></g></svg>New scrawl</button>
             <div class="control-group">
               <label for="intensity-slider">Intensity (applies to the next scrawl)</label>
               <div class="fader-row">
@@ -982,10 +982,10 @@
           <div class="sidebar-section">
             <h3>Tools</h3>
             <div class="tool-keys" role="group" aria-label="Tool">
-              <button type="button" class="tool-key active" data-tool="brush" title="Brush (B)" aria-pressed="true"><img src="icons/paintbrush.png" alt=""><span>Brush</span></button>
-              <button type="button" class="tool-key" data-tool="eraser" title="Eraser (E)" aria-pressed="false"><img src="icons/eraser.png" alt=""><span>Eraser</span></button>
-              <button type="button" class="tool-key" data-tool="fill" title="Fill (F)" aria-pressed="false"><img src="icons/paint-rollers.png" alt=""><span>Fill</span></button>
-              <button type="button" class="tool-key" data-tool="eyes" title="Eyes: move and restyle the eyes (V)" aria-pressed="false"><img src="icons/eye.png" alt=""><span>Eyes</span></button>
+              <button type="button" class="tool-key active" data-tool="brush" title="Brush (B)" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c2-7 4-9 6-9s.5 7 3 7 3-10 5.5-10 1.5 5 3.5 6"/></svg><span>Brush</span></button>
+              <button type="button" class="tool-key" data-tool="eraser" title="Eraser (E)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(40 12 12)"><rect x="7.5" y="3" width="9" height="18" rx="2"/><path d="M7.5 13.5h9"/></g></svg><span>Eraser</span></button>
+              <button type="button" class="tool-key" data-tool="fill" title="Fill (F)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10c0-3.5 3-6 7.5-6s8 2.5 8 6.5-3.5 9.5-8.5 9.5-7-5.5-7-10z" fill="currentColor" fill-opacity=".28"/></svg><span>Fill</span></button>
+              <button type="button" class="tool-key" data-tool="eyes" title="Eyes: move and restyle the eyes (V)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="12" r="4.6"/><circle cx="17.2" cy="12.6" r="4"/><circle cx="8.2" cy="12.6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18.2" cy="13.2" r="1.5" fill="currentColor" stroke="none"/></svg><span>Eyes</span></button>
             </div>
             <!-- Options for the selected tool; scrawl.js shows the groups whose
                  data-for lists it -->
@@ -1087,7 +1087,7 @@
                   <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1">
                   <span class="lcd" id="intensity-value-mobile">10</span>
                 </div>
-                <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/></svg>New scrawl</button>
+                <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(-14 12 12)"><rect x="4.5" y="4.5" width="15" height="15" rx="3.5"/><circle cx="8.6" cy="8.6" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r="1.4" fill="currentColor" stroke="none"/></g></svg>New scrawl</button>
               </div>
 
               <div class="mobile-section">
@@ -1177,12 +1177,12 @@
 
         <!-- Tool row: always visible, in thumb reach -->
         <div class="tool-row">
-          <button type="button" id="generate-btn-mobile" class="tool-key cta-button" title="New scrawl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/></svg><span>New</span></button>
+          <button type="button" id="generate-btn-mobile" class="tool-key cta-button" title="New scrawl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(-14 12 12)"><rect x="4.5" y="4.5" width="15" height="15" rx="3.5"/><circle cx="8.6" cy="8.6" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="15.4" cy="15.4" r="1.4" fill="currentColor" stroke="none"/></g></svg><span>New</span></button>
           <div class="tool-keys" role="group" aria-label="Tool">
-            <button type="button" class="tool-key active" data-tool="brush" title="Brush" aria-pressed="true"><img src="icons/paintbrush.png" alt=""><span>Brush</span></button>
-            <button type="button" class="tool-key" data-tool="eraser" title="Eraser" aria-pressed="false"><img src="icons/eraser.png" alt=""><span>Eraser</span></button>
-            <button type="button" class="tool-key" data-tool="fill" title="Fill" aria-pressed="false"><img src="icons/paint-rollers.png" alt=""><span>Fill</span></button>
-            <button type="button" class="tool-key" data-tool="eyes" title="Eyes: move and restyle the eyes" aria-pressed="false"><img src="icons/eye.png" alt=""><span>Eyes</span></button>
+            <button type="button" class="tool-key active" data-tool="brush" title="Brush" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c2-7 4-9 6-9s.5 7 3 7 3-10 5.5-10 1.5 5 3.5 6"/></svg><span>Brush</span></button>
+            <button type="button" class="tool-key" data-tool="eraser" title="Eraser" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(40 12 12)"><rect x="7.5" y="3" width="9" height="18" rx="2"/><path d="M7.5 13.5h9"/></g></svg><span>Eraser</span></button>
+            <button type="button" class="tool-key" data-tool="fill" title="Fill" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10c0-3.5 3-6 7.5-6s8 2.5 8 6.5-3.5 9.5-8.5 9.5-7-5.5-7-10z" fill="currentColor" fill-opacity=".28"/></svg><span>Fill</span></button>
+            <button type="button" class="tool-key" data-tool="eyes" title="Eyes: move and restyle the eyes" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="12" r="4.6"/><circle cx="17.2" cy="12.6" r="4"/><circle cx="8.2" cy="12.6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18.2" cy="13.2" r="1.5" fill="currentColor" stroke="none"/></svg><span>Eyes</span></button>
           </div>
           <button type="button" id="undo-btn-mobile" class="tool-key" title="Undo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Undo</span></button>
         </div>
