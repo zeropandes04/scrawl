@@ -113,11 +113,7 @@ function setup() {
     select("#intensity-value").html(intensity);
     tickLcd("intensity-value");
   });
-  // Releasing the slider shows the new intensity straight away, unless that
-  // would discard a drawing (then it applies to the next Generate)
-  intensitySlider.changed(() => {
-    if (!hasDrawings) generateScrawlface();
-  });
+  // The slider only sets the intensity; it applies at the next Generate
 
   // Setup brush tool dropdown
   setupToolDropdown(
@@ -175,9 +171,6 @@ function setup() {
       // Sync with desktop slider
       select("#intensity-slider").value(intensity);
       select("#intensity-value").html(intensity);
-    });
-    intensitySliderMobile.changed(() => {
-      if (!hasDrawings) generateScrawlface();
     });
   }
 
@@ -566,7 +559,8 @@ const eyeSets = {
   side: ['side', 'side'],
   amber: ['amber', 'amber'],
   sunny: ['sunny', 'sunny'],
-  blue: ['blue', 'blue']
+  blue: ['blue', 'blue'],
+  cat: ['cat', 'cat']
 };
 const eyeColors = {
   lidBlue: '#7B9CF2',
@@ -574,7 +568,8 @@ const eyeColors = {
   irisBlue: '#8ED3F5',
   irisAqua: '#A8EBE3',
   amber: '#F5A32A',
-  lidYellow: '#F8D24A'
+  lidYellow: '#F8D24A',
+  cat: '#C5DC3A'
 };
 const almondW = 40;  // half the width of an almond eye
 const almondC = 33;  // control-point height of its top and bottom curves
@@ -659,6 +654,15 @@ function drawEye(g, x, y, scale, style) {
     g.noStroke();
     g.fill(255);
     g.ellipse(3, -3, 4, 4);
+  } else if (style === 'cat') {
+    // Cat: the whole eye is a yellow-green iris with a vertical slit pupil
+    almondEye(g, eyeColors.cat);
+    g.noStroke();
+    g.fill(0);
+    g.ellipse(0, 0, 9, 40);
+    g.fill(255);
+    g.ellipse(9, -9, 6, 6);
+    g.stroke(0);
   } else if (style === 'sunny') {
     // Yellow lid, black iris, lower lashes
     almondEye(g, 255);
@@ -753,7 +757,7 @@ function setupEyeSetButtons() {
 // same pair as now, so every press visibly changes something)
 function mixEyes() {
   const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed',
-                  'dot', 'side', 'amber', 'blue', 'sunny'];
+                  'dot', 'side', 'amber', 'blue', 'sunny', 'cat'];
   let pair;
   do {
     pair = shuffle(styles).slice(0, 2);
@@ -1222,10 +1226,8 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
       option.classList.add('selected');
 
       // Update size indicator circle
-      const sizeValue = parseInt(value);
       if (label) {
-        label.style.width = sizeValue + 'px';
-        label.style.height = sizeValue + 'px';
+        setSizeIndicator(label, parseInt(value));
       }
 
       // Close dropdown
@@ -1244,6 +1246,14 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
       button.classList.remove('open');
     }
   });
+}
+
+// The dot under the brush/eraser icon shows the size 1:1 up to 16px; the
+// big sizes (24, 32) are shown at half the extra so the dot fits the key
+function setSizeIndicator(dot, size) {
+  const d = size <= 16 ? size : 16 + (size - 16) / 2;
+  dot.style.width = d + 'px';
+  dot.style.height = d + 'px';
 }
 
 function setupColorSwatches() {
@@ -1477,16 +1487,14 @@ function setupMobileToolbar() {
         // Update desktop eraser indicator
         const indicator = document.getElementById('eraser-size-indicator');
         if (indicator) {
-          indicator.style.width = size + 'px';
-          indicator.style.height = size + 'px';
+          setSizeIndicator(indicator, size);
         }
       } else {
         brushSize = size;
         // Update desktop brush indicator
         const indicator = document.getElementById('brush-size-indicator');
         if (indicator) {
-          indicator.style.width = size + 'px';
-          indicator.style.height = size + 'px';
+          setSizeIndicator(indicator, size);
         }
       }
     });
