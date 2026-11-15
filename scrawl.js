@@ -739,18 +739,7 @@ const eyeSets = {
   frog: ['frog', 'frog'],
   cat: ['cat', 'cat']
 };
-// Eye colours come from the swatch palette, so eyes and doodles match
-const eyeColors = {
-  blue: '#26ACD9',      // Nano Blue
-  red: '#CC0000',       // Red
-  orange: '#F53524',    // Orange
-  aqua: '#44A2A2',      // Aqua
-  tangerine: '#FFA64D', // Tangerine
-  yellow: '#FFF133',    // Yellow
-  lime: '#66BD0F',      // Lime
-  magenta: '#CC0099',   // Magenta
-  pink: '#F2A6ED'       // Electric Pink
-};
+// The eyes are drawn in black and white only
 let doodleSeed = 0;  // set per eye, so two eyes of one style aren't identical
 
 // Every eye is two curves meeting in a point at each side. A shape says how
@@ -829,12 +818,11 @@ function drawEye(g, x, y, scale, style, seed = 0) {
     // Open eyes: the outline, then everything inside it (clipped to the
     // shape so nothing pokes out), then the outline again and the lashes
     if (style === 'frog') {
-      // The green bump a frog's eye sits in, showing above and beside it
-      g.fill(eyeColors.lime);
+      // The bump a frog's eye sits in, showing above and beside it
+      g.fill(255);
       doodleEllipse(g, 0, -5, 76, 71, 8);
     }
-    const colour = { goat: eyeColors.tangerine, frog: eyeColors.yellow, cat: eyeColors.lime }[style];
-    eyeOutline(g, colour || 255);
+    eyeOutline(g, 255);
 
     const ctx = g.drawingContext;
     ctx.save();
@@ -842,17 +830,17 @@ function drawEye(g, x, y, scale, style, seed = 0) {
     if (style === 'lashes') {
       iris(g, 0, 0, 26, 0);
     } else if (style === 'sleepy') {
-      // Heavy coloured lid covering the top half
+      // Heavy lid covering the top half
       iris(g, 0, 6, 26, 0);
-      lid(g, eyeColors.pink, 0);
+      lid(g, 255, 0);
     } else if (style === 'glam') {
-      // Magenta crescent lid, aqua iris
-      iris(g, 0, 0, 30, eyeColors.aqua);
-      lid(g, eyeColors.magenta, 0.35);
+      // Black crescent lid over a ringed iris
+      iris(g, 0, 0, 30, 255);
+      lid(g, 0, 0.35);
     } else if (style === 'spiky') {
-      // Bloodshot: red veins on the white, around a blue iris
+      // Bloodshot: veins on the white, around a ringed iris
       veins(g);
-      iris(g, 0, 0, 28, eyeColors.blue);
+      iris(g, 0, 0, 28, 255);
     } else if (style === 'dot') {
       // Small dot pupil
       g.fill(0);
@@ -865,9 +853,9 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       g.fill(255);
       doodleEllipse(g, 10, -7, 9, 8, 4);
     } else if (style === 'goat') {
-      // Amber eye with a goat's flat, bar-shaped pupil, hand-drawn:
-      // short orange flecks scratched in around a wobbly bar
-      g.stroke(eyeColors.orange);
+      // A goat's flat, bar-shaped pupil, hand-drawn: short flecks
+      // scratched in around a wobbly bar
+      g.stroke(0);
       g.strokeWeight(1.5);
       for (let i = 0; i < 10; i++) {
         const angle = TWO_PI * (i + 0.3 * wobble(40 + i)) / 10;
@@ -888,23 +876,23 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       g.fill(255);
       doodleEllipse(g, 9, -9, 6, 5, 4);
     } else if (style === 'frog') {
-      // Golden eye with a wide oval pupil
+      // A wide oval pupil
       g.noStroke();
       g.fill(0);
       doodleEllipse(g, 0, 2, 31, 13, 3);
       g.fill(255);
       doodleEllipse(g, 8, -8, 7, 6, 4);
     } else if (style === 'cat') {
-      // The whole eye is a lime iris with a vertical slit pupil
+      // A vertical slit pupil
       g.noStroke();
       g.fill(0);
       doodleEllipse(g, 0, 0, 9, 40, 3);
       g.fill(255);
       doodleEllipse(g, 9, -8, 7, 6, 4);
     } else if (style === 'sunny') {
-      // Yellow lid over a black iris
+      // Deep lid over a black iris
       iris(g, 0, -6, 26, 0);
-      lid(g, eyeColors.yellow, 0.45);
+      lid(g, 255, 0.45);
     }
     ctx.restore();
 
@@ -984,7 +972,8 @@ function clipToEye(ctx) {
   ctx.clip();
 }
 
-// A coloured iris (or plain black when color is 0) with a pupil and highlight
+// An iris with a highlight: solid black when color is 0, otherwise a
+// ring in that colour around a black pupil
 function iris(g, x, y, size, color) {
   g.fill(color);
   doodleEllipse(g, x, y, size, size, 5);
@@ -998,14 +987,14 @@ function iris(g, x, y, size, color) {
   g.stroke(0);
 }
 
-// Thin red veins creeping in from the edge of the eye white. Drawn inside
+// Thin veins creeping in from the edge of the eye white. Drawn inside
 // the eye's clip, before the iris, so both trim them.
 function veins(g) {
   const { w, top, bottom } = eyeShape;
   const count = 9;
   g.push();
   g.noFill();
-  g.stroke(eyeColors.red);
+  g.stroke(0);
   g.strokeWeight(1.2);
   for (let i = 0; i < count; i++) {
     const angle = TWO_PI * (i + 0.3 * wobble(40 + i)) / count;
