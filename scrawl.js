@@ -734,9 +734,9 @@ const eyeSets = {
   wink: ['lashes', 'closed'],
   dot: ['dot', 'dot'],
   side: ['side', 'side'],
-  amber: ['amber', 'amber'],
+  goat: ['goat', 'goat'],
   sunny: ['sunny', 'sunny'],
-  blue: ['blue', 'blue'],
+  frog: ['frog', 'frog'],
   cat: ['cat', 'cat']
 };
 // Eye colours come from the swatch palette, so eyes and doodles match
@@ -763,15 +763,15 @@ const eyeShapes = {
   round:    { w: 32, top: 46, bottom: 46, kl: 0.95, kr: 0.95 },
   slit:     { w: 48, top: 14, bottom: 14, kl: 0.5, kr: 0.5 },    // long and narrowed
   teardrop: { w: 42, top: 36, bottom: 36, kl: 0.05, kr: 1.1 },   // pointed left, round right
-  smile:    { w: 36, top: 6, bottom: 50, kl: 0.7, kr: 0.7 },     // flat top, deep bottom
+  wide:     { w: 46, top: 28, bottom: 28, kl: 0.6, kr: 0.6 },    // broad, soft-cornered
   dome:     { w: 42, top: 52, bottom: 8, kl: 0.7, kr: 0.7 },     // deep top, flat bottom
   big:      { w: 40, top: 50, bottom: 50, kl: 0.9, kr: 0.9 },    // big and round
   slanted:  { w: 46, top: 24, bottom: 24, kl: 0.3, kr: 0.7, tilt: 0.3 }
 };
 const eyeStyleShapes = {
   lashes: 'almond', closed: 'almond', sleepy: 'lens', glam: 'upturned',
-  spiky: 'round', dot: 'slit', side: 'teardrop', amber: 'smile',
-  sunny: 'dome', blue: 'big', cat: 'slanted'
+  spiky: 'round', dot: 'slit', side: 'teardrop', goat: 'wide',
+  sunny: 'dome', frog: 'big', cat: 'slanted'
 };
 let eyeShape = eyeShapes.almond; // shape of the eye being drawn
 
@@ -817,7 +817,12 @@ function drawEye(g, x, y, scale, style, seed = 0) {
   } else {
     // Open eyes: the outline, then everything inside it (clipped to the
     // shape so nothing pokes out), then the outline again and the lashes
-    const colour = { amber: eyeColors.tangerine, blue: eyeColors.blue, cat: eyeColors.lime }[style];
+    if (style === 'frog') {
+      // The green bump a frog's eye sits in, showing above and beside it
+      g.fill(eyeColors.lime);
+      doodleEllipse(g, 0, -6, 96, 90, 8);
+    }
+    const colour = { goat: eyeColors.tangerine, frog: eyeColors.yellow, cat: eyeColors.lime }[style];
     eyeOutline(g, colour || 255);
 
     const ctx = g.drawingContext;
@@ -848,14 +853,20 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       doodleEllipse(g, 18, 0, 44, 44, 3);
       g.fill(255);
       doodleEllipse(g, 10, -7, 9, 8, 4);
-    } else if (style === 'amber' || style === 'blue') {
-      // Whole eye filled with colour, dot pupil in the middle of the shape
-      const cy = (eyeShape.bottom - eyeShape.top) * 0.375;
-      g.fill(0);
-      doodleEllipse(g, 0, cy, 14, 14, 3);
+    } else if (style === 'goat') {
+      // Amber eye with a goat's flat, bar-shaped pupil
       g.noStroke();
+      g.fill(0);
+      g.rect(-17, -6, 34, 12, 4);
       g.fill(255);
-      doodleEllipse(g, 3, cy - 3, 5, 4, 4);
+      doodleEllipse(g, 9, -9, 6, 5, 4);
+    } else if (style === 'frog') {
+      // Golden eye with a wide oval pupil
+      g.noStroke();
+      g.fill(0);
+      doodleEllipse(g, 0, 2, 40, 17, 3);
+      g.fill(255);
+      doodleEllipse(g, 10, -10, 9, 8, 4);
     } else if (style === 'cat') {
       // The whole eye is a lime iris with a vertical slit pupil
       g.noStroke();
@@ -1040,7 +1051,7 @@ function setupEyeSetButtons() {
 // same pair as now, so every press visibly changes something)
 function mixEyes() {
   const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed',
-                  'dot', 'side', 'amber', 'blue', 'sunny', 'cat'];
+                  'dot', 'side', 'goat', 'frog', 'sunny', 'cat'];
   let pair;
   do {
     pair = shuffle(styles).slice(0, 2);
