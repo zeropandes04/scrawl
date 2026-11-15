@@ -378,6 +378,8 @@
     .strip-chip .dot {
       border-radius: 50%;
       background: var(--brush-color, var(--ink));
+      /* Faint ring so a white dot still shows on the pale key */
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
     }
 
     /* The eraser's sizes are drawn as white dots with an outline */
@@ -998,6 +1000,7 @@
               </div>
               <div class="swatches" data-for="brush fill" role="group" aria-label="Colour">
                 <button type="button" class="swatch selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
+                <button type="button" class="swatch" data-color="#FFFFFF" style="background: #FFFFFF;" title="White" aria-label="White"></button>
                 <button type="button" class="swatch" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
                 <button type="button" class="swatch" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
                 <button type="button" class="swatch" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
@@ -1123,6 +1126,7 @@
             </button>
             <div class="strip-scroll" role="group" aria-label="Colour">
               <button type="button" class="swatch selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
+              <button type="button" class="swatch" data-color="#FFFFFF" style="background: #FFFFFF;" title="White" aria-label="White"></button>
               <button type="button" class="swatch" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
               <button type="button" class="swatch" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
               <button type="button" class="swatch" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
