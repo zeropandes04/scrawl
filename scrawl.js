@@ -742,7 +742,7 @@ const eyeSets = {
 // Eye colours come from the swatch palette, so eyes and doodles match
 const eyeColors = {
   blue: '#26ACD9',      // Nano Blue
-  orange: '#F53524',    // Orange
+  red: '#CC0000',       // Red
   aqua: '#44A2A2',      // Aqua
   tangerine: '#FFA64D', // Tangerine
   yellow: '#FFF133',    // Yellow
@@ -834,7 +834,7 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       iris(g, 0, 0, 30, eyeColors.aqua);
       lid(g, eyeColors.magenta, 0.35);
     } else if (style === 'spiky') {
-      iris(g, 0, 0, 32, eyeColors.orange);
+      iris(g, 0, 0, 32, eyeColors.red);
     } else if (style === 'dot') {
       // Small dot pupil
       g.fill(0);
