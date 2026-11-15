@@ -7,11 +7,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
   <script src="scrawl.js"></script>
   <style>
-    /* Look & feel borrowed from Teenage Engineering hardware (OP-1):
-       an aluminium body, physical keycaps that press in, monospaced
-       micro-labels, a dark "screen" bezel and coloured knobs. */
+    /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
+       Engineering hardware (OP-1): an aluminium panel, physical keycaps
+       that press in, monospaced micro-labels and coloured knobs. */
     :root {
-      --body: #e9e8e4;         /* page */
       --chassis: #d7d6d1;      /* device panel */
       --chassis-edge: #bdbcb6;
       --key: #f6f6f3;          /* keycap face */
@@ -35,9 +34,9 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-      background: var(--body);
-      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      background: #fbfbfd;
+      color: #1d1d1f;
       line-height: 1.47059;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -57,38 +56,18 @@
     h1 {
       font-size: 56px;
       line-height: 1.07143;
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      text-transform: lowercase;
+      font-weight: 600;
+      letter-spacing: -0.005em;
       margin-bottom: 6px;
-      color: var(--ink);
-    }
-
-    /* Model-number tag after the wordmark, OP-1 style */
-    h1::after {
-      content: 'sf-1';
-      display: inline-block;
-      vertical-align: middle;
-      margin-left: 0.4em;
-      padding: 0.2em 0.5em;
-      font-family: var(--mono);
-      font-size: 0.24em;
-      font-weight: 500;
-      letter-spacing: 0.05em;
-      line-height: 1;
-      color: var(--body);
-      background: var(--ink);
-      border-radius: 4px;
+      color: #1d1d1f;
     }
 
     .subtitle {
-      font-family: var(--mono);
-      font-size: 15px;
+      font-size: 21px;
       line-height: 1.381;
-      color: var(--muted);
+      color: #6e6e73;
       font-weight: 400;
-      letter-spacing: 0.02em;
-      text-transform: lowercase;
+      letter-spacing: 0.011em;
       margin-top: 6px;
       margin-bottom: 0;
     }
@@ -96,29 +75,22 @@
     .canvas-section {
       display: flex;
       gap: 0;
-      background: var(--chassis);
+      background: #ffffff;
       border-radius: 18px;
       overflow: hidden;
-      box-shadow:
-        inset 0 1px 0 rgba(255,255,255,0.7),
-        0 0 0 1px var(--chassis-edge),
-        0 10px 30px rgba(0,0,0,0.12);
+      box-shadow: 2px 4px 12px rgba(0,0,0,0.08);
       margin: 40px 0;
       min-height: 600px;
     }
 
-    /* The canvas sits in a dark bezel, like the OP-1 screen */
     .canvas-area {
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 18px;
-      margin: 20px 0 20px 20px;
-      background: var(--screen);
-      border-radius: 12px;
-      box-shadow: inset 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.6);
+      padding: 40px;
+      background: #ffffff;
       gap: 24px;
     }
 
@@ -148,12 +120,16 @@
     #scrawl-container canvas {
       max-width: 100%;
       height: auto !important;
-      border-radius: 4px;
+      border-radius: 12px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
 
+    /* Control panel: styled after Teenage Engineering hardware (OP-1) */
     .sidebar {
       width: 280px;
-      background: transparent;
+      background: var(--chassis);
+      border-left: 1px solid var(--chassis-edge);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
       padding: 32px 24px;
       display: flex;
       flex-direction: column;
@@ -795,11 +771,11 @@
     footer {
       text-align: center;
       padding: 52px 0;
-      color: var(--muted);
-      font-family: var(--mono);
+      color: #86868b;
       font-size: 12px;
       line-height: 1.33337;
       font-weight: 400;
+      letter-spacing: -0.01em;
     }
 
     @media (max-width: 1068px) {
@@ -812,10 +788,11 @@
       h1 {
         font-size: 40px;
         line-height: 1.1;
+        letter-spacing: 0;
       }
 
       .subtitle {
-        font-size: 13px;
+        font-size: 17px;
         line-height: 1.47059;
       }
 
@@ -835,18 +812,13 @@
         margin: 0 -16px 140px;
       }
 
-      /* No bezel on phones: the canvas uses the full width */
       .canvas-area {
         padding: 8px;
-        margin: 0;
-        background: transparent;
-        box-shadow: none;
-        border-radius: 0;
       }
 
       #scrawl-container canvas {
         border-radius: 0;
-        box-shadow: 0 0 0 1px var(--chassis-edge);
+        box-shadow: none;
       }
 
       .sidebar {
@@ -882,6 +854,10 @@
     @media (max-width: 480px) {
       h1 {
         font-size: 32px;
+      }
+
+      .subtitle {
+        font-size: 17px;
       }
 
       header {
@@ -924,7 +900,7 @@
       }
 
       .subtitle {
-        font-size: 12px;
+        font-size: 13px;
         margin-top: 2px;
       }
 
