@@ -546,7 +546,16 @@
 
     .mobile-section .hint {
       display: block;
-      margin-top: 4px;
+    }
+
+    /* Full-width New scrawl key under the intensity fader in the sheet */
+    .new-scrawl-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      margin-top: 10px;
     }
 
     .mobile-control-btn {
@@ -1083,12 +1092,15 @@
           <div class="sheet-inner">
             <div class="sheet-content">
               <div class="mobile-section">
-                <label class="mobile-section-label" for="intensity-slider-mobile">Scrawl intensity</label>
+                <!-- Same pairing as the sidebar: the intensity applies to the
+                     next scrawl, so New sits right under it -->
+                <div class="mobile-section-label">Scrawl</div>
+                <label class="hint" for="intensity-slider-mobile">Intensity</label>
                 <div class="fader-row">
                   <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1">
                   <span class="lcd" id="intensity-value-mobile">10</span>
                 </div>
-                <span class="hint">Applies to the next New scrawl</span>
+                <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/></svg>New scrawl</button>
               </div>
 
               <div class="mobile-section">

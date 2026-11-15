@@ -83,6 +83,7 @@ function setup() {
   // Desktop and mobile keys that do the same thing
   select("#generate-btn").mousePressed(generateScrawlface);
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
+  select("#generate-btn-sheet").mousePressed(generateScrawlface);
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
