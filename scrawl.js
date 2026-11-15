@@ -505,6 +505,15 @@ function saveImage() {
   saveCanvas(canvas, 'scrawlface', 'png');
 }
 
+// Hands the image to the phone's share sheet (messages, socials, ...)
+function shareImage() {
+  canvas.elt.toBlob(blob => {
+    const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
+    // Rejects when the share sheet is dismissed - nothing to do then
+    navigator.share({ files: [file] }).catch(() => {});
+  }, 'image/png');
+}
+
 function toggleEyes() {
   showScrawl = !showScrawl;
   updateScrawlToggleButtons();
@@ -1181,6 +1190,14 @@ function setupMobileToolbar() {
       }
     });
   });
+
+  // Share button: only shown where the browser can share image files
+  const shareBtn = document.getElementById('share-btn-mobile');
+  const testFile = new File([], 'scrawlface.png', { type: 'image/png' });
+  if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
+    shareBtn.hidden = false;
+    shareBtn.addEventListener('click', shareImage);
+  }
 
   // Mobile move eyes button
   const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');

@@ -371,6 +371,11 @@
       padding: 8px 24px;
     }
 
+    /* 7th button in the 2-column grid (when shown): span the full row instead of sitting alone */
+    #share-btn-mobile {
+      grid-column: 1 / -1;
+    }
+
     .mobile-control-btn:active {
       transform: scale(0.97);
       background: #d2d2d7;
@@ -1183,6 +1188,7 @@
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
               <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
+              <button id="share-btn-mobile" class="mobile-control-btn" hidden>Share</button>
             </div>
           </div>
 
