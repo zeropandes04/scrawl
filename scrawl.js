@@ -107,6 +107,11 @@ function setup() {
     intensity = parseInt(intensitySlider.value());
     select("#intensity-value").html(intensity);
   });
+  // Releasing the slider shows the new intensity straight away, unless that
+  // would discard a drawing (then it applies to the next Generate)
+  intensitySlider.changed(() => {
+    if (!hasDrawings) generateScrawlface();
+  });
 
   // Setup brush tool dropdown
   setupToolDropdown(
@@ -161,6 +166,9 @@ function setup() {
       // Sync with desktop slider
       select("#intensity-slider").value(intensity);
       select("#intensity-value").html(intensity);
+    });
+    intensitySliderMobile.changed(() => {
+      if (!hasDrawings) generateScrawlface();
     });
   }
 
