@@ -7,9 +7,7 @@ let moveEyesMode = false;
 let drawMode = false;
 let eraseMode = false;
 let bucketMode = false;
-let scrawlGraphics;
 let baseScrawlGraphics;
-let originalScrawlGraphics;
 let drawingGraphics;
 let eyePositions = [];
 let draggedEyeIndex = -1;
@@ -20,7 +18,6 @@ const canvasSize = 800;
 const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
-const drawStrokeWeight = 8;
 
 let intensity = 20;
 let brushSize = 8;
@@ -30,13 +27,14 @@ let eraserSize = 16;
 // Memento pattern for undo/redo
 let historyStack = [];
 let redoStack = [];
-const maxHistorySize = 50;
+// Each snapshot is a full 800x800 RGBA copy (~2.7MB measured); undo + redo
+// share this budget, so 25 keeps a full history around 70MB on mobile.
+const maxHistorySize = 25;
 
 // Brush stroke tracking for easing
 let strokePoints = 0;
 let maxStrokePoints = 20; // Points to reach full size
 let currentBrushSize = 0;
-let lastStrokePos = null; // Track last position for ease-out
 
 function setup() {
   // CRITICAL: Disable pixel density to prevent coordinate mismatch
@@ -66,10 +64,8 @@ function setup() {
     }
   }, { passive: false });
 
-  scrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.drawingContext.willReadFrequently = true;
-  originalScrawlGraphics = createGraphics(canvasSize, canvasSize);
   drawingGraphics = createGraphics(canvasSize, canvasSize);
   drawingGraphics.drawingContext.willReadFrequently = true;
   drawingGraphics.clear();
@@ -84,6 +80,8 @@ function setup() {
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
+  select("#save-btn").mousePressed(saveImage);
+  select("#save-btn-mobile").mousePressed(saveImage);
 
   const undoBtnMobile = select("#undo-btn-mobile");
   if (undoBtnMobile) {
@@ -227,17 +225,7 @@ function generateScrawlface() {
     {x: eye2X, y: eye2Y, scale: 0.9}
   ];
 
-  originalScrawlGraphics.clear();
-  originalScrawlGraphics.image(baseScrawlGraphics, 0, 0);
-
-  updateScrawl();
   redrawCanvas();
-}
-
-function updateScrawl() {
-  scrawlGraphics.clear();
-  scrawlGraphics.image(baseScrawlGraphics, 0, 0);
-  scrawlGraphics.image(drawingGraphics, 0, 0);
 }
 
 function draw() {
@@ -245,7 +233,6 @@ function draw() {
     const transformed = getTransformedCoords(mouseX, mouseY);
     eyePositions[draggedEyeIndex].x = transformed.x;
     eyePositions[draggedEyeIndex].y = transformed.y;
-    updateScrawl();
     redrawCanvas();
     return;
   }
@@ -299,15 +286,11 @@ function draw() {
       drawingGraphics.noErase();
     }
 
-    // Store last position for potential ease-out
-    lastStrokePos = {x: current.x, y: current.y};
-
     if (!hasDrawings) {
       hasDrawings = true;
       enableClearButton();
     }
 
-    updateScrawl();
     redrawCanvas();
   }
 }
@@ -324,7 +307,12 @@ function isMouseInCanvas() {
   return mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height;
 }
 
-function mousePressed() {
+function mousePressed(event) {
+  // mousePressed is window-wide. Ignore presses on anything other than the
+  // canvas (e.g. mobile toolbar buttons that overlap it when the menu is open),
+  // even if their coordinates fall inside the canvas bounds.
+  if (event && event.target !== canvas.elt) return;
+
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     const eyeIndex = eyePositions.findIndex(pos =>
@@ -347,8 +335,7 @@ function mousePressed() {
   }
 
   if (bucketMode && isMouseInCanvas()) {
-    // Save state BEFORE bucket fill
-    saveState();
+    // floodFill saves undo state itself, only when it actually fills.
     // For bucket fill, we need to work with screen coordinates directly
     // because we need to detect what's visible at the clicked position
     floodFill(Math.floor(mouseX), Math.floor(mouseY), brushColor);
@@ -362,7 +349,6 @@ function mouseReleased() {
   }
 
   isDrawing = false;
-  lastStrokePos = null;
 }
 
 function keyPressed() {
@@ -405,12 +391,12 @@ function redrawCanvas() {
   rotate(radians(rotation));
   imageMode(CENTER);
 
+  // Draw the layers straight onto the canvas (no intermediate composite),
+  // so each frame while drawing only copies what's needed
   if (showScrawl) {
-    image(scrawlGraphics, 0, 0);
-  } else {
-    // Only show drawings, not the base scrawl
-    image(drawingGraphics, 0, 0);
+    image(baseScrawlGraphics, 0, 0);
   }
+  image(drawingGraphics, 0, 0);
 
   pop();
 
@@ -463,6 +449,11 @@ function rotateCanvas() {
   redrawCanvas();
 }
 
+// Saves exactly what is on screen (eyes, rotation, scrawl visibility)
+function saveImage() {
+  saveCanvas(canvas, 'scrawlface', 'png');
+}
+
 function toggleEyes() {
   showScrawl = !showScrawl;
   const btn = select("#toggle-eyes-btn");
@@ -485,6 +476,8 @@ function toggleMoveEyesMode() {
   if (!moveEyesMode) {
     cursor(ARROW);
   }
+
+  updateMobileToolButtons();
 }
 
 function activateBrushMode() {
@@ -509,6 +502,7 @@ function activateBrushMode() {
     if (bucketBtn) bucketBtn.classList.remove('active');
 
     cursor(CROSS);
+    updateMobileToolButtons();
   }
 }
 
@@ -534,6 +528,7 @@ function activateEraseMode() {
     if (bucketBtn) bucketBtn.classList.remove('active');
 
     cursor(CROSS);
+    updateMobileToolButtons();
   }
 }
 
@@ -559,6 +554,7 @@ function activateBucketMode() {
     if (bucketBtn) bucketBtn.classList.add('active');
 
     cursor(CROSS);
+    updateMobileToolButtons();
   }
 }
 
@@ -576,17 +572,19 @@ function deactivateAllTools() {
   if (bucketBtn) bucketBtn.classList.remove('active');
 
   cursor(ARROW);
+  updateMobileToolButtons();
 }
 
 function clearDrawings() {
+  if (!hasDrawings) return;
+
+  // Save state BEFORE clearing so Clear can be undone
+  saveState();
+
   drawingGraphics.clear();
   hasDrawings = false;
   disableClearButton();
 
-  // Clear undo/redo history
-  clearHistory();
-
-  updateScrawl();
   redrawCanvas();
 }
 
@@ -604,90 +602,154 @@ function floodFill(startX, startY, fillColor) {
   startX = Math.floor(startX);
   startY = Math.floor(startY);
 
-  // Create a temporary canvas that matches what the user sees (rotated scrawl)
+  // Max per-channel difference from the clicked colour that still counts as
+  // "the same area". Absorbs the soft anti-aliased edges of lines without
+  // leaking through them (measured: higher values start crossing 1px lines).
+  const fillTolerance = 64;
+
+  // Build a temporary canvas that matches what the user sees: background,
+  // rotated scrawl (if shown) and rotated drawings. The fill is bounded by all of it.
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvasSize;
   tempCanvas.height = canvasSize;
   const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
 
-  // Draw the rotated scrawl (matching the visual display)
-  tempCtx.save();
-  tempCtx.translate(canvasSize / 2, canvasSize / 2);
-  tempCtx.rotate(rotation * Math.PI / 180);
-  tempCtx.translate(-canvasSize / 2, -canvasSize / 2);
-  tempCtx.drawImage(baseScrawlGraphics.canvas, 0, 0);
-  tempCtx.restore();
+  const drawRotated = (source) => {
+    tempCtx.save();
+    tempCtx.translate(canvasSize / 2, canvasSize / 2);
+    tempCtx.rotate(rotation * Math.PI / 180);
+    tempCtx.translate(-canvasSize / 2, -canvasSize / 2);
+    tempCtx.drawImage(source, 0, 0);
+    tempCtx.restore();
+  };
 
-  // Check if we clicked on a scrawl line
-  const imageData = tempCtx.getImageData(0, 0, canvasSize, canvasSize);
-  const data = imageData.data;
+  tempCtx.fillStyle = `rgb(${bgColor.join(',')})`;
+  tempCtx.fillRect(0, 0, canvasSize, canvasSize);
 
-  const clickIndex = (startY * canvasSize + startX) * 4;
-  const clickR = data[clickIndex];
-  const clickG = data[clickIndex + 1];
-  const clickB = data[clickIndex + 2];
+  if (showScrawl) {
+    drawRotated(baseScrawlGraphics.canvas);
 
-  // Don't fill if clicking on a scrawl line (non-white pixel)
-  if (clickR + clickG + clickB < 700) {
-    return;
+    // Don't fill if clicking on a scrawl line (non-white pixel)
+    const [lineR, lineG, lineB] = tempCtx.getImageData(startX, startY, 1, 1).data;
+    if (lineR + lineG + lineB < 700) {
+      return;
+    }
   }
+
+  drawRotated(drawingGraphics.canvas);
+
+  const data = tempCtx.getImageData(0, 0, canvasSize, canvasSize).data;
+
+  // Target color (the color we're replacing) is whatever was clicked
+  const clickIndex = (startY * canvasSize + startX) * 4;
+  const targetR = data[clickIndex];
+  const targetG = data[clickIndex + 1];
+  const targetB = data[clickIndex + 2];
 
   // Convert fill color
   const fillR = parseInt(fillColor.slice(1, 3), 16);
   const fillG = parseInt(fillColor.slice(3, 5), 16);
   const fillB = parseInt(fillColor.slice(5, 7), 16);
 
-  // Flood fill to find all pixels to fill (on the rotated view)
-  const pixelsToFill = [];
-  const stack = [[startX, startY]];
-  const visited = new Set();
+  // Largest per-channel difference between a pixel and the target color
+  const distanceFromTarget = (idx) => Math.max(
+    Math.abs(data[idx] - targetR),
+    Math.abs(data[idx + 1] - targetG),
+    Math.abs(data[idx + 2] - targetB)
+  );
 
-  // Get target color (the color we're replacing)
-  const targetR = clickR;
-  const targetG = clickG;
-  const targetB = clickB;
+  // Nothing to do if the area is already (close to) the fill color
+  if (Math.max(Math.abs(fillR - targetR), Math.abs(fillG - targetG), Math.abs(fillB - targetB)) <= fillTolerance) {
+    return;
+  }
 
-  while (stack.length > 0) {
-    const [x, y] = stack.pop();
+  // Save state BEFORE filling - only now that we know a fill will happen
+  saveState();
 
-    if (x < 0 || x >= canvasSize || y < 0 || y >= canvasSize) continue;
+  // Flood fill to find all pixels to fill (on the rotated view).
+  // Pixels are addressed by flat index (y * canvasSize + x) and tracked in typed
+  // arrays: far faster on mobile than string keys in a Set and [x, y] pairs.
+  const totalPixels = canvasSize * canvasSize;
+  const inRegion = new Uint8Array(totalPixels); // 1 = pixel is part of the fill region
+  const stack = new Int32Array(totalPixels);    // each pixel is pushed at most once
+  let stackSize = 0;
 
-    const key = `${x},${y}`;
-    if (visited.has(key)) continue;
-    visited.add(key);
-
-    const idx = (y * canvasSize + x) * 4;
-    const pr = data[idx];
-    const pg = data[idx + 1];
-    const pb = data[idx + 2];
-
-    // If this pixel matches the target color
-    if (pr === targetR && pg === targetG && pb === targetB) {
-      pixelsToFill.push([x, y]);
-      stack.push([x + 1, y]);
-      stack.push([x - 1, y]);
-      stack.push([x, y + 1]);
-      stack.push([x, y - 1]);
+  // Add a neighbour to the region if it is close to the target color and isn't in yet
+  const visit = (i) => {
+    if (inRegion[i]) return;
+    if (distanceFromTarget(i * 4) <= fillTolerance) {
+      inRegion[i] = 1;
+      stack[stackSize++] = i;
     }
+  };
+
+  visit(startY * canvasSize + startX);
+
+  while (stackSize > 0) {
+    const i = stack[--stackSize];
+    const x = i % canvasSize;
+    if (x > 0) visit(i - 1);
+    if (x < canvasSize - 1) visit(i + 1);
+    if (i >= canvasSize) visit(i - canvasSize);
+    if (i < totalPixels - canvasSize) visit(i + canvasSize);
+  }
+
+  // The 1px ring just outside the region is the soft edge of whatever bounds it.
+  // Blend the fill into those pixels, more strongly the closer they are to the
+  // target color, so no white halo is left along lines but the lines stay visible.
+  // This ring never spreads further, so it can't leak through a line.
+  const edgeAlpha = new Uint8Array(totalPixels);
+  const markEdge = (j) => {
+    if (!inRegion[j]) edgeAlpha[j] = 255 - distanceFromTarget(j * 4);
+  };
+  for (let i = 0; i < totalPixels; i++) {
+    if (!inRegion[i]) continue;
+    const x = i % canvasSize;
+    if (x > 0) markEdge(i - 1);
+    if (x < canvasSize - 1) markEdge(i + 1);
+    if (i >= canvasSize) markEdge(i - canvasSize);
+    if (i < totalPixels - canvasSize) markEdge(i + canvasSize);
   }
 
   // Now we need to map these rotated screen pixels back to unrotated graphics coordinates
-  // and fill them in the drawingGraphics layer
+  // and fill them in the drawingGraphics layer. Same rotation as getTransformedCoords(),
+  // but applied to pixel centres and rounded: flooring pixel corners lands 1px off at
+  // 90/180/270 degrees (cos(90deg) is 6e-17, not 0), shifting the fill across lines.
   drawingGraphics.loadPixels();
+  const px = drawingGraphics.pixels;
 
-  for (const [screenX, screenY] of pixelsToFill) {
+  const angle = -radians(rotation);
+  const cosA = cos(angle);
+  const sinA = sin(angle);
+
+  for (let i = 0; i < totalPixels; i++) {
+    if (!inRegion[i] && !edgeAlpha[i]) continue;
+
     // Transform from rotated screen coordinates to unrotated graphics coordinates
-    const unrotatedCoords = getTransformedCoords(screenX, screenY);
-    const gx = Math.floor(unrotatedCoords.x);
-    const gy = Math.floor(unrotatedCoords.y);
+    const cx = (i % canvasSize) + 0.5 - width / 2;
+    const cy = Math.floor(i / canvasSize) + 0.5 - height / 2;
+    const gx = Math.round(cx * cosA - cy * sinA + canvasSize / 2 - 0.5);
+    const gy = Math.round(cx * sinA + cy * cosA + canvasSize / 2 - 0.5);
 
     // Make sure we're within bounds
-    if (gx >= 0 && gx < canvasSize && gy >= 0 && gy < canvasSize) {
-      const idx = (gy * canvasSize + gx) * 4;
-      drawingGraphics.pixels[idx] = fillR;
-      drawingGraphics.pixels[idx + 1] = fillG;
-      drawingGraphics.pixels[idx + 2] = fillB;
-      drawingGraphics.pixels[idx + 3] = 255;
+    if (gx < 0 || gx >= canvasSize || gy < 0 || gy >= canvasSize) continue;
+
+    const idx = (gy * canvasSize + gx) * 4;
+
+    if (inRegion[i]) {
+      px[idx] = fillR;
+      px[idx + 1] = fillG;
+      px[idx + 2] = fillB;
+      px[idx + 3] = 255;
+    } else {
+      // Edge pixel: composite the fill at partial opacity over what's already drawn
+      const a = edgeAlpha[i] / 255;
+      const existingA = px[idx + 3] / 255;
+      const outA = a + existingA * (1 - a);
+      px[idx] = (fillR * a + px[idx] * existingA * (1 - a)) / outA;
+      px[idx + 1] = (fillG * a + px[idx + 1] * existingA * (1 - a)) / outA;
+      px[idx + 2] = (fillB * a + px[idx + 2] * existingA * (1 - a)) / outA;
+      px[idx + 3] = outA * 255;
     }
   }
 
@@ -698,7 +760,6 @@ function floodFill(startX, startY, fillColor) {
     enableClearButton();
   }
 
-  updateScrawl();
   redrawCanvas();
 }
 
@@ -811,107 +872,6 @@ function setupToolDropdown(dropdownId, buttonId, labelId, onSelect, onActivate) 
   });
 }
 
-function setupColorDropdown(dropdownId, buttonId, swatchId, onSelect, onActivate) {
-  const dropdown = document.getElementById(dropdownId);
-  const button = document.getElementById(buttonId);
-  const content = dropdown.querySelector('.custom-dropdown-content');
-  const swatch = document.getElementById(swatchId);
-  const options = dropdown.querySelectorAll('.custom-dropdown-option');
-
-  let longPressTimer = null;
-  let isLongPress = false;
-
-  // Long-press handling for mouse
-  button.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    isLongPress = false;
-    longPressTimer = setTimeout(() => {
-      isLongPress = true;
-      openDropdown();
-    }, 500);
-  });
-
-  button.addEventListener('mouseup', () => {
-    clearTimeout(longPressTimer);
-    if (!isLongPress) {
-      // Short click - activate tool
-      onActivate();
-    }
-  });
-
-  button.addEventListener('mouseleave', () => {
-    clearTimeout(longPressTimer);
-  });
-
-  // Long-press handling for touch
-  button.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    isLongPress = false;
-    longPressTimer = setTimeout(() => {
-      isLongPress = true;
-      openDropdown();
-    }, 500);
-  });
-
-  button.addEventListener('touchend', (e) => {
-    e.preventDefault();
-    clearTimeout(longPressTimer);
-    if (!isLongPress) {
-      // Short tap - activate tool
-      onActivate();
-    }
-  });
-
-  button.addEventListener('touchcancel', () => {
-    clearTimeout(longPressTimer);
-  });
-
-  // Function to open dropdown
-  function openDropdown() {
-    // Close all other dropdowns
-    document.querySelectorAll('.custom-dropdown-content.show').forEach(el => {
-      el.classList.remove('show');
-      const parentDropdown = el.closest('.tool-dropdown, .custom-dropdown');
-      if (parentDropdown) {
-        const btn = parentDropdown.querySelector('.tool-dropdown-button, .custom-dropdown-button');
-        if (btn) btn.classList.remove('open');
-      }
-    });
-
-    content.classList.add('show');
-    button.classList.add('open');
-  }
-
-  // Handle option selection
-  options.forEach(option => {
-    option.addEventListener('click', () => {
-      const value = option.getAttribute('data-value');
-
-      // Update selected state
-      options.forEach(opt => opt.classList.remove('selected'));
-      option.classList.add('selected');
-
-      // Update swatch color
-      swatch.style.background = value;
-
-      // Close dropdown
-      content.classList.remove('show');
-      button.classList.remove('open');
-
-      // Call callback
-      onSelect(value);
-    });
-  });
-
-  // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!dropdown.contains(e.target)) {
-      content.classList.remove('show');
-      button.classList.remove('open');
-    }
-  });
-}
-
 function setupColorSwatches() {
   const swatches = document.querySelectorAll('.color-swatch-btn');
 
@@ -964,12 +924,9 @@ function undo() {
   drawingGraphics.image(previousState, 0, 0);
 
   // Update canvas
-  hasDrawings = historyStack.length > 0 || checkIfDrawingHasContent();
-  if (!hasDrawings) {
-    disableClearButton();
-  }
+  hasDrawings = checkIfDrawingHasContent();
+  hasDrawings ? enableClearButton() : disableClearButton();
 
-  updateScrawl();
   redrawCanvas();
   updateUndoRedoButtons();
 }
@@ -986,11 +943,10 @@ function redo() {
   drawingGraphics.clear();
   drawingGraphics.image(redoState, 0, 0);
 
-  // Update canvas
-  hasDrawings = true;
-  enableClearButton();
+  // Update canvas (redoing a Clear leaves the drawing empty)
+  hasDrawings = checkIfDrawingHasContent();
+  hasDrawings ? enableClearButton() : disableClearButton();
 
-  updateScrawl();
   redrawCanvas();
   updateUndoRedoButtons();
 }
@@ -1060,9 +1016,11 @@ function setupMobileToolbar() {
       if (expandedMenu.style.display === 'none') {
         expandedMenu.style.display = 'block';
         toggleMenuBtn.textContent = '×';
+        toggleMenuBtn.setAttribute('aria-expanded', 'true');
       } else {
         expandedMenu.style.display = 'none';
         toggleMenuBtn.textContent = '⋯';
+        toggleMenuBtn.setAttribute('aria-expanded', 'false');
       }
     });
   }
@@ -1075,21 +1033,18 @@ function setupMobileToolbar() {
   if (brushBtnMobile) {
     brushBtnMobile.addEventListener('click', () => {
       activateBrushMode();
-      updateMobileToolButtons();
     });
   }
 
   if (bucketBtnMobile) {
     bucketBtnMobile.addEventListener('click', () => {
       activateBucketMode();
-      updateMobileToolButtons();
     });
   }
 
   if (eraserBtnMobile) {
     eraserBtnMobile.addEventListener('click', () => {
       activateEraseMode();
-      updateMobileToolButtons();
     });
   }
 
@@ -1157,7 +1112,6 @@ function setupMobileToolbar() {
   if (moveEyesBtnMobile) {
     moveEyesBtnMobile.addEventListener('click', () => {
       toggleMoveEyesMode();
-      moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
     });
   }
 }
@@ -1175,5 +1129,10 @@ function updateMobileToolButtons() {
   }
   if (eraserBtnMobile) {
     eraserBtnMobile.classList.toggle('active', eraseMode);
+  }
+
+  const moveEyesBtnMobile = document.getElementById('move-eyes-btn-mobile');
+  if (moveEyesBtnMobile) {
+    moveEyesBtnMobile.classList.toggle('active', moveEyesMode);
   }
 }

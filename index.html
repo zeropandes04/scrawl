@@ -290,6 +290,7 @@
       min-width: 44px;
       width: 44px;
       height: 44px;
+      padding: 0;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.2s;
@@ -352,6 +353,16 @@
       cursor: pointer;
       transition: all 0.2s;
       font-weight: 500;
+    }
+
+    /* Compact so the desktop sidebar still fits a 720px-tall viewport */
+    #save-btn {
+      padding: 8px 24px;
+    }
+
+    /* 7th button in the 2-column grid: span the full row instead of sitting alone */
+    #save-btn-mobile {
+      grid-column: 1 / -1;
     }
 
     .mobile-control-btn:active {
@@ -706,6 +717,8 @@
 
     .color-swatch-btn {
       width: 100%;
+      min-width: 0;
+      padding: 0;
       aspect-ratio: 1 / 1;
       border-radius: 6px;
       cursor: pointer;
@@ -723,29 +736,6 @@
       border-color: #1d1d1f;
       transform: scale(1.05);
       box-shadow: 0 0 0 1px #ffffff, 0 0 0 3px #1d1d1f;
-    }
-
-    .example-section {
-      text-align: center;
-      margin-top: 80px;
-      padding-top: 48px;
-      border-top: 1px solid #d2d2d7;
-    }
-
-    .example-section h2 {
-      font-size: 32px;
-      line-height: 1.125;
-      font-weight: 600;
-      letter-spacing: 0.004em;
-      color: #1d1d1f;
-      margin-bottom: 24px;
-    }
-
-    .example-image {
-      max-width: 400px;
-      margin: 0 auto;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
 
     footer {
@@ -830,10 +820,6 @@
       .toolbar-section {
         gap: 8px;
       }
-
-      .example-section h2 {
-        font-size: 28px;
-      }
     }
 
     @media (max-width: 480px) {
@@ -852,10 +838,6 @@
       .bottom-toolbar {
         padding: 10px 12px;
         gap: 8px;
-      }
-
-      .example-section {
-        margin-top: 60px;
       }
     }
 
@@ -903,19 +885,21 @@
       }
 
       /* Canvas scales to fit within the smaller of available width/height.
-         #scrawl-container fills the available box; object-fit keeps the
-         square scrawl undistorted and centered within it. */
+         #scrawl-container fills the available box and is a size container;
+         the canvas element itself stays square (not letterboxed via
+         object-fit) so p5's pointer mapping matches what is drawn. */
       #scrawl-container {
         flex: 1;
         min-height: 0;
         min-width: 0;
         width: 100%;
+        container-type: size;
       }
 
       #scrawl-container canvas {
-        width: 100%;
-        height: 100% !important;
-        object-fit: contain;
+        width: min(100cqw, 100cqh) !important;
+        height: min(100cqw, 100cqh) !important;
+        max-width: none;
       }
 
       /* Generate/Intensity controls now live in the sidebar - stack to fit its width */
@@ -1058,21 +1042,21 @@
           <div class="sidebar-section">
             <h3>Colours</h3>
             <div class="color-swatches-palette">
-              <div class="color-swatch-btn selected" data-color="#000000" style="background: #000000;" title="Black"></div>
-              <div class="color-swatch-btn" data-color="#CC0000" style="background: #CC0000;" title="Red"></div>
-              <div class="color-swatch-btn" data-color="#F53524" style="background: #F53524;" title="Orange"></div>
-              <div class="color-swatch-btn" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine"></div>
-              <div class="color-swatch-btn" data-color="#FFF133" style="background: #FFF133;" title="Yellow"></div>
-              <div class="color-swatch-btn" data-color="#66BD0F" style="background: #66BD0F;" title="Lime"></div>
-              <div class="color-swatch-btn" data-color="#006635" style="background: #006635;" title="Green"></div>
-              <div class="color-swatch-btn" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua"></div>
-              <div class="color-swatch-btn" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue"></div>
-              <div class="color-swatch-btn" data-color="#001A80" style="background: #001A80;" title="Blue"></div>
-              <div class="color-swatch-btn" data-color="#372277" style="background: #372277;" title="Purple"></div>
-              <div class="color-swatch-btn" data-color="#CC0099" style="background: #CC0099;" title="Magenta"></div>
-              <div class="color-swatch-btn" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink"></div>
-              <div class="color-swatch-btn" data-color="#94056E" style="background: #94056E;" title="Berry"></div>
-              <div class="color-swatch-btn" data-color="#2D1206" style="background: #2D1206;" title="Brown"></div>
+              <button type="button" class="color-swatch-btn selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
+              <button type="button" class="color-swatch-btn" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
+              <button type="button" class="color-swatch-btn" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
+              <button type="button" class="color-swatch-btn" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
+              <button type="button" class="color-swatch-btn" data-color="#FFF133" style="background: #FFF133;" title="Yellow" aria-label="Yellow"></button>
+              <button type="button" class="color-swatch-btn" data-color="#66BD0F" style="background: #66BD0F;" title="Lime" aria-label="Lime"></button>
+              <button type="button" class="color-swatch-btn" data-color="#006635" style="background: #006635;" title="Green" aria-label="Green"></button>
+              <button type="button" class="color-swatch-btn" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua" aria-label="Aqua"></button>
+              <button type="button" class="color-swatch-btn" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue" aria-label="Nano Blue"></button>
+              <button type="button" class="color-swatch-btn" data-color="#001A80" style="background: #001A80;" title="Blue" aria-label="Blue"></button>
+              <button type="button" class="color-swatch-btn" data-color="#372277" style="background: #372277;" title="Purple" aria-label="Purple"></button>
+              <button type="button" class="color-swatch-btn" data-color="#CC0099" style="background: #CC0099;" title="Magenta" aria-label="Magenta"></button>
+              <button type="button" class="color-swatch-btn" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink" aria-label="Electric Pink"></button>
+              <button type="button" class="color-swatch-btn" data-color="#94056E" style="background: #94056E;" title="Berry" aria-label="Berry"></button>
+              <button type="button" class="color-swatch-btn" data-color="#2D1206" style="background: #2D1206;" title="Brown" aria-label="Brown"></button>
             </div>
           </div>
 
@@ -1093,6 +1077,8 @@
               <button id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
             </div>
           </div>
+
+          <button id="save-btn" title="Save as PNG">Save PNG</button>
         </aside>
       </section>
 
@@ -1109,8 +1095,8 @@
           <button id="eraser-tool-btn-mobile" class="mobile-tool-btn" title="Eraser">
             <img src="icons/eraser.png" alt="Eraser" style="width: 24px; height: 24px;">
           </button>
-          <button id="undo-btn-mobile" class="mobile-tool-btn" title="Undo" disabled>↶</button>
-          <button id="toggle-mobile-menu" class="mobile-tool-btn" title="More">⋯</button>
+          <button id="undo-btn-mobile" class="mobile-tool-btn" title="Undo" aria-label="Undo" disabled>↶</button>
+          <button id="toggle-mobile-menu" class="mobile-tool-btn" title="More" aria-label="More options" aria-expanded="false" aria-controls="mobile-expanded-menu">⋯</button>
         </div>
 
         <!-- Expandable menu - hidden by default -->
@@ -1119,21 +1105,21 @@
           <div class="mobile-section">
             <div class="mobile-section-label">Colours</div>
             <div class="mobile-color-swatches">
-              <div class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black"></div>
-              <div class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red"></div>
-              <div class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange"></div>
-              <div class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine"></div>
-              <div class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow"></div>
-              <div class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime"></div>
-              <div class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green"></div>
-              <div class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua"></div>
-              <div class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue"></div>
-              <div class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue"></div>
-              <div class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple"></div>
-              <div class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta"></div>
-              <div class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink"></div>
-              <div class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry"></div>
-              <div class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown"></div>
+              <button type="button" class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow" aria-label="Yellow"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime" aria-label="Lime"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green" aria-label="Green"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua" aria-label="Aqua"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue" aria-label="Nano Blue"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue" aria-label="Blue"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple" aria-label="Purple"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta" aria-label="Magenta"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink" aria-label="Electric Pink"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry" aria-label="Berry"></button>
+              <button type="button" class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown" aria-label="Brown"></button>
             </div>
           </div>
 
@@ -1141,16 +1127,16 @@
           <div class="mobile-section">
             <div class="mobile-section-label">Brush Size</div>
             <div class="mobile-size-options">
-              <button class="mobile-size-btn" data-size="4">
+              <button class="mobile-size-btn" data-size="4" aria-label="Size 4">
                 <div style="width: 4px; height: 4px; background: #1d1d1f; border-radius: 50%;"></div>
               </button>
-              <button class="mobile-size-btn selected" data-size="8">
+              <button class="mobile-size-btn selected" data-size="8" aria-label="Size 8">
                 <div style="width: 8px; height: 8px; background: #1d1d1f; border-radius: 50%;"></div>
               </button>
-              <button class="mobile-size-btn" data-size="12">
+              <button class="mobile-size-btn" data-size="12" aria-label="Size 12">
                 <div style="width: 12px; height: 12px; background: #1d1d1f; border-radius: 50%;"></div>
               </button>
-              <button class="mobile-size-btn" data-size="16">
+              <button class="mobile-size-btn" data-size="16" aria-label="Size 16">
                 <div style="width: 16px; height: 16px; background: #1d1d1f; border-radius: 50%;"></div>
               </button>
             </div>
@@ -1166,6 +1152,7 @@
               <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
+              <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
             </div>
           </div>
 
@@ -1176,24 +1163,11 @@
           </div>
         </div>
       </div>
-
-      <section class="example-section">
-        <h2>Example Scrawlface</h2>
-        <img src="example-scrawlface.png" alt="Example pareidolia artwork" class="example-image" id="example-image">
-      </section>
     </main>
 
     <footer>
       <p></p>
     </footer>
   </div>
-
-  <script>
-    // Hide example section if image doesn't exist
-    const exampleImg = document.getElementById('example-image');
-    exampleImg.onerror = function() {
-      document.querySelector('.example-section').style.display = 'none';
-    };
-  </script>
 </body>
 </html>
