@@ -233,8 +233,9 @@ function generateScrawlface() {
 function draw() {
   if (draggedEyeIndex !== -1 && mouseIsPressed) {
     const transformed = getTransformedCoords(mouseX, mouseY);
-    eyePositions[draggedEyeIndex].x = transformed.x;
-    eyePositions[draggedEyeIndex].y = transformed.y;
+    // Keep the whole eye on the canvas so it can't be dragged out of reach
+    eyePositions[draggedEyeIndex].x = constrain(transformed.x, eyeRadius, canvasSize - eyeRadius);
+    eyePositions[draggedEyeIndex].y = constrain(transformed.y, eyeRadius, canvasSize - eyeRadius);
     redrawCanvas();
     return;
   }
