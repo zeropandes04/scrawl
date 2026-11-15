@@ -113,11 +113,7 @@ function setup() {
     select("#intensity-value").html(intensity);
     tickLcd("intensity-value");
   });
-  // Releasing the slider shows the new intensity straight away, unless that
-  // would discard a drawing (then it applies to the next Generate)
-  intensitySlider.changed(() => {
-    if (!hasDrawings) generateScrawlface();
-  });
+  // The slider only sets the intensity; it applies at the next Generate
 
   // Setup brush tool dropdown
   setupToolDropdown(
@@ -175,9 +171,6 @@ function setup() {
       // Sync with desktop slider
       select("#intensity-slider").value(intensity);
       select("#intensity-value").html(intensity);
-    });
-    intensitySliderMobile.changed(() => {
-      if (!hasDrawings) generateScrawlface();
     });
   }
 
