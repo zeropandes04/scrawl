@@ -153,6 +153,11 @@ function setup() {
   drawingGraphics.clear();
   background(bgColor);
 
+  // Match the canvas to its container now and whenever the layout changes
+  // (window resize, phone rotation, the mobile address bar sliding away)
+  fitCanvasToContainer();
+  new ResizeObserver(fitCanvasToContainer).observe(document.getElementById('scrawl-container'));
+
   // Desktop and mobile keys that do the same thing
   select("#generate-btn").mousePressed(generateScrawlface);
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
@@ -416,7 +421,7 @@ function updateCursor() {
 // The canvas is scaled down on small screens, so the reach grows to stay a
 // ~44px touch target (and shrinks again when zoomed in).
 function findEyeAt(x, y) {
-  let reach = max(eyeRadius, 22 * canvasSize / canvas.elt.clientWidth / viewZoom);
+  let reach = max(eyeRadius, 22 * width / canvas.elt.clientWidth / viewZoom);
   let found = -1;
   eyePositions.forEach((pos, i) => {
     const d = dist(x, y, pos.x, pos.y);
@@ -482,7 +487,7 @@ function mousePressed(event) {
 // A touch in canvas coordinates (the canvas element is scaled by CSS)
 function touchPoint(touch) {
   const rect = canvas.elt.getBoundingClientRect();
-  const k = canvasSize / rect.width;
+  const k = width / rect.width;
   return { x: (touch.clientX - rect.left) * k, y: (touch.clientY - rect.top) * k };
 }
 
@@ -908,14 +913,20 @@ function rotateCanvas() {
   redrawCanvas();
 }
 
-// Saves exactly what is on screen (eyes, rotation, zoom, scrawl visibility)
+// The picture Save and Share export: the square middle of the canvas. With
+// the whole drawing in view that is exactly the drawing as shown (eyes,
+// rotation, scrawl visibility); zoomed in, it is the middle of what's on screen.
+function exportImage() {
+  return get(round((width - canvasSize) / 2), round((height - canvasSize) / 2), canvasSize, canvasSize);
+}
+
 function saveImage() {
-  saveCanvas(canvas, 'scrawlface', 'png');
+  exportImage().save('scrawlface', 'png');
 }
 
 // Hands the image to the phone's share sheet (messages, socials, ...)
 function shareImage() {
-  canvas.elt.toBlob(blob => {
+  exportImage().canvas.toBlob(blob => {
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
     // Rejects when the share sheet is dismissed - nothing to do then
     navigator.share({ files: [file] }).catch(() => {});
@@ -964,13 +975,31 @@ function currentTool() {
 function setBrushCursor() {
   const size = eraseMode ? eraserSize : brushSize;
   // Even diameter (min 4px) so the hotspot lands on a whole pixel
-  const d = max(4, 2 * round(size * viewZoom * canvas.elt.clientWidth / canvasSize / 2));
+  const d = max(4, 2 * round(size * viewZoom * canvas.elt.clientWidth / width / 2));
   const box = d + 4;
   const c = box / 2;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${box}" height="${box}">` +
     `<circle cx="${c}" cy="${c}" r="${d / 2 + 1}" fill="none" stroke="white"/>` +
     `<circle cx="${c}" cy="${c}" r="${d / 2}" fill="none" stroke="black"/></svg>`;
   canvas.elt.style.cursor = `url('data:image/svg+xml,${encodeURIComponent(svg)}') ${c} ${c}, crosshair`;
+}
+
+// The canvas element fills its container, which is rarely square, so the
+// canvas takes the container's proportions. The shorter side is always
+// canvasSize units: the whole drawing fits at zoom 1, and the extra room
+// shows more of it when zoomed in or rotated.
+function fitCanvasToContainer() {
+  const box = document.getElementById('scrawl-container');
+  if (box.clientWidth === 0 || box.clientHeight === 0) return;
+
+  const k = canvasSize / min(box.clientWidth, box.clientHeight);
+  const w = round(box.clientWidth * k);
+  const h = round(box.clientHeight * k);
+  if (w === width && h === height) return;
+
+  resizeCanvas(w, h, true);
+  if (drawMode || eraseMode) setBrushCursor();
+  redrawCanvas();
 }
 
 // The canvas is scaled to fit the window, so the ring has to be rescaled too

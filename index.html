@@ -108,16 +108,22 @@
       gap: 24px;
     }
 
+    /* The canvas fills this box, whatever its shape; scrawl.js gives the
+       canvas the same proportions (fitCanvasToContainer) and centres the
+       square drawing inside it. Absolute, so the canvas's own pixel size
+       can't push the layout around. */
     #scrawl-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      position: relative;
+      flex: 1;
+      width: 100%;
     }
 
-    /* No frame of its own: the canvas fills the white area and blends into it */
+    /* No frame of its own: the canvas blends into the white area */
     #scrawl-container canvas {
-      max-width: 100%;
-      height: auto !important;
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
     }
 
     /* Control panel: styled after Teenage Engineering hardware (OP-1) */
@@ -785,6 +791,12 @@
         display: none;
       }
 
+      /* Never shorter than it is wide, so the whole drawing always fits; on
+         short screens the page scrolls instead */
+      #scrawl-container {
+        min-height: 100vw;
+      }
+
       .canvas-section {
         flex: 1;
         flex-direction: column;
@@ -896,22 +908,9 @@
         min-width: 0;
       }
 
-      /* Canvas scales to fit within the smaller of available width/height.
-         #scrawl-container fills the available box and is a size container;
-         the canvas element itself stays square (not letterboxed via
-         object-fit) so p5's pointer mapping matches what is drawn. */
       #scrawl-container {
-        flex: 1;
         min-height: 0;
         min-width: 0;
-        width: 100%;
-        container-type: size;
-      }
-
-      #scrawl-container canvas {
-        width: min(100cqw, 100cqh) !important;
-        height: min(100cqw, 100cqh) !important;
-        max-width: none;
       }
 
       .control-group {
