@@ -577,9 +577,10 @@
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.6);
     }
 
-    /* Brief flash when the value changes (class re-added from scrawl.js) */
+    /* Brief flash when the value changes (class re-added from scrawl.js).
+       Colour only: any movement makes the readout jitter while dragging. */
     @keyframes lcd-tick {
-      from { color: #ffffff; transform: translateY(-1px); }
+      from { color: #ffffff; }
     }
 
     .lcd.tick {
@@ -1044,8 +1045,8 @@
             <div class="control-group">
               <label for="intensity-slider">Intensity</label>
               <div class="fader-row">
-                <input type="range" id="intensity-slider" min="10" max="40" value="20" step="1">
-                <span class="lcd" id="intensity-value">20</span>
+                <input type="range" id="intensity-slider" min="1" max="25" value="10" step="1">
+                <span class="lcd" id="intensity-value">10</span>
               </div>
             </div>
           </div>
@@ -1283,8 +1284,8 @@
           <div class="mobile-section">
             <label class="mobile-section-label" for="intensity-slider-mobile">Intensity</label>
             <div class="fader-row">
-              <input type="range" id="intensity-slider-mobile" min="10" max="40" value="20" step="1">
-              <span class="lcd" id="intensity-value-mobile">20</span>
+              <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1">
+              <span class="lcd" id="intensity-value-mobile">10</span>
             </div>
           </div>
         </div>
