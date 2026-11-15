@@ -1066,16 +1066,26 @@ function setupMobileToolbar() {
   const expandedMenu = document.getElementById('mobile-expanded-menu');
 
   if (toggleMenuBtn && expandedMenu) {
+    const closeMenu = () => {
+      expandedMenu.style.display = 'none';
+      toggleMenuBtn.textContent = '⋯';
+      toggleMenuBtn.setAttribute('aria-expanded', 'false');
+    };
+
     toggleMenuBtn.addEventListener('click', () => {
       if (expandedMenu.style.display === 'none') {
         expandedMenu.style.display = 'block';
         toggleMenuBtn.textContent = '×';
         toggleMenuBtn.setAttribute('aria-expanded', 'true');
       } else {
-        expandedMenu.style.display = 'none';
-        toggleMenuBtn.textContent = '⋯';
-        toggleMenuBtn.setAttribute('aria-expanded', 'false');
+        closeMenu();
       }
+    });
+
+    // The open menu covers the canvas, so close it after actions whose
+    // result is only visible there
+    ['rotate-btn-mobile-controls', 'toggle-eyes-btn-mobile', 'move-eyes-btn-mobile', 'clear-drawings-btn-mobile'].forEach(id => {
+      document.getElementById(id).addEventListener('click', closeMenu);
     });
   }
 
