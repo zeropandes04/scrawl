@@ -27,8 +27,8 @@
       --screen: #161616;
       --focus: #2c6fd6;    /* keyboard focus ring: darker, 3:1 on --chassis */
       --te-green: #2fb35a;
-      --te-orange: #ff6b1a;
-      --te-orange-edge: #c24e0d;
+      --primary: #26ACD9;      /* primary: Nano Blue from the swatch palette */
+      --primary-edge: #1880A3; /* the key's side, a darker shade of it */
       --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
     }
 
@@ -301,14 +301,14 @@
     }
 
     .cta-button {
-      background: var(--te-orange);
+      background: var(--primary);
       color: var(--ink);
       font-size: 14px;
       font-weight: 600;
       padding: 12px 24px;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,0.35),
-        0 2px 0 var(--te-orange-edge),
+        0 2px 0 var(--primary-edge),
         0 3px 6px rgba(0,0,0,0.15);
     }
 
@@ -388,13 +388,14 @@
       box-shadow: inset 0 0 0 1.5px var(--muted);
     }
 
-    /* Selected size latches like the tool keys, with a blue ring */
+    /* Selected size latches like the tool keys, with the same dark ring
+       the selected colour swatch has */
     .size-key.selected {
       background: var(--key-down);
       transform: translateY(2px);
       box-shadow:
         inset 0 1px 3px rgba(0,0,0,0.18),
-        0 0 0 2px var(--te-orange);
+        0 0 0 2px var(--ink);
     }
 
     /* Colour keys: square caps in the paint colour */
@@ -713,7 +714,8 @@
       box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.7);
     }
 
-    /* Fader cap in the primary button's orange, with a white centre line */
+    /* Fader cap: a keycap like the other keys, with a centre line in the
+       primary button's colour to tie it to New scrawl */
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
@@ -721,8 +723,8 @@
       height: 30px;
       margin-top: -11px; /* centre on the 8px track */
       border-radius: 5px;
-      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-orange);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 var(--te-orange-edge), 0 3px 5px rgba(0,0,0,0.3);
+      background: linear-gradient(90deg, transparent 7px, var(--primary) 7px 11px, transparent 11px), var(--key);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 0 var(--key-edge), 0 3px 5px rgba(0,0,0,0.3);
     }
 
     input[type="range"]::-moz-range-thumb {
@@ -730,8 +732,8 @@
       height: 30px;
       border: none;
       border-radius: 5px;
-      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-orange);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 var(--te-orange-edge), 0 3px 5px rgba(0,0,0,0.3);
+      background: linear-gradient(90deg, transparent 7px, var(--primary) 7px 11px, transparent 11px), var(--key);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 2px 0 var(--key-edge), 0 3px 5px rgba(0,0,0,0.3);
     }
 
     input[type="range"]:focus-visible {
@@ -748,7 +750,7 @@
       min-width: 52px;
       padding: 6px 10px;
       background: var(--screen);
-      color: var(--te-orange);
+      color: var(--primary);
       font-family: var(--mono);
       font-size: 18px;
       font-variant-numeric: tabular-nums;
