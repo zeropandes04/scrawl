@@ -206,9 +206,6 @@ function setup() {
     if (key && !key.disabled) navigator.vibrate(8);
   });
 
-  // Start with the brush selected so the canvas responds to the first touch
-  setTool('brush');
-
   generateScrawlface();
 }
 
@@ -225,6 +222,9 @@ function generateScrawlface() {
   // A new scrawl starts with the whole canvas in view
   viewZoom = 1;
   viewPan = { x: 0, y: 0 };
+
+  // ...and with the Eyes tool, because placing the eyes is the first step
+  setTool('eyes');
 
   // Clear undo/redo history
   clearHistory();
