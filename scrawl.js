@@ -913,11 +913,22 @@ function rotateCanvas() {
   redrawCanvas();
 }
 
-// The picture Save and Share export: the square middle of the canvas. With
-// the whole drawing in view that is exactly the drawing as shown (eyes,
-// rotation, scrawl visibility); zoomed in, it is the middle of what's on screen.
+// The picture Save and Share export: the whole drawing at normal size, with
+// its eyes, rotation and scrawl visibility, whatever the zoom on screen.
 function exportImage() {
-  return get(round((width - canvasSize) / 2), round((height - canvasSize) / 2), canvasSize, canvasSize);
+  // Draw one frame with the zoom taken out, grab the square middle of the
+  // canvas (exactly the drawing), then put the view back. It all happens
+  // within one frame, so nothing flickers on screen.
+  const zoom = viewZoom;
+  const pan = viewPan;
+  viewZoom = 1;
+  viewPan = { x: 0, y: 0 };
+  redrawCanvas();
+  const image = get(round((width - canvasSize) / 2), round((height - canvasSize) / 2), canvasSize, canvasSize);
+  viewZoom = zoom;
+  viewPan = pan;
+  redrawCanvas();
+  return image;
 }
 
 function saveImage() {
