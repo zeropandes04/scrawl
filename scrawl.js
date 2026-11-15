@@ -242,6 +242,7 @@ function generateScrawlface() {
     x = x2;
     y = y2;
   }
+  fitScrawlToCanvas(scrawlQueue);
   // Reduced motion: draw the whole scrawl straight away
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     drawScrawlSegments(scrawlQueue.length);
@@ -260,6 +261,39 @@ function generateScrawlface() {
   updateStickerButtons();
 
   redrawCanvas();
+}
+
+// The random curves only cover about the middle half of the canvas, so
+// scale them up evenly (same shape) until the scrawl's longer side spans
+// the canvas, less a margin, and centre it
+function fitScrawlToCanvas(segments) {
+  const margin = 40;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+  // Bounds of the curves themselves (control points lie further out)
+  segments.forEach(([x1, y1, cx1, cy1, cx2, cy2, x2, y2]) => {
+    for (let i = 0; i <= 20; i++) {
+      const x = bezierPoint(x1, cx1, cx2, x2, i / 20);
+      const y = bezierPoint(y1, cy1, cy2, y2, i / 20);
+      minX = min(minX, x);
+      maxX = max(maxX, x);
+      minY = min(minY, y);
+      maxY = max(maxY, y);
+    }
+  });
+
+  const available = canvasSize - 2 * margin;
+  const scale = min(available / (maxX - minX), available / (maxY - minY));
+  const midX = (minX + maxX) / 2;
+  const midY = (minY + maxY) / 2;
+
+  // Every segment is [x, y] pairs: scaling the points scales the curve
+  segments.forEach(seg => {
+    for (let i = 0; i < seg.length; i += 2) {
+      seg[i] = canvasSize / 2 + (seg[i] - midX) * scale;
+      seg[i + 1] = canvasSize / 2 + (seg[i + 1] - midY) * scale;
+    }
+  });
 }
 
 // Draws the next `count` queued scrawl segments onto the scrawl layer
