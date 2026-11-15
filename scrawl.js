@@ -1607,30 +1607,39 @@ function setupMobileSheet() {
   };
   setOpen(false);
 
-  // The handle: tap (or Enter/Space) toggles, a swipe up opens, down closes
-  let startY = null;
+  // Tapping the handle (or Enter/Space on it) toggles the sheet
+  handle.addEventListener('click', () => setOpen(!bar.classList.contains('open')));
+
+  // A swipe up anywhere on the bar opens it and a swipe down closes it, so
+  // the small handle doesn't have to be hit exactly. Swipes that start in
+  // the open sheet's own content are left alone: that content scrolls.
+  let start = null;
   let swiped = false;
-  handle.addEventListener('pointerdown', (e) => {
-    startY = e.clientY;
+  bar.addEventListener('pointerdown', (e) => {
     swiped = false;
+    start = sheet.contains(e.target) ? null : { x: e.clientX, y: e.clientY };
   });
-  handle.addEventListener('pointermove', (e) => {
-    if (startY === null || swiped) return;
-    const dy = e.clientY - startY;
-    if (Math.abs(dy) > 12) {
+  bar.addEventListener('pointermove', (e) => {
+    if (!start || swiped) return;
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    // Clearly vertical, so scrolling the options strip sideways doesn't count
+    if (Math.abs(dy) > 16 && Math.abs(dy) > Math.abs(dx) * 1.5) {
       swiped = true;
       setOpen(dy < 0);
     }
   });
-  handle.addEventListener('pointerup', () => { startY = null; });
-  handle.addEventListener('pointercancel', () => { startY = null; });
-  handle.addEventListener('click', () => {
+  bar.addEventListener('pointerup', () => { start = null; });
+  bar.addEventListener('pointercancel', () => { start = null; });
+  // The finger may lift on the key it started on: that is the end of the
+  // swipe, not a press of the key
+  bar.addEventListener('click', (e) => {
     if (swiped) {
       swiped = false;
-      return;
+      e.stopPropagation();
+      e.preventDefault();
     }
-    setOpen(!bar.classList.contains('open'));
-  });
+  }, true);
 
   scrim.addEventListener('click', () => setOpen(false));
   document.addEventListener('keydown', (e) => {
