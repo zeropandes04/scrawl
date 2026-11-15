@@ -7,6 +7,27 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
   <script src="scrawl.js"></script>
   <style>
+    /* Look & feel borrowed from Teenage Engineering hardware (OP-1):
+       an aluminium body, physical keycaps that press in, monospaced
+       micro-labels, a dark "screen" bezel and coloured knobs. */
+    :root {
+      --body: #e9e8e4;         /* page */
+      --chassis: #d7d6d1;      /* device panel */
+      --chassis-edge: #bdbcb6;
+      --key: #f6f6f3;          /* keycap face */
+      --key-hover: #ffffff;
+      --key-edge: #a9a8a2;     /* keycap side, seen below the face */
+      --key-down: #e2e1dc;
+      --ink: #161616;
+      --muted: #6b6a65;
+      --screen: #161616;
+      --te-blue: #2c6fd6;
+      --te-green: #2fb35a;
+      --te-orange: #ff6b1a;
+      --te-orange-edge: #c24e0d;
+      --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -14,9 +35,9 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-      background: #fbfbfd;
-      color: #1d1d1f;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+      background: var(--body);
+      color: var(--ink);
       line-height: 1.47059;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -36,18 +57,38 @@
     h1 {
       font-size: 56px;
       line-height: 1.07143;
-      font-weight: 600;
-      letter-spacing: -0.005em;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      text-transform: lowercase;
       margin-bottom: 6px;
-      color: #1d1d1f;
+      color: var(--ink);
+    }
+
+    /* Model-number tag after the wordmark, OP-1 style */
+    h1::after {
+      content: 'sf-1';
+      display: inline-block;
+      vertical-align: middle;
+      margin-left: 0.4em;
+      padding: 0.2em 0.5em;
+      font-family: var(--mono);
+      font-size: 0.24em;
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      line-height: 1;
+      color: var(--body);
+      background: var(--ink);
+      border-radius: 4px;
     }
 
     .subtitle {
-      font-size: 21px;
+      font-family: var(--mono);
+      font-size: 15px;
       line-height: 1.381;
-      color: #6e6e73;
+      color: var(--muted);
       font-weight: 400;
-      letter-spacing: 0.011em;
+      letter-spacing: 0.02em;
+      text-transform: lowercase;
       margin-top: 6px;
       margin-bottom: 0;
     }
@@ -55,22 +96,29 @@
     .canvas-section {
       display: flex;
       gap: 0;
-      background: #ffffff;
+      background: var(--chassis);
       border-radius: 18px;
       overflow: hidden;
-      box-shadow: 2px 4px 12px rgba(0,0,0,0.08);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.7),
+        0 0 0 1px var(--chassis-edge),
+        0 10px 30px rgba(0,0,0,0.12);
       margin: 40px 0;
       min-height: 600px;
     }
 
+    /* The canvas sits in a dark bezel, like the OP-1 screen */
     .canvas-area {
       flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 40px;
-      background: #ffffff;
+      padding: 18px;
+      margin: 20px 0 20px 20px;
+      background: var(--screen);
+      border-radius: 12px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.6);
       gap: 24px;
     }
 
@@ -100,18 +148,17 @@
     #scrawl-container canvas {
       max-width: 100%;
       height: auto !important;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+      border-radius: 4px;
     }
 
     .sidebar {
       width: 280px;
-      background: #f5f5f7;
+      background: transparent;
       padding: 32px 24px;
       display: flex;
       flex-direction: column;
       gap: 24px;
-      border-left: 0.5px solid rgba(0, 0, 0, 0.1);
+      counter-reset: section;
     }
 
     .sidebar-section {
@@ -120,13 +167,28 @@
       gap: 12px;
     }
 
-    .sidebar-section h3 {
-      font-size: 13px;
-      font-weight: 600;
-      color: #6e6e73;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+    /* Numbered micro-labels: "01 tools", "02 colours", ... */
+    .sidebar-section h3,
+    .control-group label,
+    .mobile-section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: lowercase;
+      letter-spacing: 0.04em;
       margin: 0;
+    }
+
+    .sidebar-section h3::before {
+      counter-increment: section;
+      content: counter(section, decimal-leading-zero);
+      display: inline-block;
+      margin-right: 8px;
+      padding: 0 4px;
+      color: var(--chassis);
+      background: var(--muted);
+      border-radius: 3px;
     }
 
     .sidebar .cta-button {
@@ -141,7 +203,6 @@
     .sidebar .tools-grid button {
       aspect-ratio: 1 / 1;
       padding: 12px;
-      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -155,61 +216,103 @@
       padding: 12px 24px;
     }
 
+    /* Keycap: a light face on a darker edge; pressing pushes the face down */
     button {
-      background: #e8e8ed;
-      color: #1d1d1f;
+      position: relative;
+      background: var(--key);
+      color: var(--ink);
       border: none;
       padding: 12px 24px;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.23536;
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      border-radius: 980px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        0 2px 0 var(--key-edge),
+        0 3px 6px rgba(0,0,0,0.12);
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, background 0.15s;
       min-width: 44px;
       font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    button:hover {
-      background: #d2d2d7;
-      transform: scale(1.02);
+    @media (hover: hover) {
+      button:hover {
+        background: var(--key-hover);
+      }
     }
 
     button:active {
-      transform: scale(0.98);
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 2px rgba(0,0,0,0.12),
+        0 0 0 var(--key-edge),
+        0 1px 2px rgba(0,0,0,0.1);
     }
 
+    button:focus-visible {
+      outline: 2px solid var(--te-blue);
+      outline-offset: 2px;
+    }
+
+    /* Latched key: stays pressed in, with a green LED */
     button.active {
-      background: #7ed99b;
-      color: #1d1d1f;
+      background: var(--key-down);
+      color: var(--ink);
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 3px rgba(0,0,0,0.18),
+        0 0 0 var(--key-edge);
     }
 
-    button.active:hover {
-      background: #6bcf8a;
+    button.active::after {
+      content: '';
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--te-green);
+      box-shadow: 0 0 6px var(--te-green);
+    }
+
+    @media (hover: hover) {
+      button.active:hover {
+        background: var(--key-down);
+      }
     }
 
     button:disabled {
-      opacity: 0.6;
+      opacity: 0.45;
       cursor: not-allowed;
       transform: none;
     }
 
     button:disabled:hover {
-      background: #e8e8ed;
+      background: var(--key);
       transform: none;
     }
 
     .cta-button {
-      background: #0071e3;
-      color: white;
-      font-size: 15px;
-      font-weight: 500;
+      background: var(--te-orange);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
       padding: 12px 24px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        0 2px 0 var(--te-orange-edge),
+        0 3px 6px rgba(0,0,0,0.15);
     }
 
-    .cta-button:hover {
-      background: #0077ed;
+    @media (hover: hover) {
+      .cta-button:hover {
+        background: #ff7b33;
+      }
     }
 
     .bottom-toolbar {
@@ -225,7 +328,7 @@
     .toolbar-divider {
       width: 1px;
       height: 32px;
-      background: #d2d2d7;
+      background: var(--chassis-edge);
     }
 
     /* Mobile toolbar styles */
@@ -247,22 +350,20 @@
       min-width: 40px;
       min-height: 48px;
       padding: 12px;
-      border-radius: 12px;
+      border-radius: 10px;
+      font-size: 18px;
     }
 
     /* The text button keeps its natural width */
     #generate-btn-mobile {
       flex: none;
-    }
-
-    .mobile-tool-btn.active {
-      background: #7ed99b;
+      font-size: 14px;
     }
 
     .mobile-toolbar-expanded {
       width: 100%;
-      background: #ffffff;
-      border-top: 1px solid #d2d2d7;
+      background: var(--chassis);
+      border-top: 1px solid var(--chassis-edge);
       padding: 16px;
       max-height: 60vh;
       overflow-y: auto;
@@ -278,11 +379,6 @@
     }
 
     .mobile-section-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #6e6e73;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
       margin-bottom: 10px;
     }
 
@@ -302,22 +398,19 @@
       width: 40px;
       height: 40px;
       padding: 0;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s;
-      border: 3px solid transparent;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border: 2px solid transparent;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.3),
+        0 2px 0 rgba(0,0,0,0.3);
       flex-shrink: 0;
     }
 
-    .color-swatch-btn-mobile:active {
-      transform: scale(0.95);
-    }
-
     .color-swatch-btn-mobile.selected {
-      border-color: #1d1d1f;
-      transform: scale(1.05);
-      box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #1d1d1f;
+      border-color: var(--chassis);
+      transform: translateY(2px);
+      box-shadow: 0 0 0 2px var(--ink);
     }
 
     .mobile-size-options {
@@ -332,38 +425,30 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f5f5f7;
-      border: 2px solid transparent;
-      border-radius: 8px;
+      padding: 12px;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
-    .mobile-size-btn:active {
-      transform: scale(0.95);
-    }
-
+    /* Selected size latches like the tool keys */
     .mobile-size-btn.selected {
-      background: #e8e8ed;
-      border-color: #0071e3;
+      background: var(--key-down);
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 3px rgba(0,0,0,0.18),
+        0 0 0 2px var(--te-blue);
     }
 
     .mobile-controls-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      gap: 10px;
     }
 
     .mobile-control-btn {
       padding: 14px 16px;
       font-size: 14px;
       min-height: 48px;
-      background: #e8e8ed;
-      border: none;
-      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 500;
     }
 
     /* Compact so the desktop sidebar still fits a 720px-tall viewport */
@@ -376,18 +461,9 @@
       grid-column: 1 / -1;
     }
 
-    .mobile-control-btn:active {
-      transform: scale(0.97);
-      background: #d2d2d7;
-    }
-
     .mobile-control-btn:disabled {
-      opacity: 0.5;
+      opacity: 0.45;
       cursor: not-allowed;
-    }
-
-    .mobile-control-btn.active {
-      background: #7ed99b;
     }
 
     .control-group {
@@ -396,12 +472,108 @@
       gap: 12px;
     }
 
-    .control-group label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #6e6e73;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+    /* ---- Knob ----
+       The range input stays in the page (hidden) as the source of truth;
+       the knob drives it. --angle is set from scrawl.js (-135deg..135deg). */
+    .knob-input {
+      display: none;
+    }
+
+    .knob-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .knob {
+      --angle: 0deg;
+      --knob-color: var(--te-blue);
+      position: relative;
+      flex: none;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      /* Recessed well with a tick scale around it */
+      background:
+        radial-gradient(circle, transparent 0 25px, var(--chassis) 25px),
+        repeating-conic-gradient(from -135deg, var(--muted) 0 1.5deg, transparent 1.5deg 27deg);
+      -webkit-mask: radial-gradient(circle, #000 0 28px, transparent 28px);
+              mask: radial-gradient(circle, #000 0 28px, transparent 28px);
+      cursor: grab;
+      touch-action: none;
+      outline: none;
+    }
+
+    .knob.turning {
+      cursor: grabbing;
+    }
+
+    /* Hide the ticks in the unused bottom quarter */
+    .knob::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      background: conic-gradient(from 135deg, var(--chassis) 0 90deg, transparent 90deg);
+    }
+
+    /* Knurled cap */
+    .knob-cap {
+      position: absolute;
+      inset: 6px;
+      border-radius: 50%;
+      background:
+        repeating-conic-gradient(rgba(0,0,0,0.18) 0 6deg, rgba(255,255,255,0.08) 6deg 12deg),
+        var(--knob-color);
+      box-shadow:
+        0 3px 5px rgba(0,0,0,0.35),
+        0 1px 1px rgba(0,0,0,0.3);
+      transform: rotate(var(--angle));
+      transition: transform 0.06s linear;
+    }
+
+    /* Smooth top face */
+    .knob-cap::before {
+      content: '';
+      position: absolute;
+      inset: 4px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 40% 30%, rgba(255,255,255,0.35), transparent 60%), var(--knob-color);
+      box-shadow: inset 0 -2px 3px rgba(0,0,0,0.2);
+    }
+
+    /* Pointer line */
+    .knob-cap::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 6px;
+      width: 3px;
+      height: 12px;
+      margin-left: -1.5px;
+      border-radius: 2px;
+      background: #ffffff;
+    }
+
+    .knob:focus-visible .knob-cap {
+      box-shadow: 0 0 0 2px var(--chassis), 0 0 0 4px var(--knob-color);
+    }
+
+    /* Tiny OLED-style readout next to the knob */
+    .lcd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 52px;
+      padding: 6px 10px;
+      background: var(--screen);
+      color: #63a4ff;
+      font-family: var(--mono);
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      border-radius: 6px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.6);
     }
 
     .slider-container {
@@ -410,52 +582,7 @@
       gap: 12px;
     }
 
-    input[type="range"] {
-      flex: 1;
-      -webkit-appearance: none;
-      appearance: none;
-      height: 4px;
-      background: #d2d2d7;
-      border-radius: 2px;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      background: #0071e3;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover {
-      background: #0077ed;
-      transform: scale(1.1);
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      background: #0071e3;
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    input[type="range"]::-moz-range-thumb:hover {
-      background: #0077ed;
-      transform: scale(1.1);
-    }
-
     .slider-value {
-      font-size: 14px;
-      color: #1d1d1f;
-      min-width: 30px;
-      text-align: center;
       font-variant-numeric: tabular-nums;
     }
 
@@ -471,8 +598,8 @@
 
     select {
       background: #ffffff;
-      color: #1d1d1f;
-      border: 1px solid #d2d2d7;
+      color: var(--ink);
+      border: 1px solid var(--chassis-edge);
       padding: 8px 12px;
       font-size: 13px;
       font-weight: 400;
@@ -483,14 +610,6 @@
       flex: 1;
     }
 
-    select:hover {
-      border-color: #b8b8bd;
-    }
-
-    select:focus {
-      border-color: #0071e3;
-    }
-
     .color-select {
       min-width: 80px;
     }
@@ -498,47 +617,12 @@
     .tools-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
+      gap: 10px;
     }
 
     .custom-dropdown {
       position: relative;
       width: 100%;
-    }
-
-    .custom-dropdown-button {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      background: #e8e8ed;
-      border: none;
-      padding: 12px;
-      font-size: 15px;
-      line-height: 1.23536;
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      border-radius: 18px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      font-family: inherit;
-      color: #1d1d1f;
-    }
-
-    .custom-dropdown-button:hover {
-      background: #d2d2d7;
-      transform: scale(1.02);
-    }
-
-    .custom-dropdown-button:active {
-      transform: scale(0.98);
-    }
-
-    .custom-dropdown-button.open {
-      background: #d2d2d7;
     }
 
     .tool-dropdown {
@@ -554,44 +638,12 @@
       align-items: center;
       justify-content: center;
       gap: 11px;
-      background: #e8e8ed;
-      border: none;
       padding: 8px;
-      font-size: 15px;
-      line-height: 1.23536;
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      font-family: inherit;
-      color: #1d1d1f;
-    }
-
-    .tool-dropdown-button:hover {
-      background: #d2d2d7;
-      transform: scale(1.02);
-    }
-
-    .tool-dropdown-button:active {
-      transform: scale(0.98);
-    }
-
-    .tool-dropdown-button.active {
-      background: #7ed99b;
-      color: #1d1d1f;
-    }
-
-    .tool-dropdown-button.active:hover {
-      background: #6bcf8a;
+      border-radius: 10px;
     }
 
     .tool-dropdown-button.open {
-      background: #d2d2d7;
-    }
-
-    .tool-dropdown-button.active.open {
-      background: #6bcf8a;
+      background: var(--key-down);
     }
 
     .tool-icon {
@@ -626,7 +678,7 @@
       gap: 4px;
       padding: 4px 8px;
       margin: -4px -8px;
-      border-radius: 8px;
+      border-radius: 6px;
     }
 
     .size-toggle:hover {
@@ -638,15 +690,15 @@
       top: 100%;
       left: 0;
       right: 0;
-      margin-top: 4px;
-      background: #ffffff;
-      border: 1px solid #d2d2d7;
+      margin-top: 6px;
+      background: var(--screen);
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
       z-index: 1000;
       display: none;
       max-height: 200px;
       overflow-y: auto;
+      padding: 4px;
     }
 
     .custom-dropdown-content.show {
@@ -656,18 +708,20 @@
     .custom-dropdown-option {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 12px;
       padding: 8px 12px;
       cursor: pointer;
-      transition: background 0.2s;
+      border-radius: 5px;
+      transition: background 0.15s;
     }
 
     .custom-dropdown-option:hover {
-      background: #f5f5f7;
+      background: rgba(255,255,255,0.12);
     }
 
     .custom-dropdown-option.selected {
-      background: #e8e8ed;
+      background: rgba(255,255,255,0.2);
     }
 
     .brush-preview, .eraser-preview {
@@ -679,36 +733,29 @@
     }
 
     .brush-circle {
-      background: #1d1d1f;
+      background: var(--ink);
       border-radius: 50%;
+    }
+
+    /* Inside the dark dropdown the size dots are drawn light */
+    .custom-dropdown-content .brush-circle {
+      background: #ffffff;
     }
 
     .eraser-circle {
       background: #ffffff;
-      border: 1px solid #d2d2d7;
+      border: 1px solid var(--chassis-edge);
       border-radius: 50%;
     }
 
     .dropdown-arrow {
       font-size: 10px;
-      color: #86868b;
+      color: var(--muted);
       transition: transform 0.2s;
-    }
-
-    .custom-dropdown-button.open .dropdown-arrow {
-      transform: rotate(180deg);
     }
 
     .tool-dropdown-button.open .dropdown-arrow {
       transform: rotate(180deg);
-    }
-
-    .color-preview-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      width: 100%;
     }
 
     .color-swatch {
@@ -719,59 +766,40 @@
       flex-shrink: 0;
     }
 
-    #selected-color-swatch {
-      width: 28px;
-      height: 28px;
-      border: 2px solid rgba(0, 0, 0, 0.15);
-    }
-
-    #brush-color-label {
-      font-size: 11px;
-      font-weight: 500;
-      text-align: center;
-    }
-
-    .color-icon {
-      font-size: 24px;
-    }
-
     .color-swatches-palette {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       gap: 5px;
     }
 
+    /* Colour keys: small square caps in the paint colour */
     .color-swatch-btn {
       width: 100%;
       min-width: 0;
       padding: 0;
       aspect-ratio: 1 / 1;
-      border-radius: 6px;
+      border-radius: 4px;
       cursor: pointer;
-      transition: all 0.2s;
       border: 2px solid transparent;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-
-    .color-swatch-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.3),
+        0 2px 0 rgba(0,0,0,0.3);
     }
 
     .color-swatch-btn.selected {
-      border-color: #1d1d1f;
-      transform: scale(1.05);
-      box-shadow: 0 0 0 1px #ffffff, 0 0 0 3px #1d1d1f;
+      border-color: var(--chassis);
+      transform: translateY(2px);
+      box-shadow: 0 0 0 2px var(--ink);
     }
 
     footer {
       text-align: center;
       padding: 52px 0;
-      color: #86868b;
+      color: var(--muted);
+      font-family: var(--mono);
       font-size: 12px;
       line-height: 1.33337;
       font-weight: 400;
-      letter-spacing: -0.01em;
     }
 
     @media (max-width: 1068px) {
@@ -784,11 +812,10 @@
       h1 {
         font-size: 40px;
         line-height: 1.1;
-        letter-spacing: 0;
       }
 
       .subtitle {
-        font-size: 17px;
+        font-size: 13px;
         line-height: 1.47059;
       }
 
@@ -808,13 +835,18 @@
         margin: 0 -16px 140px;
       }
 
+      /* No bezel on phones: the canvas uses the full width */
       .canvas-area {
         padding: 8px;
+        margin: 0;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
       }
 
       #scrawl-container canvas {
         border-radius: 0;
-        box-shadow: none;
+        box-shadow: 0 0 0 1px var(--chassis-edge);
       }
 
       .sidebar {
@@ -827,17 +859,15 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: saturate(180%) blur(20px);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+        background: var(--chassis);
+        border-top: 1px solid var(--chassis-edge);
         padding: 12px 16px;
         align-items: center;
         justify-content: center;
         gap: 12px;
         flex-wrap: wrap;
         z-index: 1000;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 -4px 14px rgba(0, 0, 0, 0.1);
       }
 
       .toolbar-divider {
@@ -852,10 +882,6 @@
     @media (max-width: 480px) {
       h1 {
         font-size: 32px;
-      }
-
-      .subtitle {
-        font-size: 17px;
       }
 
       header {
@@ -898,7 +924,7 @@
       }
 
       .subtitle {
-        font-size: 13px;
+        font-size: 12px;
         margin-top: 2px;
       }
 
@@ -940,14 +966,28 @@
         max-width: none;
       }
 
-      /* Generate/Intensity controls now live in the sidebar - stack to fit its width */
+      /* Generate/Intensity controls live in the sidebar - stack to fit its width */
       .canvas-controls {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
       }
 
-      /* The sidebar now also carries the generate/intensity controls and has
+      /* Intensity label + readout on the left, knob on the right */
+      .canvas-controls .control-group {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        max-width: none;
+      }
+
+      .canvas-controls .control-group label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      /* The sidebar also carries the generate/intensity controls and has
          less height to work with, so tighten its spacing; overflow-y is a
          safety net rather than the norm */
       .sidebar {
@@ -990,10 +1030,10 @@
           <div class="canvas-controls">
             <button id="generate-btn" class="cta-button">Generate New Scrawl</button>
             <div class="control-group">
-              <label for="intensity-slider">Intensity</label>
-              <div class="slider-container">
-                <input type="range" id="intensity-slider" min="10" max="40" value="20" step="1">
-                <span class="slider-value" id="intensity-value">20</span>
+              <label id="intensity-label">Intensity <span class="lcd" id="intensity-value">20</span></label>
+              <input type="range" class="knob-input" id="intensity-slider" min="10" max="40" value="20" step="1">
+              <div class="knob" id="intensity-knob" role="slider" tabindex="0" aria-labelledby="intensity-label" aria-valuemin="10" aria-valuemax="40" aria-valuenow="20">
+                <div class="knob-cap"></div>
               </div>
             </div>
           </div>
@@ -1194,8 +1234,14 @@
 
           <!-- Intensity Slider -->
           <div class="mobile-section">
-            <div class="mobile-section-label">Intensity: <span id="intensity-value-mobile">20</span></div>
-            <input type="range" id="intensity-slider-mobile" min="10" max="40" value="20" step="1" style="width: 100%;">
+            <div class="mobile-section-label" id="intensity-label-mobile">Intensity</div>
+            <div class="knob-row">
+              <input type="range" class="knob-input" id="intensity-slider-mobile" min="10" max="40" value="20" step="1">
+              <div class="knob" id="intensity-knob-mobile" role="slider" tabindex="0" aria-labelledby="intensity-label-mobile" aria-valuemin="10" aria-valuemax="40" aria-valuenow="20">
+                <div class="knob-cap"></div>
+              </div>
+              <span class="lcd" id="intensity-value-mobile">20</span>
+            </div>
           </div>
         </div>
       </div>

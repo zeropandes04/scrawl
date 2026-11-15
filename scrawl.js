@@ -112,6 +112,7 @@ function setup() {
   intensitySlider.changed(() => {
     if (!hasDrawings) generateScrawlface();
   });
+  const renderDesktopKnob = setupKnob('intensity-knob', 'intensity-slider');
 
   // Setup brush tool dropdown
   setupToolDropdown(
@@ -168,16 +169,79 @@ function setup() {
       // Sync with desktop slider
       select("#intensity-slider").value(intensity);
       select("#intensity-value").html(intensity);
+      renderDesktopKnob();
     });
     intensitySliderMobile.changed(() => {
       if (!hasDrawings) generateScrawlface();
     });
+    setupKnob('intensity-knob-mobile', 'intensity-slider-mobile');
   }
 
   // Start with the brush selected so the canvas responds to the first touch
   activateBrushMode();
 
   generateScrawlface();
+}
+
+// Turns a .knob into the control for a hidden range input: drag up/right
+// (or press the arrow keys) to turn it. It fires the same input/change events
+// the slider itself would, so the slider's handlers run unchanged.
+// Returns a function that redraws the knob after the input is set elsewhere.
+function setupKnob(knobId, inputId) {
+  const knob = document.getElementById(knobId);
+  const input = document.getElementById(inputId);
+  const min = parseInt(input.min);
+  const max = parseInt(input.max);
+  const pxPerStep = 4; // drag distance per intensity step
+  let dragStart = null;
+
+  const render = () => {
+    const value = parseInt(input.value);
+    knob.style.setProperty('--angle', (-135 + 270 * (value - min) / (max - min)) + 'deg');
+    knob.setAttribute('aria-valuenow', value);
+  };
+
+  // Returns true if the value actually changed
+  const setValue = (value) => {
+    value = Math.max(min, Math.min(max, Math.round(value)));
+    if (value === parseInt(input.value)) return false;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+    render();
+    return true;
+  };
+
+  knob.addEventListener('pointerdown', (e) => {
+    knob.setPointerCapture(e.pointerId);
+    knob.classList.add('turning');
+    dragStart = { x: e.clientX, y: e.clientY, value: parseInt(input.value) };
+  });
+
+  knob.addEventListener('pointermove', (e) => {
+    if (!dragStart) return;
+    const distance = (dragStart.y - e.clientY) + (e.clientX - dragStart.x);
+    setValue(dragStart.value + distance / pxPerStep);
+  });
+
+  const endDrag = () => {
+    if (!dragStart) return;
+    const changed = parseInt(input.value) !== dragStart.value;
+    dragStart = null;
+    knob.classList.remove('turning');
+    if (changed) input.dispatchEvent(new Event('change'));
+  };
+  knob.addEventListener('pointerup', endDrag);
+  knob.addEventListener('pointercancel', endDrag);
+
+  knob.addEventListener('keydown', (e) => {
+    const step = { ArrowUp: 1, ArrowRight: 1, ArrowDown: -1, ArrowLeft: -1 }[e.key];
+    if (!step) return;
+    e.preventDefault();
+    if (setValue(parseInt(input.value) + step)) input.dispatchEvent(new Event('change'));
+  });
+
+  render();
+  return render;
 }
 
 function generateScrawlface() {
