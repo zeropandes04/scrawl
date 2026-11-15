@@ -278,18 +278,21 @@
       margin-bottom: 10px;
     }
 
+    /* Always-visible strip above the tool buttons. The padding leaves room
+       for the selected swatch's ring, which overflow-x would otherwise clip. */
     .mobile-color-swatches {
       display: flex;
       gap: 8px;
+      width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
-      padding-bottom: 8px;
+      padding: 5px;
     }
 
     .color-swatch-btn-mobile {
-      min-width: 44px;
-      width: 44px;
-      height: 44px;
+      min-width: 40px;
+      width: 40px;
+      height: 40px;
       padding: 0;
       border-radius: 8px;
       cursor: pointer;
@@ -778,7 +781,8 @@
         background: transparent;
         border-radius: 0;
         box-shadow: none;
-        margin: 0 -16px 80px;
+        /* Bottom margin clears the fixed toolbar (colour strip + tool buttons) */
+        margin: 0 -16px 140px;
       }
 
       .canvas-area {
@@ -838,6 +842,17 @@
       .bottom-toolbar {
         padding: 10px 12px;
         gap: 8px;
+      }
+    }
+
+    /* Short phones: shrink the header so the fixed toolbar doesn't cover the canvas */
+    @media (max-width: 768px) and (max-height: 620px) {
+      header {
+        padding: 12px 0 8px;
+      }
+
+      .subtitle {
+        display: none;
       }
     }
 
@@ -1084,6 +1099,25 @@
 
       <!-- Mobile bottom toolbar -->
       <div class="bottom-toolbar">
+        <!-- Colour strip - always visible so colours are one tap away -->
+        <div class="mobile-color-swatches">
+          <button type="button" class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow" aria-label="Yellow"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime" aria-label="Lime"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green" aria-label="Green"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua" aria-label="Aqua"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue" aria-label="Nano Blue"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue" aria-label="Blue"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple" aria-label="Purple"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta" aria-label="Magenta"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink" aria-label="Electric Pink"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry" aria-label="Berry"></button>
+          <button type="button" class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown" aria-label="Brown"></button>
+        </div>
+
         <!-- Main toolbar - always visible -->
         <div class="mobile-toolbar-main">
           <button id="bucket-tool-btn-mobile" class="mobile-tool-btn" title="Fill">
@@ -1101,28 +1135,6 @@
 
         <!-- Expandable menu - hidden by default -->
         <div class="mobile-toolbar-expanded" id="mobile-expanded-menu" style="display: none;">
-          <!-- Color Swatches -->
-          <div class="mobile-section">
-            <div class="mobile-section-label">Colours</div>
-            <div class="mobile-color-swatches">
-              <button type="button" class="color-swatch-btn-mobile selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#F53524" style="background: #F53524;" title="Orange" aria-label="Orange"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#FFA64D" style="background: #FFA64D;" title="Tangerine" aria-label="Tangerine"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#FFF133" style="background: #FFF133;" title="Yellow" aria-label="Yellow"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#66BD0F" style="background: #66BD0F;" title="Lime" aria-label="Lime"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#006635" style="background: #006635;" title="Green" aria-label="Green"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#44A2A2" style="background: #44A2A2;" title="Aqua" aria-label="Aqua"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#26ACD9" style="background: #26ACD9;" title="Nano Blue" aria-label="Nano Blue"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#001A80" style="background: #001A80;" title="Blue" aria-label="Blue"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#372277" style="background: #372277;" title="Purple" aria-label="Purple"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#CC0099" style="background: #CC0099;" title="Magenta" aria-label="Magenta"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#F2A6ED" style="background: #F2A6ED;" title="Electric Pink" aria-label="Electric Pink"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#94056E" style="background: #94056E;" title="Berry" aria-label="Berry"></button>
-              <button type="button" class="color-swatch-btn-mobile" data-color="#2D1206" style="background: #2D1206;" title="Brown" aria-label="Brown"></button>
-            </div>
-          </div>
-
           <!-- Brush/Eraser Size -->
           <div class="mobile-section">
             <div class="mobile-section-label" id="mobile-size-label">Brush Size</div>
