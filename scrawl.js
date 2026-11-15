@@ -305,10 +305,24 @@ function draw() {
 
 function updateCursor() {
   const transformed = getTransformedCoords(mouseX, mouseY);
-  const overEye = eyePositions.some(pos =>
-    dist(transformed.x, transformed.y, pos.x, pos.y) < eyeRadius
-  );
+  const overEye = findEyeAt(transformed.x, transformed.y) !== -1;
   cursor(overEye ? 'pointer' : ARROW);
+}
+
+// Index of the eye nearest to a point (canvas coords), or -1 if none is in reach.
+// The canvas is scaled down on small screens, so the reach grows to stay a
+// ~44px touch target.
+function findEyeAt(x, y) {
+  let reach = max(eyeRadius, 22 * canvasSize / canvas.elt.clientWidth);
+  let found = -1;
+  eyePositions.forEach((pos, i) => {
+    const d = dist(x, y, pos.x, pos.y);
+    if (d < reach) {
+      reach = d;
+      found = i;
+    }
+  });
+  return found;
 }
 
 function isMouseInCanvas() {
@@ -323,9 +337,7 @@ function mousePressed(event) {
 
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
-    const eyeIndex = eyePositions.findIndex(pos =>
-      dist(transformed.x, transformed.y, pos.x, pos.y) < eyeRadius
-    );
+    const eyeIndex = findEyeAt(transformed.x, transformed.y);
 
     if (eyeIndex !== -1) {
       draggedEyeIndex = eyeIndex;
