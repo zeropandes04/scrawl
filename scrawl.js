@@ -77,7 +77,7 @@ let brushSizesShown = false; // mobile strip: brush sizes instead of colours
 
 // Scrawl segments still to be drawn by the draw-in animation
 let scrawlQueue = [];
-const scrawlDrawInFrames = 45; // ~0.75s at 60fps, whatever the intensity
+const scrawlDrawInFrames = 70; // ~1.2s at 60fps, whatever the intensity
 let scrawlDrawInRate = 0;      // segments per frame (can be a fraction)
 let scrawlDrawInProgress = 0;  // fraction of a segment carried to the next frame
 
