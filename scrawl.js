@@ -24,6 +24,10 @@ let brushSize = 8;
 let brushColor = '#000000';
 let eraserSize = 16;
 
+// Scrawl segments still to be drawn by the draw-in animation
+let scrawlQueue = [];
+const scrawlDrawInFrames = 30; // ~0.5s at 60fps, whatever the intensity
+
 // Memento pattern for undo/redo
 let historyStack = [];
 let redoStack = [];
@@ -106,6 +110,7 @@ function setup() {
   intensitySlider.input(() => {
     intensity = parseInt(intensitySlider.value());
     select("#intensity-value").html(intensity);
+    tickLcd("intensity-value");
   });
   // Releasing the slider shows the new intensity straight away, unless that
   // would discard a drawing (then it applies to the next Generate)
@@ -165,6 +170,7 @@ function setup() {
     intensitySliderMobile.input(() => {
       intensity = parseInt(intensitySliderMobile.value());
       select("#intensity-value-mobile").html(intensity);
+      tickLcd("intensity-value-mobile");
       // Sync with desktop slider
       select("#intensity-slider").value(intensity);
       select("#intensity-value").html(intensity);
@@ -173,6 +179,19 @@ function setup() {
       if (!hasDrawings) generateScrawlface();
     });
   }
+
+  // Sticker keys (desktop and mobile share data-sticker)
+  document.querySelectorAll('[data-sticker]').forEach(btn => {
+    btn.addEventListener('click', () => toggleSticker(btn.dataset.sticker));
+  });
+
+  // A short buzz when a control key is tapped, so the keys feel physical.
+  // Android Chrome only; other browsers have no navigator.vibrate.
+  document.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' || !navigator.vibrate) return;
+    const key = e.target.closest('.sidebar button, .bottom-toolbar button');
+    if (key && !key.disabled) navigator.vibrate(8);
+  });
 
   // Start with the brush selected so the canvas responds to the first touch
   activateBrushMode();
@@ -210,9 +229,8 @@ function generateScrawlface() {
   let x = centerX;
   let y = centerY;
 
-  baseScrawlGraphics.beginShape();
-  baseScrawlGraphics.curveVertex(x, y);
-
+  // Each segment is one bezier curve; draw() draws them in a few per frame
+  scrawlQueue = [];
   for (let i = 0; i < intensity; i++) {
     const controlX1 = x + random(-300, 300);
     const controlY1 = y + random(-300, 300);
@@ -220,26 +238,50 @@ function generateScrawlface() {
     const controlY2 = y + random(-300, 300);
     const x2 = x + random(-20, 20);
     const y2 = y + random(-20, 20);
-    baseScrawlGraphics.bezierVertex(controlX1, controlY1, controlX2, controlY2, x2, y2);
+    scrawlQueue.push([x, y, controlX1, controlY1, controlX2, controlY2, x2, y2]);
     x = x2;
     y = y2;
   }
-  baseScrawlGraphics.endShape();
+  // Reduced motion: draw the whole scrawl straight away
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    drawScrawlSegments(scrawlQueue.length);
+  }
 
   const eye1X = random(eyeMargin, canvasSize - eyeMargin - eyeSize - 60);
   const eye1Y = random(eyeMargin, canvasSize - eyeMargin - eyeSize);
   const eye2X = random(eye1X + eyeSize, min(eye1X + 130, canvasSize - eyeMargin - eyeSize));
   const eye2Y = random(eyeMargin, canvasSize - eyeMargin - eyeSize);
 
+  // A new face starts with just the eyes; stickers are added from their keys
   eyePositions = [
     {x: eye1X, y: eye1Y, scale: 1.0},
     {x: eye2X, y: eye2Y, scale: 0.9}
   ];
+  updateStickerButtons();
 
   redrawCanvas();
 }
 
+// Draws the next `count` queued scrawl segments onto the scrawl layer
+function drawScrawlSegments(count) {
+  scrawlQueue.splice(0, count).forEach(seg => baseScrawlGraphics.bezier(...seg));
+}
+
+// Flashes an intensity readout so the change is noticed
+function tickLcd(id) {
+  const lcd = document.getElementById(id);
+  lcd.classList.remove('tick');
+  void lcd.offsetWidth; // restart the animation
+  lcd.classList.add('tick');
+}
+
 function draw() {
+  // Scrawl draw-in after Generate: a few segments per frame
+  if (scrawlQueue.length > 0) {
+    drawScrawlSegments(ceil(intensity / scrawlDrawInFrames));
+    redrawCanvas();
+  }
+
   if (draggedEyeIndex !== -1 && mouseIsPressed) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     // Keep the whole eye on the canvas so it can't be dragged out of reach
@@ -453,10 +495,14 @@ function redrawCanvas() {
 
   pop();
 
-  // Always show eyes
+  // Always show eyes and stickers (stickers carry a type, eyes don't)
   eyePositions.forEach(pos => {
     const rotatedPos = getRotatedPosition(pos.x, pos.y);
-    drawEye(rotatedPos.x, rotatedPos.y, pos.scale);
+    if (pos.type) {
+      drawSticker(pos.type, rotatedPos.x, rotatedPos.y);
+    } else {
+      drawEye(rotatedPos.x, rotatedPos.y, pos.scale);
+    }
   });
 }
 
@@ -493,6 +539,78 @@ function drawEye(x, y, scale = 1.0) {
 
   fill(255);
   ellipse(highlightOffset, -highlightOffset, highlightSize, highlightSize);
+
+  pop();
+}
+
+// Stickers are extra face parts. They live in eyePositions next to the eyes,
+// so Move face drags them the same way, and like the eyes they are not part
+// of the undo history: their key toggles them on and off instead.
+function toggleSticker(type) {
+  const wasOn = eyePositions.some(pos => pos.type === type);
+  eyePositions = eyePositions.filter(pos => pos.type !== type);
+
+  if (!wasOn) {
+    const eyes = eyePositions.filter(pos => !pos.type);
+    const place = (x, y) => ({
+      x: constrain(x, eyeRadius, canvasSize - eyeRadius),
+      y: constrain(y, eyeRadius, canvasSize - eyeRadius),
+      scale: 1.0,
+      type
+    });
+
+    if (type === 'brows') {
+      // One brow above each eye
+      eyes.forEach(eye => eyePositions.push(place(eye.x, eye.y - 55 * eye.scale)));
+    } else {
+      // Centred under the eyes: the nose close, the mouth further down
+      const midX = (eyes[0].x + eyes[1].x) / 2;
+      const lowerEyeY = max(eyes[0].y, eyes[1].y);
+      eyePositions.push(place(midX, lowerEyeY + (type === 'mouth' ? 120 : 60)));
+    }
+
+    // The next thing you'll want is to drag it into place
+    if (!moveEyesMode) toggleMoveEyesMode();
+  }
+
+  updateStickerButtons();
+  redrawCanvas();
+}
+
+// Sticker keys stay latched (green LED) while their sticker is on the canvas
+function updateStickerButtons() {
+  document.querySelectorAll('[data-sticker]').forEach(btn => {
+    const on = eyePositions.some(pos => pos.type === btn.dataset.sticker);
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', on);
+  });
+}
+
+function drawSticker(type, x, y) {
+  push();
+  translate(x, y);
+  stroke(0);
+  strokeWeight(2);
+
+  if (type === 'mouth') {
+    // Open grin with a tongue
+    fill(0);
+    arc(0, 0, 90, 60, 0, PI, CHORD);
+    noStroke();
+    fill('#E8506A');
+    arc(0, 26, 40, 20, PI, TWO_PI, CHORD);
+  } else if (type === 'nose') {
+    fill('#F2A6A6');
+    ellipse(0, 0, 34, 26);
+    noStroke();
+    fill(255);
+    ellipse(-7, -5, 8, 6);
+  } else if (type === 'brows') {
+    noFill();
+    strokeWeight(7);
+    strokeCap(ROUND);
+    arc(0, 12, 56, 28, PI + 0.3, TWO_PI - 0.3);
+  }
 
   pop();
 }
@@ -1127,6 +1245,7 @@ function setupMobileToolbar() {
     ['rotate-btn-mobile-controls', 'toggle-eyes-btn-mobile', 'move-eyes-btn-mobile', 'clear-drawings-btn-mobile'].forEach(id => {
       document.getElementById(id).addEventListener('click', closeMenu);
     });
+    expandedMenu.querySelectorAll('[data-sticker]').forEach(btn => btn.addEventListener('click', closeMenu));
   }
 
   // Mobile tool buttons

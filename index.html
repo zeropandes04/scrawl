@@ -18,7 +18,7 @@
       --key-edge: #a9a8a2;     /* keycap side, seen below the face */
       --key-down: #e2e1dc;
       --ink: #161616;
-      --muted: #6b6a65;
+      --muted: #55544f;    /* 5.2:1 on --chassis, AA for small text */
       --screen: #161616;
       --te-blue: #2c6fd6;
       --te-green: #2fb35a;
@@ -262,14 +262,13 @@
       }
     }
 
-    button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-      transform: none;
-    }
-
+    /* Disabled: a flat outline instead of a raised key */
+    button:disabled,
     button:disabled:hover {
-      background: var(--key);
+      background: transparent;
+      color: var(--muted);
+      box-shadow: inset 0 0 0 1px var(--chassis-edge);
+      cursor: not-allowed;
       transform: none;
     }
 
@@ -336,7 +335,13 @@
       font-size: 14px;
     }
 
+    /* The drawer slides up each time it is shown (display: none -> block) */
+    @keyframes drawer-in {
+      from { transform: translateY(12px); opacity: 0; }
+    }
+
     .mobile-toolbar-expanded {
+      animation: drawer-in 0.18s ease-out;
       width: 100%;
       background: var(--chassis);
       border-top: 1px solid var(--chassis-edge);
@@ -438,9 +443,19 @@
       grid-column: 1 / -1;
     }
 
-    .mobile-control-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
+    /* Sticker keys: one short row of three */
+    .sticker-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    /* Text keys (View, Stickers, History) are short rather than square so
+       the sidebar still fits a 720px-tall viewport. The icon tool keys are
+       nested in .tool-dropdown, so they stay square. */
+    .sidebar .tools-grid > button {
+      aspect-ratio: auto;
+      padding: 10px 6px;
     }
 
     .control-group {
@@ -525,6 +540,15 @@
       line-height: 1;
       border-radius: 6px;
       box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.6);
+    }
+
+    /* Brief flash when the value changes (class re-added from scrawl.js) */
+    @keyframes lcd-tick {
+      from { color: #ffffff; transform: translateY(-1px); }
+    }
+
+    .lcd.tick {
+      animation: lcd-tick 0.15s ease-out;
     }
 
     .slider-container {
@@ -934,7 +958,7 @@
          safety net rather than the norm */
       .sidebar {
         padding: 17px 24px;
-        gap: 11px;
+        gap: 10px;
         overflow-y: auto;
       }
 
@@ -950,6 +974,17 @@
       /* Empty footer only adds height */
       footer {
         display: none;
+      }
+    }
+
+    /* Respect the OS "reduce motion" setting: no transitions or animations
+       (the scrawl draw-in is skipped in scrawl.js too) */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -1085,7 +1120,16 @@
             <div class="tools-grid">
               <button id="rotate-btn" title="Rotate 90°">Rotate canvas</button>
               <button id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide scrawl</button>
-              <button id="move-eyes-btn" title="Move eyes">Move eyes</button>
+              <button id="move-eyes-btn" title="Drag the eyes and stickers">Move face</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>Stickers</h3>
+            <div class="tools-grid sticker-grid">
+              <button data-sticker="mouth" title="Add or remove a mouth" aria-pressed="false">Mouth</button>
+              <button data-sticker="nose" title="Add or remove a nose" aria-pressed="false">Nose</button>
+              <button data-sticker="brows" title="Add or remove eyebrows" aria-pressed="false">Brows</button>
             </div>
           </div>
 
@@ -1160,13 +1204,23 @@
             </div>
           </div>
 
+          <!-- Stickers: extra face parts, toggled on/off -->
+          <div class="mobile-section">
+            <div class="mobile-section-label">Stickers</div>
+            <div class="sticker-grid">
+              <button class="mobile-control-btn" data-sticker="mouth" aria-pressed="false">Mouth</button>
+              <button class="mobile-control-btn" data-sticker="nose" aria-pressed="false">Nose</button>
+              <button class="mobile-control-btn" data-sticker="brows" aria-pressed="false">Brows</button>
+            </div>
+          </div>
+
           <!-- Other Controls -->
           <div class="mobile-section">
             <div class="mobile-section-label">Controls</div>
             <div class="mobile-controls-grid">
               <button id="rotate-btn-mobile-controls" class="mobile-control-btn">Rotate</button>
               <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Hide Scrawl</button>
-              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
+              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Face</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
               <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
