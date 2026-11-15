@@ -557,13 +557,21 @@ const eyeSets = {
   sleepy: ['sleepy', 'sleepy'],
   glam: ['glam', 'glam'],
   spiky: ['spiky', 'spiky'],
-  wink: ['lashes', 'closed']
+  wink: ['lashes', 'closed'],
+  dot: ['dot', 'dot'],
+  side: ['side', 'side'],
+  amber: ['amber', 'amber'],
+  lowlid: ['lowlid', 'lowlid'],
+  sunny: ['sunny', 'sunny'],
+  blue: ['blue', 'blue']
 };
 const eyeColors = {
   lidBlue: '#7B9CF2',
   lidRed: '#F0504A',
   irisBlue: '#8ED3F5',
-  irisAqua: '#A8EBE3'
+  irisAqua: '#A8EBE3',
+  amber: '#F5A32A',
+  lidYellow: '#F8D24A'
 };
 const almondW = 40;  // half the width of an almond eye
 const almondC = 33;  // control-point height of its top and bottom curves
@@ -616,14 +624,63 @@ function drawEye(g, x, y, scale, style) {
     lashes(g, 1, 5, 12);
     almondEye(g, 255);
     iris(g, 0, 0, 30, eyeColors.irisAqua);
+  } else if (style === 'dot') {
+    // Plain outline with a small dot pupil
+    almondEye(g, 255);
+    g.fill(0);
+    g.ellipse(0, 0, 12, 12);
+  } else if (style === 'side') {
+    // Big black iris pushed against the edge, clipped by the eye shape
+    almondEye(g, 255);
+    const ctx = g.drawingContext;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(-almondW, 0);
+    ctx.bezierCurveTo(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
+    ctx.bezierCurveTo(almondW / 2, almondC, -almondW / 2, almondC, -almondW, 0);
+    ctx.clip();
+    g.noStroke();
+    g.fill(0);
+    g.ellipse(18, 0, 44, 44);
+    g.fill(255);
+    g.ellipse(10, -7, 8, 8);
+    ctx.restore();
+    // Redraw the outline over the iris
+    g.stroke(0);
+    almondEye(g, null);
+  } else if (style === 'amber' || style === 'blue') {
+    // Whole eye filled with colour, dot pupil
+    almondEye(g, style === 'amber' ? eyeColors.amber : eyeColors.lidBlue);
+    g.fill(0);
+    g.ellipse(0, 0, 14, 14);
+    g.noStroke();
+    g.fill(255);
+    g.ellipse(3, -3, 4, 4);
+  } else if (style === 'lowlid') {
+    // Blue lower lid pushing the iris up
+    almondEye(g, 255);
+    iris(g, 0, -4, 26, 0);
+    g.fill(eyeColors.lidBlue);
+    g.beginShape();
+    g.vertex(-almondW, 0);
+    g.bezierVertex(-almondW / 2, almondC, almondW / 2, almondC, almondW, 0);
+    g.bezierVertex(almondW / 2, almondC * 0.2, -almondW / 2, almondC * 0.2, -almondW, 0);
+    g.endShape(CLOSE);
+  } else if (style === 'sunny') {
+    // Yellow lid, black iris, lower lashes
+    almondEye(g, 255);
+    iris(g, 0, 3, 26, 0);
+    lid(g, eyeColors.lidYellow, 0.2);
+    lashes(g, 1, 4, 10);
   }
 
   g.pop();
 }
 
 // Almond outline: two curves meeting in points at each side
+// (fillColor null = outline only)
 function almondEye(g, fillColor) {
-  g.fill(fillColor);
+  fillColor === null ? g.noFill() : g.fill(fillColor);
   g.beginShape();
   g.vertex(-almondW, 0);
   g.bezierVertex(-almondW / 2, -almondC, almondW / 2, -almondC, almondW, 0);
@@ -702,7 +759,8 @@ function setupEyeSetButtons() {
 // Gives each eye a different random style (never both closed, never the
 // same pair as now, so every press visibly changes something)
 function mixEyes() {
-  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed'];
+  const styles = ['classic', 'lashes', 'sleepy', 'glam', 'spiky', 'closed',
+                  'dot', 'side', 'amber', 'blue', 'lowlid', 'sunny'];
   let pair;
   do {
     pair = shuffle(styles).slice(0, 2);

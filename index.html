@@ -433,9 +433,11 @@
       cursor: pointer;
     }
 
-    /* Compact so the desktop sidebar still fits a 720px-tall viewport */
-    #save-btn {
-      padding: 8px 24px;
+    /* Save sits in the History row as a 4th key, so the sidebar (with two
+       rows of eye sets) still fits a 720px-tall viewport */
+    .tools-grid.history-grid {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
     }
 
     /* 7th button in the 2-column grid (when shown): span the full row instead of sitting alone */
@@ -474,7 +476,7 @@
       padding: 6px 14px;
     }
 
-    /* Eye set keys: one row of six small square keys, each showing a
+    /* Eye set keys: rows of six small square keys, each showing a
        preview image of its eye */
     .eye-set-grid {
       display: grid;
@@ -1192,19 +1194,24 @@
               <button type="button" data-eye-set="glam" title="Glam eyes" aria-label="Glam eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="spiky" title="Spiky eyes" aria-label="Spiky eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="wink" title="Wink eyes" aria-label="Wink eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="dot" title="Dot eyes" aria-label="Dot eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="side" title="Side-eye eyes" aria-label="Side-eye eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="amber" title="Amber eyes" aria-label="Amber eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="lowlid" title="Low lid eyes" aria-label="Low lid eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="sunny" title="Sunny eyes" aria-label="Sunny eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="blue" title="Blue eyes" aria-label="Blue eye set" aria-pressed="false"></button>
             </div>
           </div>
 
           <div class="sidebar-section">
             <h3>History</h3>
-            <div class="tools-grid">
+            <div class="tools-grid history-grid">
               <button id="undo-btn" title="Undo (⌘Z)" disabled>Undo</button>
               <button id="redo-btn" title="Redo (⌘⇧Z)" disabled>Redo</button>
               <button id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
+              <button id="save-btn" title="Save as PNG">Save</button>
             </div>
           </div>
-
-          <button id="save-btn" title="Save as PNG">Save PNG</button>
         </aside>
       </section>
 
@@ -1279,6 +1286,12 @@
               <button type="button" class="mobile-control-btn" data-eye-set="glam" aria-label="Glam eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="spiky" aria-label="Spiky eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="wink" aria-label="Wink eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="dot" aria-label="Dot eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="side" aria-label="Side-eye eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="amber" aria-label="Amber eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="lowlid" aria-label="Low lid eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="sunny" aria-label="Sunny eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="blue" aria-label="Blue eye set" aria-pressed="false"></button>
             </div>
           </div>
 
