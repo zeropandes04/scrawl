@@ -56,28 +56,35 @@
       padding: 0 22px;
     }
 
+    /* Compact one-line header: wordmark, then the tagline beside it (the
+       tagline wraps underneath when there isn't room) */
     header {
-      text-align: center;
-      padding: 52px 0 21px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 0 14px;
+      padding: 12px 0 8px;
     }
 
+    /* The wordmark's typeface is picked at random on every page load (see
+       loadWordmarkFont in scrawl.js). The fixed line box keeps the layout
+       identical whichever typeface comes up. */
     h1 {
-      font-size: 56px;
-      line-height: 1.07143;
-      font-weight: 600;
-      letter-spacing: -0.005em;
-      margin-bottom: 6px;
+      font-family: var(--wordmark-font, inherit);
+      font-weight: var(--wordmark-weight, 600);
+      font-style: var(--wordmark-style, normal);
+      font-size: calc(28px * var(--wordmark-scale, 1));
+      line-height: 40px;
+      height: 40px;
+      white-space: nowrap;
       color: #1d1d1f;
     }
 
     .subtitle {
-      font-size: 21px;
-      line-height: 1.381;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 18px;
       color: #6e6e73;
-      font-weight: 400;
-      letter-spacing: 0.011em;
-      margin-top: 6px;
-      margin-bottom: 0;
     }
 
     .canvas-section {
@@ -97,7 +104,6 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 40px;
       background: #ffffff;
       gap: 24px;
     }
@@ -108,11 +114,10 @@
       align-items: center;
     }
 
+    /* No frame of its own: the canvas fills the white area and blends into it */
     #scrawl-container canvas {
       max-width: 100%;
       height: auto !important;
-      border-radius: 12px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
 
     /* Control panel: styled after Teenage Engineering hardware (OP-1) */
@@ -754,19 +759,9 @@
     }
 
     @media (max-width: 768px) {
-      h1 {
-        font-size: 40px;
-        line-height: 1.1;
-        letter-spacing: 0;
-      }
-
-      .subtitle {
-        font-size: 17px;
-        line-height: 1.47059;
-      }
-
-      header {
-        padding: 42px 0 18px;
+      /* One white surface on phones: no off-white bands around the canvas */
+      body {
+        background: #ffffff;
       }
 
       .canvas-section {
@@ -780,15 +775,6 @@
         /* Bottom margin clears the collapsed bottom bar (handle + options
            strip + tool row, ~150px) */
         margin: 0 -16px calc(156px + env(safe-area-inset-bottom));
-      }
-
-      .canvas-area {
-        padding: 8px;
-      }
-
-      #scrawl-container canvas {
-        border-radius: 0;
-        box-shadow: none;
       }
 
       .sidebar {
@@ -838,18 +824,6 @@
     }
 
     @media (max-width: 480px) {
-      h1 {
-        font-size: 32px;
-      }
-
-      .subtitle {
-        font-size: 17px;
-      }
-
-      header {
-        padding: 32px 0 14px;
-      }
-
       .bottom-toolbar {
         padding-left: 8px;
         padding-right: 8px;
@@ -863,7 +837,7 @@
     /* Short phones: shrink the header so the fixed toolbar doesn't cover the canvas */
     @media (max-width: 768px) and (max-height: 620px) {
       header {
-        padding: 12px 0 8px;
+        padding: 6px 0 2px;
       }
 
       .subtitle {
@@ -878,20 +852,6 @@
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-      }
-
-      header {
-        padding: 12px 0 6px;
-      }
-
-      h1 {
-        font-size: 26px;
-        margin-bottom: 2px;
-      }
-
-      .subtitle {
-        font-size: 13px;
-        margin-top: 2px;
       }
 
       /* main fills the remaining height; canvas-section (canvas + sidebar) fills main */
