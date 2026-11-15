@@ -1,3 +1,51 @@
+// The "Scrawlface" wordmark is set in a different typeface on every page
+// load, the same way the scrawl itself is different every time.
+// Each entry: [family, Google Fonts query, CSS weight, CSS style, size scale].
+const wordmarkFonts = [
+  ['Space Grotesk', 'Space+Grotesk:wght@700', 700, 'normal', 1],                    // modern sans
+  ['Archivo Black', 'Archivo+Black', 400, 'normal', 0.95],                          // heavy sans
+  ['Playfair Display', 'Playfair+Display:ital,wght@1,700', 700, 'italic', 1.05],    // italic serif
+  ['Instrument Serif', 'Instrument+Serif:ital@1', 400, 'italic', 1.25],             // elegant italic
+  ['Abril Fatface', 'Abril+Fatface', 400, 'normal', 1.05],                          // display serif
+  ['Bungee Shade', 'Bungee+Shade', 400, 'normal', 0.9],                             // display
+  ['Monoton', 'Monoton', 400, 'normal', 0.95],                                      // decorative
+  ['Pacifico', 'Pacifico', 400, 'normal', 1],                                       // script
+  ['Lobster', 'Lobster', 400, 'normal', 1.1],                                       // flamboyant
+  ['Permanent Marker', 'Permanent+Marker', 400, 'normal', 1],                       // marker
+  ['Caveat', 'Caveat:wght@700', 700, 'normal', 1.35],                               // handwritten
+  ['Rye', 'Rye', 400, 'normal', 0.95],                                              // western
+  ['UnifrakturMaguntia', 'UnifrakturMaguntia', 400, 'normal', 1.15],                // blackletter
+  ['Press Start 2P', 'Press+Start+2P', 400, 'normal', 0.6]                          // pixel
+];
+
+// Runs while the <head> is still being parsed, so the font is on its way
+// before the header is painted. Only the letters of the wordmark are
+// downloaded. If the font can't load, the header falls back to the system font.
+function loadWordmarkFont() {
+  // Never the same typeface twice in a row
+  let last = -1;
+  try { last = parseInt(localStorage.getItem('wordmarkFont')); } catch (e) {}
+  let i;
+  do {
+    i = Math.floor(Math.random() * wordmarkFonts.length);
+  } while (i === last);
+  try { localStorage.setItem('wordmarkFont', i); } catch (e) {}
+
+  const [family, query, weight, style, scale] = wordmarkFonts[i];
+
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.href = `https://fonts.googleapis.com/css2?family=${query}&text=Scrawlface&display=block`;
+  document.head.appendChild(link);
+
+  const root = document.documentElement.style;
+  root.setProperty('--wordmark-font', `'${family}', sans-serif`);
+  root.setProperty('--wordmark-weight', weight);
+  root.setProperty('--wordmark-style', style);
+  root.setProperty('--wordmark-scale', scale);
+}
+loadWordmarkFont();
+
 let canvas;
 const bgColor = [255, 255, 255];
 let strokeColor = [0, 0, 0];
