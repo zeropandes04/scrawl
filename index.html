@@ -7,6 +7,26 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
   <script src="scrawl.js"></script>
   <style>
+    /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
+       Engineering hardware (OP-1): an aluminium panel, physical keycaps
+       that press in, monospaced micro-labels and a fader with an LCD readout. */
+    :root {
+      --chassis: #d7d6d1;      /* device panel */
+      --chassis-edge: #bdbcb6;
+      --key: #f6f6f3;          /* keycap face */
+      --key-hover: #ffffff;
+      --key-edge: #a9a8a2;     /* keycap side, seen below the face */
+      --key-down: #e2e1dc;
+      --ink: #161616;
+      --muted: #55544f;    /* 5.2:1 on --chassis, AA for small text */
+      --screen: #161616;
+      --te-blue: #2c6fd6;
+      --te-green: #2fb35a;
+      --te-orange: #ff6b1a;
+      --te-orange-edge: #c24e0d;
+      --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -104,14 +124,17 @@
       box-shadow: 0 4px 16px rgba(0,0,0,0.1);
     }
 
+    /* Control panel: styled after Teenage Engineering hardware (OP-1) */
     .sidebar {
       width: 280px;
-      background: #f5f5f7;
+      background: var(--chassis);
+      border-left: 1px solid var(--chassis-edge);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
       padding: 32px 24px;
       display: flex;
       flex-direction: column;
       gap: 24px;
-      border-left: 0.5px solid rgba(0, 0, 0, 0.1);
+      counter-reset: section;
     }
 
     .sidebar-section {
@@ -120,13 +143,28 @@
       gap: 12px;
     }
 
-    .sidebar-section h3 {
-      font-size: 13px;
-      font-weight: 600;
-      color: #6e6e73;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+    /* Numbered micro-labels: "01 tools", "02 colours", ... */
+    .sidebar-section h3,
+    .control-group label,
+    .mobile-section-label {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: lowercase;
+      letter-spacing: 0.04em;
       margin: 0;
+    }
+
+    .sidebar-section h3::before {
+      counter-increment: section;
+      content: counter(section, decimal-leading-zero);
+      display: inline-block;
+      margin-right: 8px;
+      padding: 0 4px;
+      color: var(--chassis);
+      background: var(--muted);
+      border-radius: 3px;
     }
 
     .sidebar .cta-button {
@@ -141,7 +179,6 @@
     .sidebar .tools-grid button {
       aspect-ratio: 1 / 1;
       padding: 12px;
-      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -155,61 +192,102 @@
       padding: 12px 24px;
     }
 
+    /* Keycap: a light face on a darker edge; pressing pushes the face down */
     button {
-      background: #e8e8ed;
-      color: #1d1d1f;
+      position: relative;
+      background: var(--key);
+      color: var(--ink);
       border: none;
       padding: 12px 24px;
-      font-size: 15px;
+      font-size: 14px;
       line-height: 1.23536;
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      border-radius: 980px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      border-radius: 8px;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        0 2px 0 var(--key-edge),
+        0 3px 6px rgba(0,0,0,0.12);
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, background 0.15s;
       min-width: 44px;
       font-family: inherit;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    button:hover {
-      background: #d2d2d7;
-      transform: scale(1.02);
+    @media (hover: hover) {
+      button:hover {
+        background: var(--key-hover);
+      }
     }
 
     button:active {
-      transform: scale(0.98);
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 2px rgba(0,0,0,0.12),
+        0 0 0 var(--key-edge),
+        0 1px 2px rgba(0,0,0,0.1);
     }
 
+    button:focus-visible {
+      outline: 2px solid var(--te-blue);
+      outline-offset: 2px;
+    }
+
+    /* Latched key: stays pressed in, with a green LED */
     button.active {
-      background: #7ed99b;
-      color: #1d1d1f;
+      background: var(--key-down);
+      color: var(--ink);
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 3px rgba(0,0,0,0.18),
+        0 0 0 var(--key-edge);
     }
 
-    button.active:hover {
-      background: #6bcf8a;
+    button.active::after {
+      content: '';
+      position: absolute;
+      top: 7px;
+      right: 7px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--te-green);
+      box-shadow: 0 0 6px var(--te-green);
     }
 
-    button:disabled {
-      opacity: 0.6;
+    @media (hover: hover) {
+      button.active:hover {
+        background: var(--key-down);
+      }
+    }
+
+    /* Disabled: a flat outline instead of a raised key */
+    button:disabled,
+    button:disabled:hover {
+      background: transparent;
+      color: var(--muted);
+      box-shadow: inset 0 0 0 1px var(--chassis-edge);
       cursor: not-allowed;
       transform: none;
     }
 
-    button:disabled:hover {
-      background: #e8e8ed;
-      transform: none;
-    }
-
     .cta-button {
-      background: #0071e3;
-      color: white;
-      font-size: 15px;
-      font-weight: 500;
+      background: var(--te-orange);
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
       padding: 12px 24px;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.35),
+        0 2px 0 var(--te-orange-edge),
+        0 3px 6px rgba(0,0,0,0.15);
     }
 
-    .cta-button:hover {
-      background: #0077ed;
+    @media (hover: hover) {
+      .cta-button:hover {
+        background: #ff7b33;
+      }
     }
 
     .bottom-toolbar {
@@ -225,7 +303,7 @@
     .toolbar-divider {
       width: 1px;
       height: 32px;
-      background: #d2d2d7;
+      background: var(--chassis-edge);
     }
 
     /* Mobile toolbar styles */
@@ -247,22 +325,26 @@
       min-width: 40px;
       min-height: 48px;
       padding: 12px;
-      border-radius: 12px;
+      border-radius: 10px;
+      font-size: 18px;
     }
 
     /* The text button keeps its natural width */
     #generate-btn-mobile {
       flex: none;
+      font-size: 14px;
     }
 
-    .mobile-tool-btn.active {
-      background: #7ed99b;
+    /* The drawer slides up each time it is shown (display: none -> block) */
+    @keyframes drawer-in {
+      from { transform: translateY(12px); opacity: 0; }
     }
 
     .mobile-toolbar-expanded {
+      animation: drawer-in 0.18s ease-out;
       width: 100%;
-      background: #ffffff;
-      border-top: 1px solid #d2d2d7;
+      background: var(--chassis);
+      border-top: 1px solid var(--chassis-edge);
       padding: 16px;
       max-height: 60vh;
       overflow-y: auto;
@@ -278,11 +360,7 @@
     }
 
     .mobile-section-label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #6e6e73;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+      display: block;
       margin-bottom: 10px;
     }
 
@@ -302,22 +380,19 @@
       width: 40px;
       height: 40px;
       padding: 0;
-      border-radius: 8px;
+      border-radius: 6px;
       cursor: pointer;
-      transition: all 0.2s;
-      border: 3px solid transparent;
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border: 2px solid transparent;
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.3),
+        0 2px 0 rgba(0,0,0,0.3);
       flex-shrink: 0;
     }
 
-    .color-swatch-btn-mobile:active {
-      transform: scale(0.95);
-    }
-
     .color-swatch-btn-mobile.selected {
-      border-color: #1d1d1f;
-      transform: scale(1.05);
-      box-shadow: 0 0 0 1px #ffffff, 0 0 0 4px #1d1d1f;
+      border-color: var(--chassis);
+      transform: translateY(2px);
+      box-shadow: 0 0 0 2px var(--ink);
     }
 
     .mobile-size-options {
@@ -332,38 +407,30 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: #f5f5f7;
-      border: 2px solid transparent;
-      border-radius: 8px;
+      padding: 12px;
       cursor: pointer;
-      transition: all 0.2s;
     }
 
-    .mobile-size-btn:active {
-      transform: scale(0.95);
-    }
-
+    /* Selected size latches like the tool keys */
     .mobile-size-btn.selected {
-      background: #e8e8ed;
-      border-color: #0071e3;
+      background: var(--key-down);
+      transform: translateY(2px);
+      box-shadow:
+        inset 0 1px 3px rgba(0,0,0,0.18),
+        0 0 0 2px var(--te-blue);
     }
 
     .mobile-controls-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      gap: 10px;
     }
 
     .mobile-control-btn {
       padding: 14px 16px;
       font-size: 14px;
       min-height: 48px;
-      background: #e8e8ed;
-      border: none;
-      border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s;
-      font-weight: 500;
     }
 
     /* Compact so the desktop sidebar still fits a 720px-tall viewport */
@@ -376,18 +443,19 @@
       grid-column: 1 / -1;
     }
 
-    .mobile-control-btn:active {
-      transform: scale(0.97);
-      background: #d2d2d7;
+    /* Sticker keys: one short row of three */
+    .sticker-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
     }
 
-    .mobile-control-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-
-    .mobile-control-btn.active {
-      background: #7ed99b;
+    /* Text keys (View, Stickers, History) are short rather than square so
+       the sidebar still fits a 720px-tall viewport. The icon tool keys are
+       nested in .tool-dropdown, so they stay square. */
+    .sidebar .tools-grid > button {
+      aspect-ratio: auto;
+      padding: 10px 6px;
     }
 
     .control-group {
@@ -396,12 +464,91 @@
       gap: 12px;
     }
 
-    .control-group label {
-      font-size: 13px;
-      font-weight: 600;
-      color: #6e6e73;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
+    /* ---- Fader ----
+       The intensity range input, styled as a hardware fader: a dark
+       groove and a large blue cap that is easy to grab on touch. */
+    .fader-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      min-width: 0;
+      height: 32px; /* touch target; the visible groove is thinner */
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+      touch-action: none;
+    }
+
+    input[type="range"]::-webkit-slider-runnable-track {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--screen);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    input[type="range"]::-moz-range-track {
+      height: 8px;
+      border-radius: 4px;
+      background: var(--screen);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.7);
+    }
+
+    /* Blue fader cap with a white centre line */
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 30px;
+      margin-top: -11px; /* centre on the 8px track */
+      border-radius: 5px;
+      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-blue);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 #1d4f9e, 0 3px 5px rgba(0,0,0,0.3);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 30px;
+      border: none;
+      border-radius: 5px;
+      background: linear-gradient(90deg, transparent 7px, #ffffff 7px 11px, transparent 11px), var(--te-blue);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 2px 0 #1d4f9e, 0 3px 5px rgba(0,0,0,0.3);
+    }
+
+    input[type="range"]:focus-visible {
+      outline: 2px solid var(--te-blue);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    /* Tiny OLED-style readout next to the fader */
+    .lcd {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 52px;
+      padding: 6px 10px;
+      background: var(--screen);
+      color: #63a4ff;
+      font-family: var(--mono);
+      font-size: 18px;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      border-radius: 6px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 1px 0 rgba(255,255,255,0.6);
+    }
+
+    /* Brief flash when the value changes (class re-added from scrawl.js) */
+    @keyframes lcd-tick {
+      from { color: #ffffff; transform: translateY(-1px); }
+    }
+
+    .lcd.tick {
+      animation: lcd-tick 0.15s ease-out;
     }
 
     .slider-container {
@@ -410,52 +557,7 @@
       gap: 12px;
     }
 
-    input[type="range"] {
-      flex: 1;
-      -webkit-appearance: none;
-      appearance: none;
-      height: 4px;
-      background: #d2d2d7;
-      border-radius: 2px;
-      outline: none;
-    }
-
-    input[type="range"]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      background: #0071e3;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    input[type="range"]::-webkit-slider-thumb:hover {
-      background: #0077ed;
-      transform: scale(1.1);
-    }
-
-    input[type="range"]::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      background: #0071e3;
-      border: none;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    input[type="range"]::-moz-range-thumb:hover {
-      background: #0077ed;
-      transform: scale(1.1);
-    }
-
     .slider-value {
-      font-size: 14px;
-      color: #1d1d1f;
-      min-width: 30px;
-      text-align: center;
       font-variant-numeric: tabular-nums;
     }
 
@@ -471,8 +573,8 @@
 
     select {
       background: #ffffff;
-      color: #1d1d1f;
-      border: 1px solid #d2d2d7;
+      color: var(--ink);
+      border: 1px solid var(--chassis-edge);
       padding: 8px 12px;
       font-size: 13px;
       font-weight: 400;
@@ -483,14 +585,6 @@
       flex: 1;
     }
 
-    select:hover {
-      border-color: #b8b8bd;
-    }
-
-    select:focus {
-      border-color: #0071e3;
-    }
-
     .color-select {
       min-width: 80px;
     }
@@ -498,47 +592,12 @@
     .tools-grid {
       display: grid;
       grid-template-columns: 1fr 1fr 1fr;
-      gap: 8px;
+      gap: 10px;
     }
 
     .custom-dropdown {
       position: relative;
       width: 100%;
-    }
-
-    .custom-dropdown-button {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 4px;
-      background: #e8e8ed;
-      border: none;
-      padding: 12px;
-      font-size: 15px;
-      line-height: 1.23536;
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      border-radius: 18px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      font-family: inherit;
-      color: #1d1d1f;
-    }
-
-    .custom-dropdown-button:hover {
-      background: #d2d2d7;
-      transform: scale(1.02);
-    }
-
-    .custom-dropdown-button:active {
-      transform: scale(0.98);
-    }
-
-    .custom-dropdown-button.open {
-      background: #d2d2d7;
     }
 
     .tool-dropdown {
@@ -554,44 +613,12 @@
       align-items: center;
       justify-content: center;
       gap: 11px;
-      background: #e8e8ed;
-      border: none;
       padding: 8px;
-      font-size: 15px;
-      line-height: 1.23536;
-      font-weight: 400;
-      letter-spacing: -0.022em;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      font-family: inherit;
-      color: #1d1d1f;
-    }
-
-    .tool-dropdown-button:hover {
-      background: #d2d2d7;
-      transform: scale(1.02);
-    }
-
-    .tool-dropdown-button:active {
-      transform: scale(0.98);
-    }
-
-    .tool-dropdown-button.active {
-      background: #7ed99b;
-      color: #1d1d1f;
-    }
-
-    .tool-dropdown-button.active:hover {
-      background: #6bcf8a;
+      border-radius: 10px;
     }
 
     .tool-dropdown-button.open {
-      background: #d2d2d7;
-    }
-
-    .tool-dropdown-button.active.open {
-      background: #6bcf8a;
+      background: var(--key-down);
     }
 
     .tool-icon {
@@ -626,7 +653,7 @@
       gap: 4px;
       padding: 4px 8px;
       margin: -4px -8px;
-      border-radius: 8px;
+      border-radius: 6px;
     }
 
     .size-toggle:hover {
@@ -638,15 +665,15 @@
       top: 100%;
       left: 0;
       right: 0;
-      margin-top: 4px;
-      background: #ffffff;
-      border: 1px solid #d2d2d7;
+      margin-top: 6px;
+      background: var(--screen);
       border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      box-shadow: 0 6px 16px rgba(0,0,0,0.25);
       z-index: 1000;
       display: none;
       max-height: 200px;
       overflow-y: auto;
+      padding: 4px;
     }
 
     .custom-dropdown-content.show {
@@ -656,18 +683,20 @@
     .custom-dropdown-option {
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 12px;
       padding: 8px 12px;
       cursor: pointer;
-      transition: background 0.2s;
+      border-radius: 5px;
+      transition: background 0.15s;
     }
 
     .custom-dropdown-option:hover {
-      background: #f5f5f7;
+      background: rgba(255,255,255,0.12);
     }
 
     .custom-dropdown-option.selected {
-      background: #e8e8ed;
+      background: rgba(255,255,255,0.2);
     }
 
     .brush-preview, .eraser-preview {
@@ -679,36 +708,29 @@
     }
 
     .brush-circle {
-      background: #1d1d1f;
+      background: var(--ink);
       border-radius: 50%;
+    }
+
+    /* Inside the dark dropdown the size dots are drawn light */
+    .custom-dropdown-content .brush-circle {
+      background: #ffffff;
     }
 
     .eraser-circle {
       background: #ffffff;
-      border: 1px solid #d2d2d7;
+      border: 1px solid var(--chassis-edge);
       border-radius: 50%;
     }
 
     .dropdown-arrow {
       font-size: 10px;
-      color: #86868b;
+      color: var(--muted);
       transition: transform 0.2s;
-    }
-
-    .custom-dropdown-button.open .dropdown-arrow {
-      transform: rotate(180deg);
     }
 
     .tool-dropdown-button.open .dropdown-arrow {
       transform: rotate(180deg);
-    }
-
-    .color-preview-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 4px;
-      width: 100%;
     }
 
     .color-swatch {
@@ -719,49 +741,30 @@
       flex-shrink: 0;
     }
 
-    #selected-color-swatch {
-      width: 28px;
-      height: 28px;
-      border: 2px solid rgba(0, 0, 0, 0.15);
-    }
-
-    #brush-color-label {
-      font-size: 11px;
-      font-weight: 500;
-      text-align: center;
-    }
-
-    .color-icon {
-      font-size: 24px;
-    }
-
     .color-swatches-palette {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
       gap: 5px;
     }
 
+    /* Colour keys: small square caps in the paint colour */
     .color-swatch-btn {
       width: 100%;
       min-width: 0;
       padding: 0;
       aspect-ratio: 1 / 1;
-      border-radius: 6px;
+      border-radius: 4px;
       cursor: pointer;
-      transition: all 0.2s;
       border: 2px solid transparent;
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-    }
-
-    .color-swatch-btn:hover {
-      transform: scale(1.1);
-      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.3),
+        0 2px 0 rgba(0,0,0,0.3);
     }
 
     .color-swatch-btn.selected {
-      border-color: #1d1d1f;
-      transform: scale(1.05);
-      box-shadow: 0 0 0 1px #ffffff, 0 0 0 3px #1d1d1f;
+      border-color: var(--chassis);
+      transform: translateY(2px);
+      box-shadow: 0 0 0 2px var(--ink);
     }
 
     footer {
@@ -827,17 +830,15 @@
         bottom: 0;
         left: 0;
         right: 0;
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: saturate(180%) blur(20px);
-        -webkit-backdrop-filter: saturate(180%) blur(20px);
-        border-top: 0.5px solid rgba(0, 0, 0, 0.1);
+        background: var(--chassis);
+        border-top: 1px solid var(--chassis-edge);
         padding: 12px 16px;
         align-items: center;
         justify-content: center;
         gap: 12px;
         flex-wrap: wrap;
         z-index: 1000;
-        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 -4px 14px rgba(0, 0, 0, 0.1);
       }
 
       .toolbar-divider {
@@ -940,19 +941,24 @@
         max-width: none;
       }
 
-      /* Generate/Intensity controls now live in the sidebar - stack to fit its width */
+      /* Generate/Intensity controls live in the sidebar - stack to fit its width */
       .canvas-controls {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
       }
 
-      /* The sidebar now also carries the generate/intensity controls and has
+      .canvas-controls .control-group {
+        max-width: none;
+        gap: 4px;
+      }
+
+      /* The sidebar also carries the generate/intensity controls and has
          less height to work with, so tighten its spacing; overflow-y is a
          safety net rather than the norm */
       .sidebar {
         padding: 17px 24px;
-        gap: 11px;
+        gap: 10px;
         overflow-y: auto;
       }
 
@@ -968,6 +974,17 @@
       /* Empty footer only adds height */
       footer {
         display: none;
+      }
+    }
+
+    /* Respect the OS "reduce motion" setting: no transitions or animations
+       (the scrawl draw-in is skipped in scrawl.js too) */
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
       }
     }
   </style>
@@ -991,9 +1008,9 @@
             <button id="generate-btn" class="cta-button">Generate New Scrawl</button>
             <div class="control-group">
               <label for="intensity-slider">Intensity</label>
-              <div class="slider-container">
+              <div class="fader-row">
                 <input type="range" id="intensity-slider" min="10" max="40" value="20" step="1">
-                <span class="slider-value" id="intensity-value">20</span>
+                <span class="lcd" id="intensity-value">20</span>
               </div>
             </div>
           </div>
@@ -1103,7 +1120,16 @@
             <div class="tools-grid">
               <button id="rotate-btn" title="Rotate 90°">Rotate canvas</button>
               <button id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide scrawl</button>
-              <button id="move-eyes-btn" title="Move eyes">Move eyes</button>
+              <button id="move-eyes-btn" title="Drag the eyes and stickers">Move face</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>Stickers</h3>
+            <div class="tools-grid sticker-grid">
+              <button data-sticker="mouth" title="Add or remove a mouth" aria-pressed="false">Mouth</button>
+              <button data-sticker="nose" title="Add or remove a nose" aria-pressed="false">Nose</button>
+              <button data-sticker="brows" title="Add or remove eyebrows" aria-pressed="false">Brows</button>
             </div>
           </div>
 
@@ -1178,13 +1204,23 @@
             </div>
           </div>
 
+          <!-- Stickers: extra face parts, toggled on/off -->
+          <div class="mobile-section">
+            <div class="mobile-section-label">Stickers</div>
+            <div class="sticker-grid">
+              <button class="mobile-control-btn" data-sticker="mouth" aria-pressed="false">Mouth</button>
+              <button class="mobile-control-btn" data-sticker="nose" aria-pressed="false">Nose</button>
+              <button class="mobile-control-btn" data-sticker="brows" aria-pressed="false">Brows</button>
+            </div>
+          </div>
+
           <!-- Other Controls -->
           <div class="mobile-section">
             <div class="mobile-section-label">Controls</div>
             <div class="mobile-controls-grid">
               <button id="rotate-btn-mobile-controls" class="mobile-control-btn">Rotate</button>
               <button id="toggle-eyes-btn-mobile" class="mobile-control-btn">Hide Scrawl</button>
-              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Eyes</button>
+              <button id="move-eyes-btn-mobile" class="mobile-control-btn">Move Face</button>
               <button id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
               <button id="clear-drawings-btn-mobile" class="mobile-control-btn" disabled>Clear</button>
               <button id="save-btn-mobile" class="mobile-control-btn">Save PNG</button>
@@ -1194,8 +1230,11 @@
 
           <!-- Intensity Slider -->
           <div class="mobile-section">
-            <div class="mobile-section-label">Intensity: <span id="intensity-value-mobile">20</span></div>
-            <input type="range" id="intensity-slider-mobile" min="10" max="40" value="20" step="1" style="width: 100%;">
+            <label class="mobile-section-label" for="intensity-slider-mobile">Intensity</label>
+            <div class="fader-row">
+              <input type="range" id="intensity-slider-mobile" min="10" max="40" value="20" step="1">
+              <span class="lcd" id="intensity-value-mobile">20</span>
+            </div>
           </div>
         </div>
       </div>
