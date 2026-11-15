@@ -395,19 +395,20 @@
       box-shadow: 0 0 0 2px var(--ink);
     }
 
+    /* Six sizes in one row, down to a 320px-wide phone */
     .mobile-size-options {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-start;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
     }
 
     .mobile-size-btn {
-      min-width: 48px;
+      min-width: 0;  /* six share the row: ~41px each on a 320px phone */
       min-height: 48px;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 12px;
+      padding: 0;
       cursor: pointer;
     }
 
@@ -656,7 +657,7 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 11px;
+      gap: 8px;
       padding: 8px;
       border-radius: 10px;
     }
@@ -715,7 +716,7 @@
       box-shadow: 0 6px 16px rgba(0,0,0,0.25);
       z-index: 1000;
       display: none;
-      max-height: 200px;
+      max-height: 320px;
       overflow-y: auto;
       padding: 4px;
     }
@@ -744,8 +745,8 @@
     }
 
     .brush-preview, .eraser-preview {
-      width: 24px;
-      height: 24px;
+      width: 32px;
+      height: 32px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -1100,6 +1101,16 @@
                       <div class="brush-circle" style="width: 16px; height: 16px;"></div>
                     </div>
                   </div>
+                  <div class="custom-dropdown-option" data-value="24">
+                    <div class="brush-preview">
+                      <div class="brush-circle" style="width: 24px; height: 24px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="32">
+                    <div class="brush-preview">
+                      <div class="brush-circle" style="width: 32px; height: 32px;"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="tool-dropdown" id="eraser-tool-dropdown">
@@ -1131,6 +1142,16 @@
                   <div class="custom-dropdown-option selected" data-value="16">
                     <div class="eraser-preview">
                       <div class="eraser-circle" style="width: 16px; height: 16px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="24">
+                    <div class="eraser-preview">
+                      <div class="eraser-circle" style="width: 24px; height: 24px;"></div>
+                    </div>
+                  </div>
+                  <div class="custom-dropdown-option" data-value="32">
+                    <div class="eraser-preview">
+                      <div class="eraser-circle" style="width: 32px; height: 32px;"></div>
                     </div>
                   </div>
                 </div>
@@ -1181,6 +1202,7 @@
               <button type="button" data-eye-set="amber" title="Amber eyes" aria-label="Amber eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="sunny" title="Sunny eyes" aria-label="Sunny eye set" aria-pressed="false"></button>
               <button type="button" data-eye-set="blue" title="Blue eyes" aria-label="Blue eye set" aria-pressed="false"></button>
+              <button type="button" data-eye-set="cat" title="Cat eyes" aria-label="Cat eye set" aria-pressed="false"></button>
             </div>
             <div class="tools-grid two-keys">
               <button type="button" class="mix-eyes-btn" title="Give each eye a different random style">Mix</button>
@@ -1255,6 +1277,12 @@
               <button class="mobile-size-btn" data-size="16" aria-label="Size 16">
                 <div style="width: 16px; height: 16px; background: #1d1d1f; border-radius: 50%;"></div>
               </button>
+              <button class="mobile-size-btn" data-size="24" aria-label="Size 24">
+                <div style="width: 24px; height: 24px; background: #1d1d1f; border-radius: 50%;"></div>
+              </button>
+              <button class="mobile-size-btn" data-size="32" aria-label="Size 32">
+                <div style="width: 32px; height: 32px; background: #1d1d1f; border-radius: 50%;"></div>
+              </button>
             </div>
           </div>
 
@@ -1273,6 +1301,7 @@
               <button type="button" class="mobile-control-btn" data-eye-set="amber" aria-label="Amber eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="sunny" aria-label="Sunny eye set" aria-pressed="false"></button>
               <button type="button" class="mobile-control-btn" data-eye-set="blue" aria-label="Blue eye set" aria-pressed="false"></button>
+              <button type="button" class="mobile-control-btn" data-eye-set="cat" aria-label="Cat eye set" aria-pressed="false"></button>
             </div>
             <div class="eye-actions">
               <button type="button" class="mix-eyes-btn mobile-control-btn" title="Give each eye a different random style">Mix</button>
