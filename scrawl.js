@@ -913,10 +913,6 @@ function drawEye(g, x, y, scale, style, seed = 0) {
       g.bezier(-w * 0.8, -top * 0.55, -w * kl, -top - 7, w * kr, -top - 8, w * 0.85, -top * 0.5);
     }
     if (style === 'glam' || style === 'sunny') lashes(g, 1, 4, 10);
-    if (style === 'spiky') {
-      lashes(g, -1, 7, 14);
-      lashes(g, 1, 5, 12);
-    }
   }
 
   g.pop();
