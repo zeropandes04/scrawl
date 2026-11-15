@@ -122,6 +122,7 @@ function setup() {
       brushSize = parseInt(value);
       activateBrushMode();
       updateMobileToolButtons();
+      setBrushCursor();
     },
     () => {
       activateBrushMode();
@@ -140,6 +141,7 @@ function setup() {
       eraserSize = parseInt(value);
       activateEraseMode();
       updateMobileToolButtons();
+      setBrushCursor();
     },
     () => {
       activateEraseMode();
@@ -566,7 +568,7 @@ function activateBrushMode() {
     if (eraserBtn) eraserBtn.classList.remove('active');
     if (bucketBtn) bucketBtn.classList.remove('active');
 
-    cursor(CROSS);
+    setBrushCursor();
     updateMobileToolButtons();
   }
 }
@@ -592,9 +594,27 @@ function activateEraseMode() {
     if (eraserBtn) eraserBtn.classList.add('active');
     if (bucketBtn) bucketBtn.classList.remove('active');
 
-    cursor(CROSS);
+    setBrushCursor();
     updateMobileToolButtons();
   }
+}
+
+// Cursor for the brush and eraser: a ring the size the tool draws on screen
+function setBrushCursor() {
+  const size = eraseMode ? eraserSize : brushSize;
+  // Even diameter (min 4px) so the hotspot lands on a whole pixel
+  const d = max(4, 2 * round(size * canvas.elt.clientWidth / canvasSize / 2));
+  const box = d + 4;
+  const c = box / 2;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${box}" height="${box}">` +
+    `<circle cx="${c}" cy="${c}" r="${d / 2 + 1}" fill="none" stroke="white"/>` +
+    `<circle cx="${c}" cy="${c}" r="${d / 2}" fill="none" stroke="black"/></svg>`;
+  canvas.elt.style.cursor = `url('data:image/svg+xml,${encodeURIComponent(svg)}') ${c} ${c}, crosshair`;
+}
+
+// The canvas is scaled to fit the window, so the ring has to be rescaled too
+function windowResized() {
+  if (drawMode || eraseMode) setBrushCursor();
 }
 
 function activateBucketMode() {
