@@ -98,14 +98,7 @@ function setup() {
   // Mobile buttons
   select("#generate-btn-mobile").mousePressed(generateScrawlface);
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
-  const toggleEyesBtnMobile = select("#toggle-eyes-btn-mobile");
-  if (toggleEyesBtnMobile) {
-    toggleEyesBtnMobile.mousePressed(() => {
-      toggleEyes();
-      // Sync mobile button state (inverted logic: button active = scrawl hidden)
-      showScrawl ? toggleEyesBtnMobile.removeClass("active") : toggleEyesBtnMobile.addClass("active");
-    });
-  }
+  select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
 
   // Setup slider
   const intensitySlider = select("#intensity-slider");
@@ -193,11 +186,7 @@ function generateScrawlface() {
   // Ensure scrawl is visible when generating new scrawl
   if (!showScrawl) {
     showScrawl = true;
-    const btn = select("#toggle-eyes-btn");
-    // Inverted logic: button inactive = scrawl visible
-    if (btn) btn.removeClass("active");
-    const btnMobile = select("#toggle-eyes-btn-mobile");
-    if (btnMobile) btnMobile.removeClass("active");
+    updateScrawlToggleButtons();
   }
 
   baseScrawlGraphics.background(bgColor);
@@ -510,10 +499,15 @@ function saveImage() {
 
 function toggleEyes() {
   showScrawl = !showScrawl;
-  const btn = select("#toggle-eyes-btn");
-  // Inverted logic: button active = scrawl hidden, button inactive = scrawl visible
-  showScrawl ? btn.removeClass("active") : btn.addClass("active");
+  updateScrawlToggleButtons();
   redrawCanvas();
+}
+
+// The buttons name what pressing them will do, rather than lighting up when
+// the scrawl is hidden
+function updateScrawlToggleButtons() {
+  select("#toggle-eyes-btn").html(showScrawl ? "Hide scrawl" : "Show scrawl");
+  select("#toggle-eyes-btn-mobile").html(showScrawl ? "Hide Scrawl" : "Show Scrawl");
 }
 
 function toggleMoveEyesMode() {
