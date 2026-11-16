@@ -1674,6 +1674,29 @@ function setupToolbar() {
     btn.addEventListener('click', share ? shareImage : downloadImage);
     btn.hidden = false;
   });
+
+  // Sidebar ⋯ menu (holds the image key there). Closes on picking an item,
+  // a click elsewhere or Escape.
+  const moreBtn = document.getElementById('save-more-btn');
+  const moreList = document.getElementById('save-more-list');
+  const setMoreOpen = (open) => {
+    moreList.hidden = !open;
+    moreBtn.setAttribute('aria-expanded', open);
+    if (open) moreList.querySelector('button:not([hidden])').focus();
+  };
+  moreBtn.addEventListener('click', () => setMoreOpen(moreList.hidden));
+  moreList.addEventListener('click', e => {
+    if (e.target.closest('button')) setMoreOpen(false);
+  });
+  document.addEventListener('click', e => {
+    if (!moreList.hidden && !e.target.closest('.more-menu')) setMoreOpen(false);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !moreList.hidden) {
+      setMoreOpen(false);
+      moreBtn.focus();
+    }
+  });
 }
 
 // Reflects the selected tool and its size on every key, and shows only the
