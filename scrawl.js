@@ -1727,7 +1727,8 @@ let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
 let draftTimer = null;
 let dbPromise = null;
 let thumbUrls = [];      // object URLs of thumbnails on screen, freed on redraw
-let gallerySelection = null; // ids picked in the gallery's Select mode, else null
+let gallerySelection = null; // ids picked in the gallery's select mode, else null
+const longPressMs = 500;     // press and hold on a gallery tile to start selecting
 
 function hasUnsavedChanges() {
   return editVersion !== savedVersion;
@@ -1946,6 +1947,7 @@ function thumbImage(record) {
   const img = document.createElement('img');
   img.src = url;
   img.alt = 'Saved scrawlface';
+  img.draggable = false; // a mouse press-and-hold would start a drag instead
   return img;
 }
 
@@ -1963,7 +1965,15 @@ async function renderGallery() {
     tile.className = 'gallery-tile';
     tile.dataset.id = record.id;
     tile.append(thumbImage(record));
-    // Opens it, or in Select mode picks it
+    addLongPress(tile, () => {
+      // Starts select mode with this one picked (or adds it if selecting)
+      if (!gallerySelection) gallerySelection = new Set();
+      gallerySelection.add(record.id);
+      if (navigator.vibrate) navigator.vibrate(15);
+      updateGallerySelection();
+    });
+    // A tap opens it, or in select mode picks / unpicks it. Unpicking the
+    // last one leaves select mode.
     tile.addEventListener('click', () => {
       if (!gallerySelection) {
         openFromGallery(record.id);
@@ -1974,13 +1984,13 @@ async function renderGallery() {
       } else {
         gallerySelection.add(record.id);
       }
+      if (gallerySelection.size === 0) gallerySelection = null;
       updateGallerySelection();
     });
     item.append(tile);
     return item;
   }));
   document.getElementById('gallery-empty').hidden = records.length > 0;
-  document.getElementById('gallery-select').hidden = records.length === 0;
   updateGallerySelection();
 
   const recents = document.getElementById('recents');
@@ -2000,8 +2010,43 @@ function openGallery() {
   document.getElementById('gallery-dialog').showModal();
 }
 
-// Select mode: tapping tiles picks them, and Delete removes the picked ones.
-// The header swaps Select / Close for Cancel / Delete (n).
+// Calls onLongPress when the element is pressed and held, like selecting
+// in a photo gallery. Moving the finger (scrolling) cancels it, and the
+// click that ends a long press is swallowed so it doesn't also tap.
+function addLongPress(el, onLongPress) {
+  let timer = null;
+  let start = null;
+  let fired = false;
+  const cancel = () => {
+    clearTimeout(timer);
+    start = null;
+  };
+  el.addEventListener('pointerdown', e => {
+    fired = false;
+    start = { x: e.clientX, y: e.clientY };
+    timer = setTimeout(() => {
+      fired = true;
+      onLongPress();
+    }, longPressMs);
+  });
+  el.addEventListener('pointermove', e => {
+    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel();
+  });
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('pointerleave', cancel);
+  // No browser menu ("Save image" etc.) on a long press
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('click', e => {
+    if (fired) {
+      fired = false;
+      e.stopImmediatePropagation();
+    }
+  });
+}
+
+// Select mode (press and hold a tile): taps pick tiles, and Delete removes
+// the picked ones. The header swaps Close for Cancel / Delete (n).
 function setGallerySelecting(on) {
   gallerySelection = on ? new Set() : null;
   updateGallerySelection();
@@ -2022,7 +2067,7 @@ function updateGallerySelection() {
     }
   });
   document.getElementById('gallery-title').textContent =
-    !selecting ? 'My scrawlfaces' : count ? `${count} selected` : 'Select scrawlfaces';
+    selecting ? `${count} selected` : 'My scrawlfaces';
   const del = document.getElementById('gallery-delete');
   del.disabled = count === 0;
   del.textContent = count ? `Delete (${count})` : 'Delete';
@@ -2066,7 +2111,6 @@ function setupGallery() {
   document.getElementById('gallery-close').addEventListener('click', () => {
     document.getElementById('gallery-dialog').close();
   });
-  document.getElementById('gallery-select').addEventListener('click', () => setGallerySelecting(true));
   document.getElementById('gallery-cancel').addEventListener('click', () => setGallerySelecting(false));
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode
