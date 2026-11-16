@@ -1727,7 +1727,8 @@ let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
 let draftTimer = null;
 let dbPromise = null;
 let thumbUrls = [];      // object URLs of thumbnails on screen, freed on redraw
-let gallerySelection = null; // ids picked in the gallery's Select mode, else null
+let gallerySelection = null; // ids picked in the gallery's select mode, else null
+const longPressMs = 500;     // touch: press and hold a gallery tile to start selecting
 
 function hasUnsavedChanges() {
   return editVersion !== savedVersion;
@@ -1946,6 +1947,7 @@ function thumbImage(record) {
   const img = document.createElement('img');
   img.src = url;
   img.alt = 'Saved scrawlface';
+  img.draggable = false; // a mouse press-and-hold would start a drag instead
   return img;
 }
 
@@ -1963,24 +1965,33 @@ async function renderGallery() {
     tile.className = 'gallery-tile';
     tile.dataset.id = record.id;
     tile.append(thumbImage(record));
-    // Opens it, or in Select mode picks it
-    tile.addEventListener('click', () => {
-      if (!gallerySelection) {
-        openFromGallery(record.id);
-        return;
-      }
-      if (gallerySelection.has(record.id)) {
-        gallerySelection.delete(record.id);
-      } else {
-        gallerySelection.add(record.id);
-      }
-      updateGallerySelection();
+
+    // The tick circle picks / unpicks this one, starting select mode on
+    // the first pick: works the same with a mouse, a finger or the keyboard
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'gallery-check';
+    check.dataset.id = record.id;
+    check.setAttribute('aria-label', 'Select');
+    check.addEventListener('click', () => toggleGalleryPick(record.id));
+
+    // Touch shortcut, as in phone photo galleries: press and hold to pick
+    addLongPress(tile, () => {
+      if (!gallerySelection || !gallerySelection.has(record.id)) toggleGalleryPick(record.id);
+      if (navigator.vibrate) navigator.vibrate(15);
     });
-    item.append(tile);
+    // A tap opens it, or in select mode picks / unpicks it
+    tile.addEventListener('click', () => {
+      if (gallerySelection) {
+        toggleGalleryPick(record.id);
+      } else {
+        openFromGallery(record.id);
+      }
+    });
+    item.append(tile, check);
     return item;
   }));
   document.getElementById('gallery-empty').hidden = records.length > 0;
-  document.getElementById('gallery-select').hidden = records.length === 0;
   updateGallerySelection();
 
   const recents = document.getElementById('recents');
@@ -2000,8 +2011,59 @@ function openGallery() {
   document.getElementById('gallery-dialog').showModal();
 }
 
-// Select mode: tapping tiles picks them, and Delete removes the picked ones.
-// The header swaps Select / Close for Cancel / Delete (n).
+// Picks or unpicks one gallery tile. The first pick starts select mode;
+// unpicking the last one ends it.
+function toggleGalleryPick(id) {
+  if (!gallerySelection) gallerySelection = new Set();
+  if (gallerySelection.has(id)) {
+    gallerySelection.delete(id);
+  } else {
+    gallerySelection.add(id);
+  }
+  if (gallerySelection.size === 0) gallerySelection = null;
+  updateGallerySelection();
+}
+
+// Calls onLongPress when a finger presses and holds the element (touch
+// only: a mouse picks with the tick circle). Moving the finger (scrolling)
+// cancels it, and the click that ends a long press is swallowed so it
+// doesn't also tap.
+function addLongPress(el, onLongPress) {
+  let timer = null;
+  let start = null;
+  let fired = false;
+  const cancel = () => {
+    clearTimeout(timer);
+    start = null;
+  };
+  el.addEventListener('pointerdown', e => {
+    fired = false;
+    if (e.pointerType !== 'touch') return;
+    start = { x: e.clientX, y: e.clientY };
+    timer = setTimeout(() => {
+      fired = true;
+      onLongPress();
+    }, longPressMs);
+  });
+  el.addEventListener('pointermove', e => {
+    if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel();
+  });
+  el.addEventListener('pointerup', cancel);
+  el.addEventListener('pointercancel', cancel);
+  el.addEventListener('pointerleave', cancel);
+  // No browser menu ("Save image" etc.) on a long press
+  el.addEventListener('contextmenu', e => e.preventDefault());
+  el.addEventListener('click', e => {
+    if (fired) {
+      fired = false;
+      e.stopImmediatePropagation();
+    }
+  });
+}
+
+// Select mode (started from a tick circle, or a long press on touch): taps
+// pick tiles, and Delete removes the picked ones. The header swaps Close
+// for Cancel / Delete (n).
 function setGallerySelecting(on) {
   gallerySelection = on ? new Set() : null;
   updateGallerySelection();
@@ -2013,16 +2075,13 @@ function updateGallerySelection() {
   const count = selecting ? gallerySelection.size : 0;
   dialog.classList.toggle('selecting', selecting);
   dialog.querySelectorAll('.gallery-tile').forEach(tile => {
-    const picked = selecting && gallerySelection.has(tile.dataset.id);
-    tile.classList.toggle('selected', picked);
-    if (selecting) {
-      tile.setAttribute('aria-pressed', picked);
-    } else {
-      tile.removeAttribute('aria-pressed');
-    }
+    tile.classList.toggle('selected', selecting && gallerySelection.has(tile.dataset.id));
+  });
+  dialog.querySelectorAll('.gallery-check').forEach(check => {
+    check.setAttribute('aria-pressed', selecting && gallerySelection.has(check.dataset.id));
   });
   document.getElementById('gallery-title').textContent =
-    !selecting ? 'My scrawlfaces' : count ? `${count} selected` : 'Select scrawlfaces';
+    selecting ? `${count} selected` : 'My scrawlfaces';
   const del = document.getElementById('gallery-delete');
   del.disabled = count === 0;
   del.textContent = count ? `Delete (${count})` : 'Delete';
@@ -2066,7 +2125,6 @@ function setupGallery() {
   document.getElementById('gallery-close').addEventListener('click', () => {
     document.getElementById('gallery-dialog').close();
   });
-  document.getElementById('gallery-select').addEventListener('click', () => setGallerySelecting(true));
   document.getElementById('gallery-cancel').addEventListener('click', () => setGallerySelecting(false));
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode

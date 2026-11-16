@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=25"></script>
+  <script src="scrawl.js?v=27"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -313,18 +313,44 @@
       padding: 2px 2px 8px;
     }
 
+    /* Press and hold selects, so no text selection or the phone's own
+       image menu on a long press */
     .gallery-tile {
       width: 100%;
       aspect-ratio: 1;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
 
-    /* Select mode: an empty circle on each tile; picked tiles get a dark
-       ring and a filled tick (the ring matches the selected eye set) */
-    .gallery-dialog.selecting .gallery-tile::before {
+    /* Tick circle in each tile's corner: picks the tile (and starts select
+       mode). Always shown on touch screens; with a mouse it appears on
+       hover or keyboard focus, and on every tile while selecting. The
+       button is 44px for an easy tap; the circle is drawn inside it. */
+    .gallery-grid li {
+      position: relative;
+    }
+
+    .gallery-check,
+    .gallery-check:hover,
+    .gallery-check:active {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      min-width: 0;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      background: none;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .gallery-check::before {
       content: '';
       position: absolute;
-      top: 8px;
-      right: 8px;
+      top: 10px;
+      left: 10px;
       width: 24px;
       height: 24px;
       border-radius: 50%;
@@ -332,7 +358,7 @@
       box-shadow: inset 0 0 0 2px var(--muted);
     }
 
-    .gallery-dialog.selecting .gallery-tile.selected::before {
+    .gallery-check[aria-pressed="true"]::before {
       content: '✓';
       display: flex;
       align-items: center;
@@ -342,6 +368,18 @@
       font-weight: 700;
       background: var(--ink);
       box-shadow: none;
+    }
+
+    @media (hover: hover) {
+      .gallery-dialog:not(.selecting) .gallery-check {
+        opacity: 0;
+        transition: opacity 0.12s;
+      }
+
+      .gallery-dialog:not(.selecting) li:hover .gallery-check,
+      .gallery-dialog:not(.selecting) .gallery-check:focus-visible {
+        opacity: 1;
+      }
     }
 
     .gallery-tile.selected::after {
@@ -1379,9 +1417,9 @@
       <dialog id="gallery-dialog" class="gallery-dialog" aria-labelledby="gallery-title">
         <div class="gallery-head">
           <h2 id="gallery-title" aria-live="polite">My scrawlfaces</h2>
-          <!-- Normal: Select, Close. Select mode: Cancel, Delete (n) -->
+          <!-- Normal: Close. Select mode (press and hold a tile):
+               Cancel, Delete (n) -->
           <div class="gallery-actions">
-            <button type="button" id="gallery-select" class="when-browsing">Select</button>
             <button type="button" id="gallery-close" class="when-browsing">Close</button>
             <button type="button" id="gallery-cancel" class="when-selecting">Cancel</button>
             <button type="button" id="gallery-delete" class="when-selecting" disabled>Delete</button>
@@ -1413,19 +1451,6 @@
               </div>
 
               <div class="mobile-section">
-                <!-- Right under Scrawl, so Save is in view when the sheet opens
-                     on a short phone -->
-                <div class="mobile-section-label">Save</div>
-                <!-- Save stays open, so its "Saved" shows -->
-                <div class="tools-grid two-keys">
-                  <button type="button" class="mobile-control-btn gallery-save-btn needs-storage" disabled>Save</button>
-                  <button type="button" class="mobile-control-btn gallery-open-btn needs-storage closes-sheet">My scrawlfaces</button>
-                  <button type="button" id="export-btn-mobile" class="mobile-control-btn closes-sheet">Export image</button>
-                  <button type="button" id="share-btn-mobile" class="mobile-control-btn share-btn closes-sheet" hidden>Share</button>
-                </div>
-              </div>
-
-              <div class="mobile-section">
                 <div class="mobile-section-label">View</div>
                 <div class="tools-grid two-keys">
                   <button type="button" id="rotate-btn-mobile-controls" class="mobile-control-btn closes-sheet">Rotate</button>
@@ -1438,6 +1463,17 @@
                 <div class="tools-grid two-keys">
                   <button type="button" id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
+                </div>
+              </div>
+
+              <div class="mobile-section">
+                <div class="mobile-section-label">Save</div>
+                <!-- Save stays open, so its "Saved" shows -->
+                <div class="tools-grid two-keys">
+                  <button type="button" class="mobile-control-btn gallery-save-btn needs-storage" disabled>Save</button>
+                  <button type="button" class="mobile-control-btn gallery-open-btn needs-storage closes-sheet">My scrawlfaces</button>
+                  <button type="button" id="export-btn-mobile" class="mobile-control-btn closes-sheet">Export image</button>
+                  <button type="button" id="share-btn-mobile" class="mobile-control-btn share-btn closes-sheet" hidden>Share</button>
                 </div>
               </div>
             </div>

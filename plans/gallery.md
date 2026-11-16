@@ -36,7 +36,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - Only exists once a scrawl has been created (not on the blank start).
 
 ### Save
-- Mobile: bottom sheet, Save section, moved up right under Scrawl so it's in view when the sheet opens on a short phone. Desktop: sidebar, Save section.
+- Mobile: bottom sheet, Save section, after History (on a 360×640 phone the open sheet needs a short scroll to reach it). Desktop: sidebar, Save section, after History.
 - Brief "Saved" confirmation on the key (LED / label), no dialog.
 - Disabled when nothing changed since the last Save.
 
@@ -52,7 +52,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - Opened from "My scrawlfaces" (sheet + sidebar) and "See all" in the recents row.
 - Full-screen overlay; grid of thumbnails, newest `updatedAt` first; close button.
 - Tap a tile → open it (Save / Discard dialog first if the current scrawlface was edited).
-- Delete: **Select** in the header turns on select mode (tap tiles to pick them; header shows Cancel / Delete (n)), then Delete asks in a dialog ("Delete these n scrawlfaces?" / "This can't be undone." — Cancel, focused by default, or Delete in red) and removes them. No per-tile delete keys.
+- Delete: a **tick circle** on each tile picks it and starts select mode (always shown on touch screens; on hover / keyboard focus with a mouse; on every tile while selecting). Touch also has press-and-hold as a shortcut. Taps then pick / unpick tiles; unpicking the last one leaves select mode; the header shows "n selected" with Cancel / Delete (n). Moving the finger while holding (scrolling) doesn't select, and the phone's own image menu is suppressed.
 - Empty state: short line + the create button.
 
 ### Recents on the blank start
@@ -91,7 +91,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 25).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 27).
 
 ## Notes from the build
 - Desktop sidebar at exactly 1024×768: the extra Save row makes it 27px taller than the panel, so it scrolls slightly (its overflow safety net). Fits at 800px tall and above.
