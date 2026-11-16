@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=29"></script>
+  <script src="scrawl.js?v=31"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -138,7 +138,8 @@
       pointer-events: none;
     }
 
-    .blank-cta .cta-button {
+    .blank-cta .cta-button,
+    .gallery-empty-cta .cta-button {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -318,9 +319,36 @@
       display: none;
     }
 
+    /* Empty gallery: fills the dialog like the blank canvas, the faint
+       scrawl behind the centred create key and tagline */
     .gallery-empty {
-      font-size: 14px;
-      color: var(--muted);
+      position: relative;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .gallery-empty canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .gallery-empty-cta {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 4px; /* room for the tagline on one line on a phone */
+      text-align: center;
     }
 
     .gallery-grid {
@@ -1297,7 +1325,7 @@
               </div>
             </div>
             <!-- My scrawlfaces, from the canvas on every screen size -->
-            <button type="button" class="canvas-gallery-btn gallery-open-btn needs-storage" title="My scrawlfaces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>Gallery</button>
+            <button type="button" class="canvas-gallery-btn gallery-open-btn needs-storage" title="My scrawlfaces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.2 5.3c2.2-1 4.6-.9 6.9-.6.6 2.1.5 4.4 0 6.6-2.3.6-4.5.4-6.6 0-.6-2-.6-4.2 0-7"/><path d="M12.8 4.1c2.4.5 4.7.2 7.2 0 .5 2.3.2 4.7-.4 7-2.2.4-4.4.2-6.4-.3-.5-2.3-.4-4.7.3-7.6"/><path d="M3.6 13.3c2.4-.3 4.8 0 7.2.5.2 2.2-.2 4.4-.8 6.5-2.1.5-4.1.4-6-.2-.6-2.1-.6-4.4-.1-7.3"/><path d="M13.5 12.8c2.1.7 4.5.6 6.8.2.3 2.4 0 4.7-.6 7-2.2.2-4.4 0-6.4-.5-.2-2.3 0-4.6.7-7.4"/></svg>Gallery</button>
           </div>
         </div>
 
@@ -1443,7 +1471,16 @@
             <button type="button" id="gallery-delete" class="when-selecting" disabled>Delete</button>
           </div>
         </div>
-        <p class="gallery-empty" id="gallery-empty">Nothing saved yet. Tap Save to keep a scrawlface here.</p>
+        <!-- Nothing saved yet: the same faint scrawl, key and tagline as the
+             blank start. With a scrawlface on the canvas the key saves it
+             instead (renderGallery sets the label and line). -->
+        <div class="gallery-empty" id="gallery-empty" hidden>
+          <canvas id="gallery-empty-scrawl" width="800" height="800" aria-hidden="true"></canvas>
+          <div class="gallery-empty-cta">
+            <button type="button" id="gallery-empty-btn" class="cta-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>Create your first scrawlface</button>
+            <p class="subtitle" id="gallery-empty-text">Move the eyes, find the face, doodle on top</p>
+          </div>
+        </div>
         <ul class="gallery-grid" id="gallery-grid"></ul>
       </dialog>
 

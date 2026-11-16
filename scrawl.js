@@ -1986,7 +1986,36 @@ async function renderGallery() {
     item.append(tile, check);
     return item;
   }));
-  document.getElementById('gallery-empty').hidden = records.length > 0;
+  const empty = records.length === 0;
+  document.getElementById('gallery-empty').hidden = !empty;
+  grid.hidden = empty;
+  if (empty) {
+    // A fresh faint scrawl, as on the blank start
+    const ctx = document.getElementById('gallery-empty-scrawl').getContext('2d');
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    ctx.strokeStyle = 'rgb(200, 200, 200)';
+    ctx.lineWidth = scrawlStrokeWeight;
+    const preview = scrawlSegments(intensity);
+    fitScrawlToCanvas(preview);
+    preview.forEach(([x1, y1, cx1, cy1, cx2, cy2, x2, y2]) => {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
+      ctx.stroke();
+    });
+    // Blank start: create one. A scrawlface on the canvas: save it, so its
+    // thumbnail shows up right here.
+    let label = 'Save this scrawlface';
+    let line = 'Your saved scrawlfaces show up here.';
+    if (isBlankStart()) {
+      let created = false;
+      try { created = localStorage.getItem('createdScrawlface') === '1'; } catch (e) {}
+      label = created ? 'Create a new scrawlface' : 'Create your first scrawlface';
+      line = 'Move the eyes, find the face, doodle on top';
+    }
+    document.getElementById('gallery-empty-btn').lastChild.textContent = label;
+    document.getElementById('gallery-empty-text').textContent = line;
+  }
   updateGallerySelection();
 
   const recents = document.getElementById('recents');
@@ -2121,6 +2150,18 @@ function setupGallery() {
     document.getElementById('gallery-dialog').close();
   });
   document.getElementById('gallery-cancel').addEventListener('click', () => setGallerySelecting(false));
+  // Empty gallery's key: on the blank start, back to the canvas with a new
+  // scrawl; otherwise save the scrawlface on the canvas and show it here
+  document.getElementById('gallery-empty-btn').addEventListener('click', () => {
+    if (isBlankStart()) {
+      document.getElementById('gallery-dialog').close();
+      requestNewScrawl();
+      return;
+    }
+    saveToGallery()
+      .then(renderGallery)
+      .catch(() => alert('Sorry, this scrawlface couldn\'t be saved.'));
+  });
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode
   document.getElementById('gallery-dialog').addEventListener('close', () => setGallerySelecting(false));
