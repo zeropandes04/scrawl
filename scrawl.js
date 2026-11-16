@@ -166,6 +166,8 @@ function setup() {
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
+  select("#toggle-scrawl-btn-canvas").mousePressed(toggleEyes);
+  select("#blank-cta-btn").mousePressed(generateScrawlface);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
@@ -206,7 +208,26 @@ function setup() {
     if (key && !key.disabled) navigator.vibrate(8);
   });
 
-  generateScrawlface();
+  // The app opens on a blank canvas with a "create" call to action
+  // (#blank-cta) in the middle; the first Generate removes it. A faint
+  // scrawl sits behind the button so the canvas doesn't look empty;
+  // Generate clears it.
+  baseScrawlGraphics.stroke(200);
+  baseScrawlGraphics.strokeWeight(scrawlStrokeWeight);
+  baseScrawlGraphics.noFill();
+  const preview = scrawlSegments(intensity);
+  fitScrawlToCanvas(preview);
+  preview.forEach(seg => baseScrawlGraphics.bezier(...seg));
+
+  // "first" only fits someone who has never made one on this device
+  let created = false;
+  try { created = localStorage.getItem('createdScrawlface') === '1'; } catch (e) {}
+  if (created) {
+    document.getElementById('blank-cta-btn').lastChild.textContent = 'Create a new scrawlface';
+  }
+
+  setTool('eyes');
+  redrawCanvas();
 }
 
 function generateScrawlface() {
@@ -234,13 +255,20 @@ function generateScrawlface() {
   // Clear undo/redo history
   clearHistory();
 
+  // Leave the blank start state (hides the create button, shows the
+  // on-canvas scrawl toggle)
+  document.getElementById('scrawl-container').classList.remove('is-blank');
+  try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
+
   // Ensure scrawl is visible when generating new scrawl
   if (!showScrawl) {
     showScrawl = true;
     updateScrawlToggleButtons();
   }
 
-  baseScrawlGraphics.background(bgColor);
+  // Transparent, not white: the scrawl is drawn on top of the paint, so
+  // the lines stay visible to follow (the canvas background is the white)
+  baseScrawlGraphics.clear();
   strokeColor = getComplementaryColor(bgColor);
   baseScrawlGraphics.stroke(strokeColor);
   baseScrawlGraphics.strokeWeight(scrawlStrokeWeight);
@@ -504,6 +532,9 @@ function mousePressed(event) {
   // A second finger is a pinch, not another press
   if (pinch) return;
 
+  // Blank start: nothing to draw on until the first scrawl is created
+  if (document.getElementById('scrawl-container').classList.contains('is-blank')) return;
+
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     const eyeIndex = findEyeAt(transformed.x, transformed.y);
@@ -700,11 +731,13 @@ function redrawCanvas() {
   imageMode(CENTER);
 
   // Draw the layers straight onto the canvas (no intermediate composite),
-  // so each frame while drawing only copies what's needed
+  // so each frame while drawing only copies what's needed. The scrawl goes
+  // on top of the paint so its lines can still be followed; Hide lines
+  // takes them away.
+  image(drawingGraphics, 0, 0);
   if (showScrawl) {
     image(baseScrawlGraphics, 0, 0);
   }
-  image(drawingGraphics, 0, 0);
 
   pop();
 
@@ -1176,9 +1209,10 @@ function toggleEyes() {
 // The buttons name what pressing them will do, rather than lighting up when
 // the scrawl is hidden
 function updateScrawlToggleButtons() {
-  const label = showScrawl ? "Hide scrawl" : "Show scrawl";
+  const label = showScrawl ? "Hide lines" : "Show lines";
   select("#toggle-eyes-btn").html(label);
   select("#toggle-eyes-btn-mobile").html(label);
+  select("#toggle-scrawl-btn-canvas").html(label);
 }
 
 // ---- Tools ----
@@ -1284,8 +1318,15 @@ function floodFill(startX, startY, fillColor) {
   // leaking through them (measured: higher values start crossing 1px lines).
   const fillTolerance = 64;
 
-  // Build a temporary canvas of everything that bounds a fill: background,
-  // scrawl (if shown) and drawings.
+  // Don't fill if clicking on a scrawl line. The scrawl layer is
+  // transparent apart from its lines; alpha above 21 matches the old
+  // "darker than near-white" test on the faint anti-aliased edges.
+  if (showScrawl && baseScrawlGraphics.drawingContext.getImageData(startX, startY, 1, 1).data[3] > 21) {
+    return;
+  }
+
+  // Build a temporary canvas of everything that bounds a fill, stacked as
+  // on screen: background, drawings, then the scrawl (if shown) on top.
   const tempCanvas = document.createElement('canvas');
   tempCanvas.width = canvasSize;
   tempCanvas.height = canvasSize;
@@ -1293,18 +1334,10 @@ function floodFill(startX, startY, fillColor) {
 
   tempCtx.fillStyle = `rgb(${bgColor.join(',')})`;
   tempCtx.fillRect(0, 0, canvasSize, canvasSize);
-
+  tempCtx.drawImage(drawingGraphics.canvas, 0, 0);
   if (showScrawl) {
     tempCtx.drawImage(baseScrawlGraphics.canvas, 0, 0);
-
-    // Don't fill if clicking on a scrawl line (non-white pixel)
-    const [lineR, lineG, lineB] = tempCtx.getImageData(startX, startY, 1, 1).data;
-    if (lineR + lineG + lineB < 700) {
-      return;
-    }
   }
-
-  tempCtx.drawImage(drawingGraphics.canvas, 0, 0);
 
   const data = tempCtx.getImageData(0, 0, canvasSize, canvasSize).data;
 
