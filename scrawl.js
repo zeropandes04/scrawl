@@ -858,13 +858,14 @@ function redrawCanvas() {
     drawEye(window, onScreen[i].x, onScreen[i].y, pos.scale * viewZoom, eyeStyles[i], isRight);
   });
 
-  // Shade what's outside the picture frame: it isn't in the saved picture
+  // Outside the picture frame is plain white, like the page around the
+  // canvas: what shows is exactly the saved picture
   const ctx = drawingContext;
   const fw = frameWidth * viewZoom;
   const fh = frameHeight * viewZoom;
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = 'rgba(30, 30, 30, 0.16)';
+  ctx.fillStyle = `rgb(${bgColor.join(',')})`;
   ctx.beginPath();
   ctx.rect(0, 0, width, height);
   ctx.rect(width / 2 + viewPan.x - fw / 2, height / 2 + viewPan.y - fh / 2, fw, fh);
@@ -1413,7 +1414,7 @@ function setBrushCursor() {
 // The canvas element fills its container, which is rarely square, so the
 // canvas takes the container's proportions, scaled so the whole picture
 // frame (frameWidth x frameHeight units) just fits at zoom 1. The room
-// around the frame is shaded (see redrawCanvas).
+// around the frame is plain white (see redrawCanvas).
 function fitCanvasToContainer() {
   const box = document.getElementById('scrawl-container');
   if (box.clientWidth === 0 || box.clientHeight === 0) return;
