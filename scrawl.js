@@ -174,8 +174,6 @@ function setup() {
   select("#undo-btn-mobile").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
   select("#redo-btn-mobile").mousePressed(redo);
-  select("#export-btn").mousePressed(downloadImage);
-  select("#export-btn-mobile").mousePressed(downloadImage);
 
   // Intensity faders (sidebar and sheet) stay in sync. The value only
   // applies at the next Generate.
@@ -1186,8 +1184,9 @@ function rotateCanvas() {
   markChanged();
 }
 
-// The picture Save and Share export: the whole drawing at normal size, with
-// its eyes, rotation and scrawl visibility, whatever the zoom on screen.
+// The picture Share sends and the gallery thumbnails show: the whole
+// drawing at normal size, with its eyes, rotation and scrawl visibility,
+// whatever the zoom on screen.
 function exportImage() {
   // Draw one frame with the zoom taken out, grab the square middle of the
   // canvas (exactly the drawing), then put the view back. It all happens
@@ -1203,10 +1202,6 @@ function exportImage() {
   viewPan = pan;
   redrawCanvas();
   return image;
-}
-
-function downloadImage() {
-  exportImage().save('scrawlface', 'png');
 }
 
 // Hands the image to the phone's share sheet (messages, socials, ...)
@@ -1778,7 +1773,7 @@ async function captureScrawlface(withThumb) {
     updatedAt: Date.now()
   };
   if (withThumb) {
-    // Exactly what Export gives, scaled down for the gallery grid
+    // Exactly what Share sends, scaled down for the gallery grid
     const thumb = document.createElement('canvas');
     thumb.width = thumb.height = 320; // sharp on a 2x phone screen
     const ctx = thumb.getContext('2d');
