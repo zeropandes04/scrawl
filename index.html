@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=27"></script>
+  <script src="scrawl.js?v=28"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -761,9 +761,9 @@
       padding: 8px 6px;
     }
 
-    /* A key whose row partner is hidden spans the row (e.g. Export image
-       when the browser can't share files) */
-    .tools-grid.two-keys > :nth-child(odd):has(+ [hidden]) {
+    /* A key alone on its row spans it (e.g. Share under Save and My
+       scrawlfaces) */
+    .tools-grid.two-keys > :nth-child(odd):is(:last-child, :has(+ [hidden])) {
       grid-column: 1 / -1;
     }
 
@@ -1375,12 +1375,10 @@
 
           <div class="sidebar-section">
             <h3>Save</h3>
-            <!-- Save keeps the scrawlface in My scrawlfaces (this browser);
-                 Export downloads it as a PNG -->
+            <!-- Save keeps the scrawlface in My scrawlfaces (this browser) -->
             <div class="tools-grid two-keys">
               <button type="button" class="gallery-save-btn needs-storage" title="Save to My scrawlfaces" disabled>Save</button>
               <button type="button" class="gallery-open-btn needs-storage" title="Your saved scrawlfaces">My scrawlfaces</button>
-              <button type="button" id="export-btn" title="Download as PNG">Export image</button>
               <button type="button" id="share-btn" class="share-btn" title="Share the image" hidden>Share</button>
             </div>
           </div>
@@ -1472,7 +1470,6 @@
                 <div class="tools-grid two-keys">
                   <button type="button" class="mobile-control-btn gallery-save-btn needs-storage" disabled>Save</button>
                   <button type="button" class="mobile-control-btn gallery-open-btn needs-storage closes-sheet">My scrawlfaces</button>
-                  <button type="button" id="export-btn-mobile" class="mobile-control-btn closes-sheet">Export image</button>
                   <button type="button" id="share-btn-mobile" class="mobile-control-btn share-btn closes-sheet" hidden>Share</button>
                 </div>
               </div>

@@ -17,7 +17,7 @@ Mobile users asked to "save and go back if I mess up" and to "see the ones I cre
 - **Undo history is not stored.** A full history is up to ~70MB. Opening a saved scrawlface or restoring the draft starts with empty undo/redo.
 - **Storage: IndexedDB, this browser only.** No accounts, nothing uploaded. Clearing site data deletes the gallery; it doesn't follow the user to another device. If IndexedDB is unavailable, Save and the gallery are hidden and the app works as today.
 - **Layers stored as PNG blobs**, not scrawl segments: one format for the scrawl and the paint, and nothing to re-animate on open.
-- **"Save image" is renamed "Export image"** (PNG download), so "Save" can mean "save to gallery".
+- **"Save image" is renamed "Export image"** (PNG download), so "Save" can mean "save to gallery". *Later removed: Export image wasn't doing much next to Save and Share.*
 - **Entry points (mobile): bottom sheet + blank start.** No change to the header or the tool row.
 - **Leaving edited work asks Save / Discard.** Starting a new scrawl (or opening another one from the gallery) after editing the current one asks the user to save or discard it, instead of today's "will be lost" confirm. Needs three choices, so it's a small native `<dialog>`, not `confirm()`.
 - **Opening the app:**
@@ -91,10 +91,10 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 27).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 28).
 
 ## Notes from the build
-- Desktop sidebar at exactly 1024×768: the extra Save row makes it 27px taller than the panel, so it scrolls slightly (its overflow safety net). Fits at 800px tall and above.
+- Desktop sidebar at exactly 1024×768: with Export image gone the Save section is one row again (two where Share is offered), so it fits.
 - `tests/smoke.js` was fixed for the blank start and the transparent scrawl layer.
 
 ## Out of scope (for now)
