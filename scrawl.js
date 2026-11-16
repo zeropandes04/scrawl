@@ -65,6 +65,7 @@ let drawingGraphics;
 let eyePositions = [];
 let draggedEyeIndex = -1;
 let dragOffset = { x: 0, y: 0 }; // eye centre minus grab point, so the eye doesn't jump to the finger
+let dragStart = null; // where the dragged eye was when grabbed, to tell a drag from a tap
 let hasDrawings = false;
 let isDrawing = false;
 const eyeRadius = 35;
@@ -553,6 +554,7 @@ function mousePressed(event) {
 
     if (eyeIndex !== -1) {
       draggedEyeIndex = eyeIndex;
+      dragStart = { x: eyePositions[eyeIndex].x, y: eyePositions[eyeIndex].y };
       dragOffset = {
         x: eyePositions[eyeIndex].x - transformed.x,
         y: eyePositions[eyeIndex].y - transformed.y
@@ -717,8 +719,10 @@ function endLinesPeek() {
 
 function mouseReleased() {
   // A stroke, fill or eye drag is a change to the scrawlface (for Save and
-  // the draft)
-  const changed = pressChangedDrawing || draggedEyeIndex !== -1;
+  // the draft). Tapping an eye without moving it isn't.
+  const eye = eyePositions[draggedEyeIndex];
+  const eyeMoved = eye && (eye.x !== dragStart.x || eye.y !== dragStart.y);
+  const changed = pressChangedDrawing || eyeMoved;
 
   if (draggedEyeIndex !== -1) {
     draggedEyeIndex = -1;
@@ -756,6 +760,10 @@ function mouseReleased() {
 }
 
 function keyPressed() {
+  // A dialog (Save / Discard, My Scrawls, Delete) has the keyboard: the
+  // canvas behind it doesn't react, and N can't open a second prompt
+  if (document.querySelector('dialog[open]')) return;
+
   // Ctrl (Windows/Linux) or Cmd (Mac; key codes 91/93 are the left/right Cmd keys)
   const cmd = keyIsDown(CONTROL) || keyIsDown(91) || keyIsDown(93);
 
@@ -1267,11 +1275,12 @@ function exportImage() {
   return image;
 }
 
-// Hands the image to the phone's share sheet (messages, socials, ...)
+// Saves the image as a PNG file (desktop)
 function downloadImage() {
   exportImage().save('scrawlface', 'png');
 }
 
+// Hands the image to the phone's share sheet (messages, socials, ...)
 function shareImage() {
   exportImage().canvas.toBlob(blob => {
     if (!blob) return; // the browser couldn't encode the image
@@ -1964,7 +1973,17 @@ function forgetDraft() {
   dbRequest('draft', 'readwrite', store => store.delete('current')).catch(() => {});
 }
 
-async function saveToGallery() {
+// Saves run one after another: two at once (a double tap on Save, or
+// Save during an autosave) would both see galleryId unset and make two
+// entries. The second one then updates the entry the first one made.
+let saveQueue = Promise.resolve();
+function saveToGallery() {
+  const next = saveQueue.then(saveToGalleryNow);
+  saveQueue = next.catch(() => {}); // a failed save doesn't block later ones
+  return next;
+}
+
+async function saveToGalleryNow() {
   if (isBlankStart()) return;
   const version = editVersion;
   const token = scrawlfaceToken;
@@ -2035,9 +2054,16 @@ async function openFromGallery(id) {
   if (!(await confirmLeave())) return;
   const record = await dbRequest('gallery', 'readonly', store => store.get(id));
   if (!record) return;
+  // restoreScrawlface decodes the images before it changes anything, so
+  // if they're damaged the current scrawlface (and its draft) stay put
+  try {
+    await restoreScrawlface(record);
+  } catch (e) {
+    alert('Sorry, this scrawlface couldn\'t be opened.');
+    return;
+  }
   scrawlfaceToken++;
   forgetDraft();
-  await restoreScrawlface(record);
   galleryId = record.id;
   savedVersion = editVersion;
   restartAutoSave();
@@ -2307,11 +2333,16 @@ function setupGallery() {
     .then(async draft => {
       // Unsaved work from last time (a reload, or a tab the phone killed)
       if (draft && isBlankStart()) {
-        await restoreScrawlface(draft);
-        galleryId = draft.galleryId;
-        editVersion = savedVersion + 1;
-        restartAutoSave();
-        updateGallerySaveButtons();
+        try {
+          await restoreScrawlface(draft);
+          galleryId = draft.galleryId;
+          editVersion = savedVersion + 1;
+          restartAutoSave();
+          updateGallerySaveButtons();
+        } catch (e) {
+          // Damaged: drop it, or it would fail on every visit
+          forgetDraft();
+        }
       }
       renderGallery();
     })
