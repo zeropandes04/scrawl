@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=39"></script>
+  <script src="scrawl.js?v=41"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -493,12 +493,15 @@
       }
     }
 
-    /* No frame of its own: the canvas blends into the white area */
+    /* No frame of its own: the canvas blends into the white area. It is
+       the 4:5 picture, centred; scrawl.js sets the size to fit
+       (fitCanvasToContainer). !important beats the inline size p5 sets. */
     #scrawl-container canvas {
       position: absolute;
       inset: 0;
-      width: 100% !important;
-      height: 100% !important;
+      margin: auto;
+      width: var(--canvas-width, 100%) !important;
+      height: var(--canvas-height, 100%) !important;
     }
 
     /* Control panel: styled after Teenage Engineering hardware (OP-1) */

@@ -66,6 +66,15 @@ async function run(label, contextOpts) {
     clearDis: document.getElementById('clear-drawings-btn').disabled }));
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
+
+  // The canvas is the 4:5 picture, as big as fits and centred in its area
+  const fit = await ev(() => {
+    const c = canvas.elt.getBoundingClientRect();
+    const b = document.getElementById('scrawl-container').getBoundingClientRect();
+    return { ratio: c.width / c.height, fills: Math.max(c.width / b.width, c.height / b.height),
+      dx: Math.abs((c.left - b.left) - (b.right - c.right)), dy: Math.abs((c.top - b.top) - (b.bottom - c.bottom)) };
+  });
+  check('canvas is a centred 4:5 box that fits its area', Math.abs(fit.ratio - 0.8) < 0.01 && fit.fills > 0.99 && fit.dx < 2 && fit.dy < 2, JSON.stringify(fit));
   check('undo disabled at start', (await state()).undoDis);
 
   // Drag eye 0
