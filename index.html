@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=41"></script>
+  <script src="scrawl.js?v=42"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -112,14 +112,15 @@
       gap: 24px;
     }
 
-    /* The canvas fills this box, whatever its shape; scrawl.js gives the
-       canvas the same proportions (fitCanvasToContainer) and centres the
-       square drawing inside it. Absolute, so the canvas's own pixel size
-       can't push the layout around. */
+    /* The 4:5 picture covers this box, whatever its shape, and the box
+       masks what doesn't fit (scrawl.js sizes the canvas:
+       fitCanvasToContainer). Absolute canvas, so its own pixel size can't
+       push the layout around. */
     #scrawl-container {
       position: relative;
       flex: 1;
       width: 100%;
+      overflow: hidden;
     }
 
     /* Blank start: the create button sits centred over the empty canvas.
@@ -493,13 +494,15 @@
       }
     }
 
-    /* No frame of its own: the canvas blends into the white area. It is
-       the 4:5 picture, centred; scrawl.js sets the size to fit
-       (fitCanvasToContainer). !important beats the inline size p5 sets. */
+    /* The canvas is the 4:5 picture, centred and at least as big as the
+       box in both directions; scrawl.js sets the size. Centred with a
+       transform: auto margins can't centre a box bigger than its
+       container. !important beats the inline size p5 sets. */
     #scrawl-container canvas {
       position: absolute;
-      inset: 0;
-      margin: auto;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
       width: var(--canvas-width, 100%) !important;
       height: var(--canvas-height, 100%) !important;
     }

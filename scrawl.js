@@ -1400,16 +1400,18 @@ function setBrushCursor() {
   canvas.elt.style.cursor = `url('data:image/svg+xml,${encodeURIComponent(svg)}') ${c} ${c}, crosshair`;
 }
 
-// The canvas is the picture frame (frameWidth x frameHeight), shown as big
-// as fits in its container and centred there (the CSS reads the size from
-// --canvas-width / --canvas-height); the page's white shows around it.
+// The canvas is the picture frame (frameWidth x frameHeight). It covers its
+// container, centred, and the container masks what doesn't fit, so no empty
+// space shows whatever the window's shape (the CSS reads the size from
+// --canvas-width / --canvas-height). The masked edges are still part of
+// the saved picture.
 function fitCanvasToContainer() {
   const box = document.getElementById('scrawl-container');
   if (box.clientWidth === 0 || box.clientHeight === 0) return;
 
-  const k = min(box.clientWidth / frameWidth, box.clientHeight / frameHeight);
-  box.style.setProperty('--canvas-width', `${Math.floor(frameWidth * k)}px`);
-  box.style.setProperty('--canvas-height', `${Math.floor(frameHeight * k)}px`);
+  const k = max(box.clientWidth / frameWidth, box.clientHeight / frameHeight);
+  box.style.setProperty('--canvas-width', `${Math.ceil(frameWidth * k)}px`);
+  box.style.setProperty('--canvas-height', `${Math.ceil(frameHeight * k)}px`);
   if (drawMode || eraseMode) setBrushCursor();
 }
 

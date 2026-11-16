@@ -67,14 +67,16 @@ async function run(label, contextOpts) {
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
 
-  // The canvas is the 4:5 picture, as big as fits and centred in its area
+  // The canvas is the 4:5 picture, covering its area (which masks the rest), centred
   const fit = await ev(() => {
     const c = canvas.elt.getBoundingClientRect();
     const b = document.getElementById('scrawl-container').getBoundingClientRect();
-    return { ratio: c.width / c.height, fills: Math.max(c.width / b.width, c.height / b.height),
+    return { ratio: c.width / c.height, coverW: c.width / b.width, coverH: c.height / b.height,
+      exact: Math.min(c.width / b.width, c.height / b.height),
       dx: Math.abs((c.left - b.left) - (b.right - c.right)), dy: Math.abs((c.top - b.top) - (b.bottom - c.bottom)) };
   });
-  check('canvas is a centred 4:5 box that fits its area', Math.abs(fit.ratio - 0.8) < 0.01 && fit.fills > 0.99 && fit.dx < 2 && fit.dy < 2, JSON.stringify(fit));
+  check('canvas is a centred 4:5 box covering its area', Math.abs(fit.ratio - 0.8) < 0.01 && fit.coverW >= 0.999 && fit.coverH >= 0.999 &&
+    fit.exact < 1.01 && fit.dx < 2 && fit.dy < 2, JSON.stringify(fit));
   check('undo disabled at start', (await state()).undoDis);
 
   // Drag eye 0
@@ -200,8 +202,9 @@ async function run(label, contextOpts) {
   const alphaAt = (x, y) => ev(`drawingGraphics.drawingContext.getImageData(${x} + layerOffset, ${y} + layerOffset, 1, 1).data[3]`);
   const historyPixels = () => ev(() => historyStack.reduce((a, m) => a + m.w * m.h, 0));
 
-  // A stroke above the square, in the frame's extra room (100 units)
-  const outside = [[300, -50], [500, -50]];
+  // A stroke above the square, in the frame's extra room (100 units; the
+  // top of it may be masked, so not too near the edge)
+  const outside = [[300, -25], [500, -25]];
   await tool('brush');
   await drag(outside[0], outside[1]);
   const mid = [(outside[0][0] + outside[1][0]) / 2, (outside[0][1] + outside[1][1]) / 2];
