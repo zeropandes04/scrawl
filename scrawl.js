@@ -209,7 +209,23 @@ function setup() {
   });
 
   // The app opens on a blank canvas with a "create" call to action
-  // (#blank-cta) in the middle; the first Generate removes it
+  // (#blank-cta) in the middle; the first Generate removes it. A faint
+  // scrawl sits behind the button so the canvas doesn't look empty;
+  // Generate clears it.
+  baseScrawlGraphics.stroke(200);
+  baseScrawlGraphics.strokeWeight(scrawlStrokeWeight);
+  baseScrawlGraphics.noFill();
+  const preview = scrawlSegments(intensity);
+  fitScrawlToCanvas(preview);
+  preview.forEach(seg => baseScrawlGraphics.bezier(...seg));
+
+  // "first" only fits someone who has never made one on this device
+  let created = false;
+  try { created = localStorage.getItem('createdScrawlface') === '1'; } catch (e) {}
+  if (created) {
+    document.getElementById('blank-cta-btn').lastChild.textContent = 'Create a new scrawlface';
+  }
+
   setTool('eyes');
   redrawCanvas();
 }
@@ -242,6 +258,7 @@ function generateScrawlface() {
   // Leave the blank start state (hides the create button, shows the
   // on-canvas scrawl toggle)
   document.getElementById('scrawl-container').classList.remove('is-blank');
+  try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
 
   // Ensure scrawl is visible when generating new scrawl
   if (!showScrawl) {
@@ -712,7 +729,7 @@ function redrawCanvas() {
 
   // Draw the layers straight onto the canvas (no intermediate composite),
   // so each frame while drawing only copies what's needed. The scrawl goes
-  // on top of the paint so its lines can still be followed; Hide scrawl
+  // on top of the paint so its lines can still be followed; Hide lines
   // takes them away.
   image(drawingGraphics, 0, 0);
   if (showScrawl) {
@@ -1189,7 +1206,7 @@ function toggleEyes() {
 // The buttons name what pressing them will do, rather than lighting up when
 // the scrawl is hidden
 function updateScrawlToggleButtons() {
-  const label = showScrawl ? "Hide scrawl" : "Show scrawl";
+  const label = showScrawl ? "Hide lines" : "Show lines";
   select("#toggle-eyes-btn").html(label);
   select("#toggle-eyes-btn-mobile").html(label);
   select("#toggle-scrawl-btn-canvas").html(label);
