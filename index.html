@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=18"></script>
+  <script src="scrawl.js?v=19"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -119,6 +119,43 @@
       position: relative;
       flex: 1;
       width: 100%;
+    }
+
+    /* Blank start: the create button sits centred over the empty canvas.
+       The wrapper lets touches through; only the button takes them. */
+    .blank-cta {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      pointer-events: none;
+    }
+
+    .blank-cta .cta-button {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      pointer-events: auto;
+    }
+
+    /* Hide/show scrawl on the canvas itself, phones only (the desktop
+       sidebar has its own key). Absolutely placed, so it takes no room. */
+    .canvas-scrawl-toggle {
+      display: none;
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      z-index: 1;
+      padding: 8px 14px;
+      font-size: 13px;
+    }
+
+    #scrawl-container:not(.is-blank) .blank-cta,
+    #scrawl-container.is-blank .canvas-scrawl-toggle {
+      display: none;
     }
 
     /* No frame of its own: the canvas blends into the white area */
@@ -822,6 +859,10 @@
         min-height: 100vw;
       }
 
+      #scrawl-container:not(.is-blank) .canvas-scrawl-toggle {
+        display: block;
+      }
+
       .canvas-section {
         flex: 1;
         flex-direction: column;
@@ -983,7 +1024,14 @@
     <main>
       <section class="canvas-section">
         <div class="canvas-area">
-          <div id="scrawl-container"></div>
+          <!-- p5 adds the canvas in here. is-blank until the first scrawl:
+               the create button shows, the scrawl toggle doesn't. -->
+          <div id="scrawl-container" class="is-blank">
+            <div class="blank-cta" id="blank-cta">
+              <button type="button" id="blank-cta-btn" class="cta-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>Create your first scrawlface</button>
+            </div>
+            <button type="button" id="toggle-scrawl-btn-canvas" class="canvas-scrawl-toggle" title="Hide or show the scrawl lines">Hide scrawl</button>
+          </div>
         </div>
 
         <aside class="sidebar" aria-label="Tools">
