@@ -269,6 +269,7 @@ function generateScrawlface() {
   galleryId = null;
   savedVersion = editVersion;
   forgetDraft();
+  restartAutoSave();
   updateGallerySaveButtons();
 
   // Ensure scrawl is visible when generating new scrawl
@@ -1791,6 +1792,8 @@ let editVersion = 0;     // bumped on every change...
 let savedVersion = 0;    // ...and copied here when saved: unsaved = they differ
 let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
 let draftTimer = null;
+const autoSaveMs = 5 * 60 * 1000; // see autoSave
+let autoSaveTimer = null;
 let dbPromise = null;
 let thumbUrls = [];      // object URLs of thumbnails on screen, freed on redraw
 let gallerySelection = null; // ids picked in the gallery's select mode, else null
@@ -1900,6 +1903,23 @@ function markChanged() {
   updateGallerySaveButtons();
   clearTimeout(draftTimer);
   draftTimer = setTimeout(saveDraft, 1000);
+  if (!autoSaveTimer) autoSaveTimer = setTimeout(autoSave, autoSaveMs);
+}
+
+// Long sessions are saved to My Scrawls on their own: 5 minutes after the
+// first unsaved change, and again 5 minutes after the next one, so unsaved
+// work is never older than that. Quick shuffles with New never get there.
+function autoSave() {
+  autoSaveTimer = null;
+  if (isBlankStart() || !hasUnsavedChanges()) return;
+  saveToGallery().catch(() => {}); // the draft still has the work
+}
+
+// Called when the scrawlface was saved or replaced: the 5 minutes start
+// again from its next change (or now, if it still has unsaved changes)
+function restartAutoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = hasUnsavedChanges() ? setTimeout(autoSave, autoSaveMs) : null;
 }
 
 async function saveDraft() {
@@ -1932,6 +1952,7 @@ async function saveToGallery() {
   galleryId = record.id;
   savedVersion = version;
   if (!hasUnsavedChanges()) forgetDraft();
+  restartAutoSave();
   updateGallerySaveButtons();
   flashSaved();
 }
@@ -1996,6 +2017,7 @@ async function openFromGallery(id) {
   await restoreScrawlface(record);
   galleryId = record.id;
   savedVersion = editVersion;
+  restartAutoSave();
   updateGallerySaveButtons();
   document.getElementById('gallery-dialog').close();
   try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
@@ -2265,6 +2287,7 @@ function setupGallery() {
         await restoreScrawlface(draft);
         galleryId = draft.galleryId;
         editVersion = savedVersion + 1;
+        restartAutoSave();
         updateGallerySaveButtons();
       }
       renderGallery();

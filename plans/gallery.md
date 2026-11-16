@@ -14,6 +14,7 @@ Mobile users asked to "save and go back if I mess up" and to "see the ones I cre
 
 ## Critical Decisions
 - **Gallery = explicit Save only.** Creating a scrawl is cheap and people shuffle with New, so autosaving everything would fill the gallery with abandoned starts.
+- **Long sessions autosave to the gallery.** 5 minutes after the first unsaved change (and 5 minutes after the next one, and so on) the scrawlface is saved to My Scrawls, exactly like tapping Save (creates its entry, then updates it). A manual Save, New, opening another one or reopening the draft restarts the 5 minutes. Quick shuffles with New never reach it, so the gallery still doesn't fill with abandoned starts.
 - **One hidden draft, outside the gallery.** The scrawlface in progress is autosaved to a single slot. It is restored after a reload or killed tab, and overwritten when a new scrawlface is started. It never shows as a gallery tile.
 - **Save overwrites its own entry.** The first Save creates a gallery entry; later Saves on the same scrawlface update it. Reopening the entry restores the last saved state, which is the "go back to where I saved" path. (Separate save points / versions: skipped for now, see Out of scope.)
 - **Undo history is not stored.** A full history is up to ~70MB. Opening a saved scrawlface or restoring the draft starts with empty undo/redo.
@@ -93,7 +94,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 34).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 35).
 
 ## Notes from the build
 - Desktop sidebar at exactly 1024×768: with Export image gone the Save section is one row again (two where Share is offered), so it fits.
