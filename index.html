@@ -128,9 +128,12 @@
       inset: 0;
       z-index: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 12px;
       padding: 16px;
+      text-align: center;
       pointer-events: none;
     }
 
@@ -939,10 +942,6 @@
       header {
         padding: 6px 0 2px;
       }
-
-      .subtitle {
-        display: none;
-      }
     }
 
     @media (min-width: 769px) {
@@ -1018,7 +1017,6 @@
   <div class="container">
     <header>
       <h1>Scrawlface</h1>
-      <p class="subtitle">Move the eyes, find the face, doodle on top</p>
     </header>
 
     <main>
@@ -1029,6 +1027,7 @@
           <div id="scrawl-container" class="is-blank">
             <div class="blank-cta" id="blank-cta">
               <button type="button" id="blank-cta-btn" class="cta-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>Create your first scrawlface</button>
+              <p class="subtitle">Move the eyes, find the face, doodle on top</p>
             </div>
             <button type="button" id="toggle-scrawl-btn-canvas" class="canvas-scrawl-toggle" title="Hide or show the scrawl lines">Hide lines</button>
           </div>
