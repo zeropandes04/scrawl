@@ -112,7 +112,8 @@
       gap: 24px;
     }
 
-    /* The 4:5 picture covers this box, whatever its shape, and the box
+    /* Laid out at 4:5 where the window allows (see the media queries). The
+       4:5 picture covers this box, whatever its shape, and the box
        masks what doesn't fit (scrawl.js sizes the canvas:
        fitCanvasToContainer). Absolute canvas, so its own pixel size can't
        push the layout around. */
@@ -1174,18 +1175,20 @@
         background: #ffffff;
       }
 
-      /* The page is at least one screen tall and the canvas area takes all
-         the height left over, so the scrawl sits centred between the header
-         and the bottom bar. On short screens it simply grows and scrolls. */
+      /* The page is exactly one screen tall: the canvas area is 4:5 at full
+         width, centred between the header and the bottom bar; on screens
+         too short for that it gets shorter and masks the picture's top and
+         bottom (see #scrawl-container) instead of the page scrolling. */
       .container {
         display: flex;
         flex-direction: column;
-        min-height: 100vh;
-        min-height: 100dvh;
+        height: 100vh;
+        height: 100dvh;
       }
 
       main {
         flex: 1;
+        min-height: 0;
         display: flex;
         flex-direction: column;
       }
@@ -1195,10 +1198,15 @@
         display: none;
       }
 
-      /* Never shorter than it is wide, so the whole drawing always fits; on
-         short screens the page scrolls instead */
+      .canvas-area {
+        min-height: 0;
+      }
+
+      /* 4:5 at full width when there's room; shorter (masking) when not */
       #scrawl-container {
-        min-height: 100vw;
+        flex: 0 1 auto;
+        aspect-ratio: 4 / 5;
+        min-height: 0;
       }
 
       /* My Scrawls stays on the wordmark's line on a 360px phone, even
@@ -1218,7 +1226,7 @@
       .canvas-section {
         flex: 1;
         flex-direction: column;
-        min-height: auto;
+        min-height: 0;
         padding-bottom: 0;
         /* Break out of .container's side padding so the canvas card can go edge-to-edge */
         background: transparent;
@@ -1308,16 +1316,33 @@
         min-height: 0;
         display: grid;
         grid-template-columns: 1fr 320px;
+        /* The card below sizes itself from main's size (cqw / cqh) */
+        container-type: size;
       }
 
+      /* The card is a 4:5 canvas area plus the 320px sidebar, centred.
+         Its height is what's free (less its 36px of margin), unless the
+         card would then be wider than main: then it's as tall as fits
+         that width, so a wide window shows the whole picture, with page
+         below and beside the card. Never under 672px (the sidebar's height); below
+         that the canvas area gets narrower and masks the picture's sides. */
       .canvas-section {
         grid-column: 1 / -1;
+        justify-self: center;
+        align-self: start;
+        max-width: 100%;
+        height: min(100cqh - 36px, max(672px, (100cqw - 320px) * 1.25));
         min-height: 0;
         margin: 16px 0 20px;
         border-radius: 18px;
       }
 
+      /* 4:5 at the card's full height; on windows too narrow for that it
+         gets narrower and masks the picture's sides */
       .canvas-area {
+        flex: 0 1 auto;
+        height: 100%;
+        aspect-ratio: 4 / 5;
         min-height: 0;
         min-width: 0;
       }

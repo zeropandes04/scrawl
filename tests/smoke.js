@@ -75,6 +75,9 @@ async function run(label, contextOpts) {
       exact: Math.min(c.width / b.width, c.height / b.height),
       dx: Math.abs((c.left - b.left) - (b.right - c.right)), dy: Math.abs((c.top - b.top) - (b.bottom - c.bottom)) };
   });
+  // Both test windows have room for a 4:5 canvas area, so nothing is masked
+  const areaRatio = await ev(() => { const b = document.getElementById('scrawl-container').getBoundingClientRect(); return b.width / b.height; });
+  check('canvas area is 4:5 by default', Math.abs(areaRatio - 0.8) < 0.01, areaRatio.toFixed(3));
   check('canvas is a centred 4:5 box covering its area', Math.abs(fit.ratio - 0.8) < 0.01 && fit.coverW >= 0.999 && fit.coverH >= 0.999 &&
     fit.exact < 1.01 && fit.dx < 2 && fit.dy < 2, JSON.stringify(fit));
   check('undo disabled at start', (await state()).undoDis);
