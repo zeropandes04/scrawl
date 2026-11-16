@@ -34,7 +34,10 @@ async function run(label, contextOpts) {
   if (p5src) await page.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
   await page.goto('file://' + path.join(repo, 'index.html'));
-  await page.waitForFunction(() => typeof eyePositions !== 'undefined' && eyePositions.length === 2);
+  // The app opens on a blank start: create the first scrawl from its button
+  await page.waitForFunction(() => typeof drawingGraphics !== 'undefined');
+  await page.click('#blank-cta-btn');
+  await page.waitForFunction(() => eyePositions.length === 2);
   await page.waitForFunction(() => scrawlQueue.length === 0);
 
   const mobile = !!contextOpts.isMobile;
@@ -88,11 +91,11 @@ async function run(label, contextOpts) {
   await tool('fill');
   const before = await ev(() => { drawingGraphics.loadPixels(); return drawingGraphics.pixels.reduce((a, v, i) => i % 4 === 3 ? a + (v > 0) : a, 0); });
   const pt = await ev(() => {
-    // find a pixel not on scrawl or drawing
+    // find a pixel not on scrawl or drawing (both layers transparent there)
     baseScrawlGraphics.loadPixels(); drawingGraphics.loadPixels();
     for (let y = 20; y < 780; y += 7) for (let x = 20; x < 780; x += 7) {
       const i = (y * 800 + x) * 4;
-      if (baseScrawlGraphics.pixels[i] > 250 && drawingGraphics.pixels[i + 3] === 0) return [x, y];
+      if (baseScrawlGraphics.pixels[i + 3] === 0 && drawingGraphics.pixels[i + 3] === 0) return [x, y];
     }
   });
   const fp = await toPage(...pt);
