@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=32"></script>
+  <script src="scrawl.js?v=33"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -174,7 +174,7 @@
 
     /* ---- Gallery ----
        Recents on the blank start, the Save / Discard dialog and the
-       My scrawlfaces screen. Both dialogs are native <dialog>s in the top
+       My Scrawls screen. Both dialogs are native <dialog>s in the top
        layer, so they don't affect the page layout. */
     .recents {
       display: flex;
@@ -1137,6 +1137,20 @@
         min-height: 100vw;
       }
 
+      /* My Scrawls stays on the wordmark's line on a 360px phone, even
+         beside the widest wordmark fonts (nothing else in the header
+         needs to wrap since the tagline moved out) */
+      header {
+        flex-wrap: nowrap;
+        column-gap: 8px;
+      }
+
+      .header-gallery-btn {
+        flex-shrink: 0;
+        padding: 8px 10px;
+        gap: 5px;
+      }
+
       .canvas-section {
         flex: 1;
         flex-direction: column;
@@ -1288,8 +1302,8 @@
   <div class="container">
     <header>
       <h1>Scrawlface</h1>
-      <!-- My scrawlfaces, top right on every screen size -->
-      <button type="button" class="header-gallery-btn gallery-open-btn needs-storage" title="My scrawlfaces"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.2 5.3c2.2-1 4.6-.9 6.9-.6.6 2.1.5 4.4 0 6.6-2.3.6-4.5.4-6.6 0-.6-2-.6-4.2 0-7"/><path d="M12.8 4.1c2.4.5 4.7.2 7.2 0 .5 2.3.2 4.7-.4 7-2.2.4-4.4.2-6.4-.3-.5-2.3-.4-4.7.3-7.6"/><path d="M3.6 13.3c2.4-.3 4.8 0 7.2.5.2 2.2-.2 4.4-.8 6.5-2.1.5-4.1.4-6-.2-.6-2.1-.6-4.4-.1-7.3"/><path d="M13.5 12.8c2.1.7 4.5.6 6.8.2.3 2.4 0 4.7-.6 7-2.2.2-4.4 0-6.4-.5-.2-2.3 0-4.6.7-7.4"/></svg>Gallery</button>
+      <!-- My Scrawls, top right on every screen size -->
+      <button type="button" class="header-gallery-btn gallery-open-btn needs-storage" title="My Scrawls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.2 4.1c3.7-.6 7.4-.5 11.1-.1.5 3.6.4 7.2-.1 10.8"/><path d="M3.8 7.6c3.9-.6 7.9-.5 11.8 0 .4 4.1.3 8.2-.2 12.3-3.8.4-7.6.3-11.3-.2-.5-4-.6-8.1-.1-12.6"/><path d="M6.4 16.4c.3-2.8 2.1-5 3.6-4.5 1.4.5-.5 3.6.9 3.9 1.2.2 1.6-2.2 2.6-1.6"/></svg>My Scrawls</button>
     </header>
 
     <main>
@@ -1405,9 +1419,9 @@
 
           <div class="sidebar-section">
             <h3>Save</h3>
-            <!-- Save keeps the scrawlface in My scrawlfaces (this browser) -->
+            <!-- Save keeps the scrawlface in My Scrawls (this browser) -->
             <div class="tools-grid two-keys">
-              <button type="button" class="gallery-save-btn needs-storage" title="Save to My scrawlfaces" disabled>Save</button>
+              <button type="button" class="gallery-save-btn needs-storage" title="Save to My Scrawls" disabled>Save</button>
               <button type="button" id="share-btn" class="share-btn" title="Share the image" hidden>Share</button>
             </div>
           </div>
@@ -1440,10 +1454,10 @@
         </form>
       </dialog>
 
-      <!-- My scrawlfaces: the saved ones, newest first (renderGallery) -->
+      <!-- My Scrawls: the saved ones, newest first (renderGallery) -->
       <dialog id="gallery-dialog" class="gallery-dialog" aria-labelledby="gallery-title">
         <div class="gallery-head">
-          <h2 id="gallery-title" aria-live="polite">My scrawlfaces</h2>
+          <h2 id="gallery-title" aria-live="polite">My Scrawls</h2>
           <!-- Normal: Close. Select mode (press and hold a tile):
                Cancel, Delete (n) -->
           <div class="gallery-actions">
