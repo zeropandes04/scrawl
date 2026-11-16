@@ -18,7 +18,7 @@ Mobile users asked to "save and go back if I mess up" and to "see the ones I cre
 - **Storage: IndexedDB, this browser only.** No accounts, nothing uploaded. Clearing site data deletes the gallery; it doesn't follow the user to another device. If IndexedDB is unavailable, Save and the gallery are hidden and the app works as today.
 - **Layers stored as PNG blobs**, not scrawl segments: one format for the scrawl and the paint, and nothing to re-animate on open.
 - **"Save image" is renamed "Export image"** (PNG download), so "Save" can mean "save to gallery". *Later removed: Export image wasn't doing much next to Save and Share.*
-- **Entry points: a Gallery key in the canvas's top-left corner (phones and desktop) + recents on the blank start.** *Changed from the bottom sheet / sidebar "My scrawlfaces" key after the first release.*
+- **Entry points: a Gallery key at the right of the header (phones and desktop; label on the wordmark's baseline) + recents on the blank start.** *Was a My scrawlfaces key in the sheet / sidebar, then a key on the canvas corner.* On phones it replaces the header's Hide lines key; hiding the lines there is now touch-and-hold on the canvas (lines hidden while held), with Hide lines in the sheet for hiding them for good.
 - **Leaving edited work asks Save / Discard.** Starting a new scrawl (or opening another one from the gallery) after editing the current one asks the user to save or discard it, instead of today's "will be lost" confirm. Needs three choices, so it's a small native `<dialog>`, not `confirm()`.
 - **Opening the app:**
   - Draft with unsaved changes → reopen it directly (that's the killed-tab case).
@@ -49,7 +49,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - Copy: "Save this scrawlface?" / "You've changed it since it was last saved." — wording to confirm.
 
 ### Gallery screen
-- Opened from the Gallery key on the canvas and "See all" in the recents row.
+- Opened from the Gallery key in the header and "See all" in the recents row.
 - Full-screen overlay; grid of thumbnails, newest `updatedAt` first; close button.
 - Tap a tile → open it (Save / Discard dialog first if the current scrawlface was edited).
 - Delete: a **tick circle** on each tile picks it and starts select mode (always shown on touch screens; on hover / keyboard focus with a mouse; on every tile while selecting). Touch also has press-and-hold as a shortcut. Taps then pick / unpick tiles; unpicking the last one leaves select mode; the header shows "n selected" with Cancel / Delete (n). Moving the finger while holding (scrolling) doesn't select, and the phone's own image menu is suppressed.
@@ -91,7 +91,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 31).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 32).
 
 ## Notes from the build
 - Desktop sidebar at exactly 1024×768: with Export image gone the Save section is one row again (two where Share is offered), so it fits.
