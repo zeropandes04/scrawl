@@ -19,6 +19,7 @@ Mobile users asked to "save and go back if I mess up" and to "see the ones I cre
 - **Layers stored as PNG blobs**, not scrawl segments: one format for the scrawl and the paint, and nothing to re-animate on open.
 - **"Save image" is renamed "Export image"** (PNG download), so "Save" can mean "save to gallery".
 - **Entry points (mobile): bottom sheet + blank start.** No change to the header or the tool row.
+- **Leaving edited work asks Save / Discard.** Starting a new scrawl (or opening another one from the gallery) after editing the current one asks the user to save or discard it, instead of today's "will be lost" confirm. Needs three choices, so it's a small native `<dialog>`, not `confirm()`.
 - **Opening the app:**
   - Draft with unsaved changes → reopen it directly (that's the killed-tab case).
   - Otherwise → blank start, plus a row of recent saved scrawlfaces under the create button.
@@ -39,14 +40,18 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - Brief "Saved" confirmation on the key (LED / label), no dialog.
 - Disabled when nothing changed since the last Save.
 
-### New scrawl
-- If the draft has unsaved changes: confirm "Start a new scrawl? Unsaved changes will be lost." (as today).
-- Otherwise: no confirm.
+### New scrawl (and opening another from the gallery)
+- If the current scrawlface was edited since it was created or last saved (paint, fill, erase, Clear, eye drag or eye style change), show a dialog:
+  - **Save** → save to the gallery (create or update its entry), then continue.
+  - **Discard** → continue without saving.
+  - **Cancel** (also the Esc key, or tapping outside) → stay on the current scrawlface.
+- An untouched scrawl (just generated, or nothing changed since Save) → no dialog, continue straight away, so shuffling with New stays fast.
+- Copy: "Save this scrawlface?" / "You've changed it since it was last saved." — wording to confirm.
 
 ### Gallery screen
 - Opened from "My scrawlfaces" (sheet + sidebar) and "See all" in the recents row.
 - Full-screen overlay; grid of thumbnails, newest `updatedAt` first; close button.
-- Tap a tile → open it (confirm first if the current draft has unsaved changes).
+- Tap a tile → open it (Save / Discard dialog first if the current scrawlface was edited).
 - ⋯ on a tile → Delete, with a confirm.
 - Empty state: short line + the create button.
 
@@ -69,11 +74,11 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - [ ] 🟥 **Step 3: Save + rename Export image**
   - [ ] 🟥 Save key (sheet + sidebar): create or update the gallery entry, clear dirty, show "Saved".
   - [ ] 🟥 Rename "Save image" → "Export image" (labels and titles).
-  - [ ] 🟥 New-scrawl confirm only when the draft is dirty.
+  - [ ] 🟥 Save / Discard / Cancel `<dialog>` (markup + CSS, flag layout impact) replacing the `confirm()` in `generateScrawlface()`; shown only when the draft is dirty.
 
 - [ ] 🟥 **Step 4: Gallery screen**
   - [ ] 🟥 Overlay markup + CSS (flag layout impact: mobile sheet and desktop sidebar).
-  - [ ] 🟥 Grid, open, delete with confirm, empty state.
+  - [ ] 🟥 Grid, open (through the Save / Discard dialog when dirty), delete with confirm, empty state.
 
 - [ ] 🟥 **Step 5: Recents on the blank start**
   - [ ] 🟥 Up to 4 thumbnails + "See all" under the subtitle.
@@ -83,6 +88,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [ ] 🟥 Reload mid-drawing restores the draft; undo/redo empty after restore.
   - [ ] 🟥 Undo edge cases after a restore (rapid actions, undo after fill, undo after eye drag).
   - [ ] 🟥 Save twice updates one entry; delete removes it; recents and gallery update.
+  - [ ] 🟥 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [ ] 🟥 360×640 and desktop; Chrome mobile on a real device.
   - [ ] 🟥 Bump `scrawl.js?v=N`.
 
