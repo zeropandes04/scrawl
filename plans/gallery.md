@@ -93,7 +93,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 33).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 34).
 
 ## Notes from the build
 - Desktop sidebar at exactly 1024×768: with Export image gone the Save section is one row again (two where Share is offered), so it fits.

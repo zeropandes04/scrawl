@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=33"></script>
+  <script src="scrawl.js?v=34"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1422,7 +1422,8 @@
             <!-- Save keeps the scrawlface in My Scrawls (this browser) -->
             <div class="tools-grid two-keys">
               <button type="button" class="gallery-save-btn needs-storage" title="Save to My Scrawls" disabled>Save</button>
-              <button type="button" id="share-btn" class="share-btn" title="Share the image" hidden>Share</button>
+              <!-- Share on touch screens, Download image elsewhere (setupToolbar) -->
+              <button type="button" id="image-btn" class="image-btn" hidden>Share</button>
             </div>
           </div>
         </aside>
@@ -1521,7 +1522,7 @@
                 <!-- Save stays open, so its "Saved" shows -->
                 <div class="tools-grid two-keys">
                   <button type="button" class="mobile-control-btn gallery-save-btn needs-storage" disabled>Save</button>
-                  <button type="button" id="share-btn-mobile" class="mobile-control-btn share-btn closes-sheet" hidden>Share</button>
+                  <button type="button" id="image-btn-mobile" class="mobile-control-btn image-btn closes-sheet" hidden>Share</button>
                 </div>
               </div>
             </div>

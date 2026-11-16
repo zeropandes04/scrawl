@@ -1267,6 +1267,10 @@ function exportImage() {
 }
 
 // Hands the image to the phone's share sheet (messages, socials, ...)
+function downloadImage() {
+  exportImage().save('scrawlface', 'png');
+}
+
 function shareImage() {
   exportImage().canvas.toBlob(blob => {
     if (!blob) return; // the browser couldn't encode the image
@@ -1655,14 +1659,20 @@ function setupToolbar() {
     updateToolButtons();
   });
 
-  // Share: only shown where the browser can share image files
+  // Getting the picture out: Share on touch screens (the phone's share
+  // sheet: Instagram, WhatsApp, Save to Photos...), Download image with a
+  // mouse, where people expect a file. A touch browser that can't share
+  // image files gets Download too.
   const testFile = new File([], 'scrawlface.png', { type: 'image/png' });
-  if (navigator.canShare && navigator.canShare({ files: [testFile] })) {
-    document.querySelectorAll('.share-btn').forEach(btn => {
-      btn.hidden = false;
-      btn.addEventListener('click', shareImage);
-    });
-  }
+  const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [testFile] }));
+  const touchScreen = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+  const share = touchScreen && canShareFiles;
+  document.querySelectorAll('.image-btn').forEach(btn => {
+    btn.textContent = share ? 'Share' : 'Download image';
+    btn.title = share ? 'Share the image' : 'Download as PNG';
+    btn.addEventListener('click', share ? shareImage : downloadImage);
+    btn.hidden = false;
+  });
 }
 
 // Reflects the selected tool and its size on every key, and shows only the
