@@ -42,11 +42,12 @@ async function run(label, contextOpts) {
   const draft = () => ev(() => dbRequest('draft', 'readonly', s => s.get('current')).then(d => !!d));
   // A stroke that counts as a change (as a real press and release would)
   const stroke = () => ev(() => {
-    saveState();
+    beginStroke(); isDrawing = true; pressChangedDrawing = true;
     drawingGraphics.fill('#CC0000'); drawingGraphics.noStroke();
-    drawingGraphics.ellipse(200 + Math.random() * 400, 400, 40, 40);
+    dab(Math.random() * 400, 0, 40);
+    strokeLength = 100; // a stroke, not a tap
     hasDrawings = true; enableClearButton();
-    pressChangedDrawing = true; mouseReleased();
+    mouseReleased();
   });
 
   await load();
@@ -63,6 +64,8 @@ async function run(label, contextOpts) {
     const real = dbRequest;
     window.dbRequest = (...a) => new Promise(r => setTimeout(r, 150)).then(() => real(...a));
     return Promise.all([saveToGallery(), new Promise(r => setTimeout(r, 20)).then(saveToGallery)])
+      // Let the slowed-down requests still on their way land before going on
+      .then(() => new Promise(r => setTimeout(r, 300)))
       .finally(() => { window.dbRequest = real; });
   });
   check('double Save makes one gallery entry', await galleryCount() === 1, `${await galleryCount()} entries`);
@@ -89,6 +92,7 @@ async function run(label, contextOpts) {
   const pixels = () => ev(() => { drawingGraphics.loadPixels(); return drawingGraphics.pixels.reduce((a, v, i) => i % 4 === 3 ? a + (v > 0) : a, 0); });
   const before = await pixels();
   await load();
+  await page.waitForFunction(() => !isBlankStart(), null, { timeout: 5000 }).catch(() => {});
   check('reload restores the draft', !(await ev(() => isBlankStart())) && await pixels() === before);
   check('restored draft counts as unsaved', await ev(() => hasUnsavedChanges()));
 
@@ -130,6 +134,32 @@ async function run(label, contextOpts) {
   check('broken draft: storage still works', !(await ev(() => document.body.classList.contains('no-storage'))));
   check('broken draft is dropped', !(await draft()));
   await ev(() => dbRequest('gallery', 'readwrite', s => s.delete('broken')));
+
+  // Saved before the paint layer grew: an 800x800 drawing opens centred on the scrawl
+  const oldId = await ev(async () => {
+    const c = document.createElement('canvas');
+    c.width = c.height = canvasSize;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#CC0000';
+    ctx.fillRect(10, 10, 20, 20); // near the scrawl square's top-left corner
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const empty = await new Promise(r => document.createElement('canvas').toBlob(r, 'image/png'));
+    await dbRequest('gallery', 'readwrite', s => s.put({ id: 'old', scrawl: blob, drawing: blob, eyes: eyePositions, eyeStyles,
+      showScrawl: true, rotation: 0, updatedAt: 1, thumb: empty }));
+    return 'old';
+  });
+  page.once('dialog', d => d.accept());
+  const openingOld = ev(`openFromGallery('${oldId}')`);
+  if (await page.waitForSelector('#leave-dialog[open]', { timeout: 1000 }).catch(() => null)) {
+    await page.click('#leave-dialog button[value="discard"]');
+  }
+  await openingOld;
+  const oldPaint = await ev(() => [
+    drawingGraphics.drawingContext.getImageData(layerOffset + 15, layerOffset + 15, 1, 1).data[3],
+    drawingGraphics.drawingContext.getImageData(15, 15, 1, 1).data[3]
+  ]);
+  check('old 800x800 drawing opens centred', oldPaint[0] === 255 && oldPaint[1] === 0, JSON.stringify(oldPaint));
+  await ev(() => dbRequest('gallery', 'readwrite', s => s.delete('old')));
 
   // Delete
   await ev(`toggleGalleryPick('${id}')`);

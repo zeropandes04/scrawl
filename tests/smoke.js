@@ -94,8 +94,10 @@ async function run(label, contextOpts) {
     // find a pixel not on scrawl or drawing (both layers transparent there)
     baseScrawlGraphics.loadPixels(); drawingGraphics.loadPixels();
     for (let y = 20; y < 780; y += 7) for (let x = 20; x < 780; x += 7) {
+      // The paint layer is bigger than the scrawl square, which sits in its middle
       const i = (y * 800 + x) * 4;
-      if (baseScrawlGraphics.pixels[i + 3] === 0 && drawingGraphics.pixels[i + 3] === 0) return [x, y];
+      const j = ((y + layerOffset) * layerSize + x + layerOffset) * 4;
+      if (baseScrawlGraphics.pixels[i + 3] === 0 && drawingGraphics.pixels[j + 3] === 0) return [x, y];
     }
   });
   const fp = await toPage(...pt);
@@ -143,7 +145,8 @@ async function run(label, contextOpts) {
   await page.mouse.move(a.x, b.y, { steps: 5 });
   await page.mouse.up();
   s = await state();
-  check('ctrl+z mid-stroke ignored', s.h === hMid, `mid ${hMid} -> ${JSON.stringify(s)}`);
+  // Ignored, and the stroke becomes one step when it ends
+  check('ctrl+z mid-stroke ignored', s.h === hMid + 1 && s.r === 0, `mid ${hMid} -> ${JSON.stringify(s)}`);
 
   // Fill during scrawl draw-in should not leak past unfinished lines
   await ev('hasDrawings = false; generateScrawlface()');
@@ -178,10 +181,70 @@ async function run(label, contextOpts) {
   });
   check('degenerate pinch keeps zoom finite', await ev(() => Number.isFinite(viewZoom) && Number.isFinite(viewPan.x)), await ev(() => JSON.stringify({ viewZoom, viewPan })));
 
-  // Export has canvas size regardless of zoom
+  // Export is the 4:5 frame regardless of zoom
   await ev('viewZoom = 3; viewPan = {x: 100, y: 50}');
   const dims = await ev(() => { const im = exportImage(); return [im.width, im.height, viewZoom]; });
-  check('export is 800x800 and restores zoom', dims[0] === 800 && dims[1] === 800 && dims[2] === 3, JSON.stringify(dims));
+  check('export is 800x1000 and keeps the zoom', dims[0] === 800 && dims[1] === 1000 && dims[2] === 3, JSON.stringify(dims));
+
+  // ---- Painting past the scrawl square ----
+  await ev('viewZoom = 1; viewPan = {x: 0, y: 0}; rotation = 0; redrawCanvas()');
+  const alphaAt = (x, y) => ev(`drawingGraphics.drawingContext.getImageData(${x} + layerOffset, ${y} + layerOffset, 1, 1).data[3]`);
+  const historyPixels = () => ev(() => historyStack.reduce((a, m) => a + m.w * m.h, 0));
+
+  // A stroke above the square, in the frame's extra room (100 units)
+  const outside = [[300, -50], [500, -50]];
+  await tool('brush');
+  await drag(outside[0], outside[1]);
+  const mid = [(outside[0][0] + outside[1][0]) / 2, (outside[0][1] + outside[1][1]) / 2];
+  check('stroke paints past the scrawl square', await alphaAt(...mid) > 0);
+  check('stroke memento covers only the stroke', (await historyPixels()) < 60000, `${await historyPixels()} px`);
+  await ev('undo()');
+  check('undo removes the stroke outside the square', await alphaAt(...mid) === 0);
+  await ev('redo()');
+  check('redo puts it back', await alphaAt(...mid) > 0);
+
+  // Fill the background: reaches the corners of the paint layer
+  await ev('clearDrawings(); clearHistory()');
+  await ev(`floodFill(${pt[0]}, ${pt[1]}, '#66BD0F')`);
+  const far = await ev('[-layerOffset, canvasSize + layerOffset - 1]');
+  check('fill spreads past the square', await alphaAt(far[0], far[0]) === 255 && await alphaAt(far[1], far[1]) === 255);
+  await ev('undo()');
+  check('undo fill outside the square', await alphaAt(far[0], far[0]) === 0 && !(await ev('hasDrawings')));
+
+  // Pinch / hold cancelling a stroke in progress leaves no trace (Redo is
+  // kept: nothing happened)
+  await ev(() => { beginStroke(); pressChangedDrawing = true; isDrawing = true;
+    drawingGraphics.fill(0); dab(-100, 100, 20); });
+  await ev('cancelPressMark()');
+  s = await state();
+  check('cancelled stroke: no paint, no step, redo kept', await alphaAt(-100, 100) === 0 && s.h === 0 && s.r === 1, JSON.stringify(s));
+
+  // Memory: many big fills stay within the budget, and the last one can be undone
+  for (let i = 0; i < 12; i++) {
+    await ev(`floodFill(${pt[0]}, ${pt[1]}, ${JSON.stringify(['#CC0000', '#001A80'][i % 2])})`);
+  }
+  const hp = await historyPixels();
+  check('history stays within its memory limit', hp <= await ev('maxHistoryPixels') && (await state()).h >= 1, `${hp} px, ${(await state()).h} steps`);
+
+  // Export: always the 4:5 frame, whatever is drawn or the rotation
+  await ev('clearDrawings(); clearHistory()');
+  const exportOf = () => ev(() => {
+    const im = exportImage();
+    const ctx = im.getContext('2d');
+    const at = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
+    return { size: [im.width, im.height], top: at(400, 50), corners: [at(2, 2), at(797, 2), at(2, 997), at(797, 997)] };
+  });
+  let ex = await exportOf();
+  check('export of square-only art is 800x1000', ex.size[0] === 800 && ex.size[1] === 1000, JSON.stringify(ex.size));
+  await ev(() => { drawingGraphics.fill('#CC0000'); drawingGraphics.noStroke(); drawingGraphics.ellipse(layerOffset + 400, layerOffset - 50, 40, 40); });
+  ex = await exportOf();
+  check('paint above the square is in the picture', ex.size[1] === 1000 && ex.top[0] > 150 && ex.top[1] < 60, JSON.stringify(ex));
+  // Turned and the background filled: no empty corners in the picture
+  await ev(`drawingGraphics.clear(); rotation = 28; floodFill(${pt[0]}, ${pt[1]}, '#66BD0F')`);
+  ex = await exportOf();
+  const green = c => c[0] < 130 && c[1] > 150 && c[2] < 60;
+  check('turned + background fill: corners painted, same size', ex.size[0] === 800 && ex.size[1] === 1000 && ex.corners.every(green), JSON.stringify(ex));
+  await ev('rotation = 0; redrawCanvas()');
 
   check('no page errors', errors.length === 0, errors.join(' | '));
   await page.screenshot({ path: path.join(shotsDir, `${label}.png`) });
