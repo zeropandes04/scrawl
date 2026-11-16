@@ -2166,7 +2166,7 @@ function updateGallerySelection() {
     check.setAttribute('aria-pressed', selecting && gallerySelection.has(check.dataset.id));
   });
   document.getElementById('gallery-title').textContent =
-    selecting ? `${count} selected` : 'My scrawlfaces';
+    selecting ? `${count} selected` : 'My Scrawls';
   const del = document.getElementById('gallery-delete');
   del.disabled = count === 0;
   del.textContent = count ? `Delete (${count})` : 'Delete';
