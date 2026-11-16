@@ -126,7 +126,8 @@ function setup() {
   // On retina displays, p5.js doubles canvas resolution but we need 1:1 mapping
   pixelDensity(1);
 
-  canvas = createCanvas(canvasSize, canvasSize);
+  // Exactly the picture frame; CSS scales it to fit (fitCanvasToContainer)
+  canvas = createCanvas(frameWidth, frameHeight);
   canvas.parent("scrawl-container");
 
   // Prevent default touch behavior on canvas to avoid scrolling/zooming while drawing
@@ -693,12 +694,14 @@ function endPinch() {
   redrawCanvas();
 }
 
-// The view can only be shifted as far as the zoom has pushed the canvas past
-// the frame: none at zoom 1, so zooming all the way out re-centres it
+// The view can only be shifted as far as the zoom has pushed the picture
+// past the canvas edges: none at zoom 1, so zooming all the way out
+// re-centres it
 function clampViewPan() {
-  const limit = (viewZoom - 1) * canvasSize / 2;
-  viewPan.x = constrain(viewPan.x, -limit, limit);
-  viewPan.y = constrain(viewPan.y, -limit, limit);
+  const limitX = (viewZoom - 1) * frameWidth / 2;
+  const limitY = (viewZoom - 1) * frameHeight / 2;
+  viewPan.x = constrain(viewPan.x, -limitX, limitX);
+  viewPan.y = constrain(viewPan.y, -limitY, limitY);
 }
 
 // ---- Touch and hold: peek under the lines ----
@@ -857,20 +860,6 @@ function redrawCanvas() {
     const isRight = onScreen[i].x > onScreen[1 - i].x ? 1 : 0;
     drawEye(window, onScreen[i].x, onScreen[i].y, pos.scale * viewZoom, eyeStyles[i], isRight);
   });
-
-  // Outside the picture frame is plain white, like the page around the
-  // canvas: what shows is exactly the saved picture
-  const ctx = drawingContext;
-  const fw = frameWidth * viewZoom;
-  const fh = frameHeight * viewZoom;
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = `rgb(${bgColor.join(',')})`;
-  ctx.beginPath();
-  ctx.rect(0, 0, width, height);
-  ctx.rect(width / 2 + viewPan.x - fw / 2, height / 2 + viewPan.y - fh / 2, fw, fh);
-  ctx.fill('evenodd');
-  ctx.restore();
 }
 
 // Position on the drawing -> screen (canvas element) position
@@ -1411,25 +1400,19 @@ function setBrushCursor() {
   canvas.elt.style.cursor = `url('data:image/svg+xml,${encodeURIComponent(svg)}') ${c} ${c}, crosshair`;
 }
 
-// The canvas element fills its container, which is rarely square, so the
-// canvas takes the container's proportions, scaled so the whole picture
-// frame (frameWidth x frameHeight units) just fits at zoom 1. The room
-// around the frame is plain white (see redrawCanvas).
+// The canvas is the picture frame (frameWidth x frameHeight), shown as big
+// as fits in its container and centred there (the CSS reads the size from
+// --canvas-width / --canvas-height); the page's white shows around it.
 function fitCanvasToContainer() {
   const box = document.getElementById('scrawl-container');
   if (box.clientWidth === 0 || box.clientHeight === 0) return;
 
-  const k = max(frameWidth / box.clientWidth, frameHeight / box.clientHeight);
-  const w = round(box.clientWidth * k);
-  const h = round(box.clientHeight * k);
-  if (w === width && h === height) return;
-
-  resizeCanvas(w, h, true);
+  const k = min(box.clientWidth / frameWidth, box.clientHeight / frameHeight);
+  box.style.setProperty('--canvas-width', `${Math.floor(frameWidth * k)}px`);
+  box.style.setProperty('--canvas-height', `${Math.floor(frameHeight * k)}px`);
   if (drawMode || eraseMode) setBrushCursor();
-  redrawCanvas();
 }
 
-// The canvas is scaled to fit the window, so the ring has to be rescaled too
 function windowResized() {
   if (drawMode || eraseMode) setBrushCursor();
 }
