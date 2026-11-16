@@ -118,6 +118,11 @@ function setup() {
   // These listeners run before p5's window-level ones, so mousePressed
   // already sees the pinch.
   canvasElement.addEventListener('touchstart', (e) => {
+    if (e.targetTouches.length === 1) {
+      startLinesPeekTimer(e.targetTouches[0]);
+    } else {
+      cancelLinesPeekTimer();
+    }
     if (e.targetTouches.length === 2) {
       startPinch(e.targetTouches);
     }
@@ -127,6 +132,7 @@ function setup() {
   }, { passive: false });
 
   canvasElement.addEventListener('touchmove', (e) => {
+    moveLinesPeekTimer(e.targetTouches[0]);
     if (pinch && e.targetTouches.length === 2) {
       movePinch(e.targetTouches);
     }
@@ -139,6 +145,7 @@ function setup() {
     if (pinch || drawMode || eraseMode || bucketMode || moveEyesMode) {
       e.preventDefault();
     }
+    if (e.targetTouches.length === 0) endLinesPeek();
     if (pinch && e.targetTouches.length < 2) {
       endPinch();
     }
@@ -166,7 +173,6 @@ function setup() {
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
-  select("#toggle-lines-btn-header").mousePressed(toggleEyes);
   select("#blank-cta-btn").mousePressed(requestNewScrawl);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
@@ -585,16 +591,26 @@ function touchPoint(touch) {
   return { x: (touch.clientX - rect.left) * k, y: (touch.clientY - rect.top) * k };
 }
 
-function startPinch(touches) {
-  // The first finger had already started a stroke or filled: take it back,
-  // the gesture turned out to be a pinch. An eye being dragged is let go.
+// The press had already started a stroke or filled, but turned out to be a
+// gesture (a pinch, or a touch and hold to peek): take its mark back. It
+// isn't a change to the scrawlface, so it doesn't count as unsaved.
+function cancelPressMark() {
   if (pressChangedDrawing) {
+    const version = editVersion;
     undo();
     redoStack.pop(); // undo() queued the cancelled mark for redo
     updateUndoRedoButtons();
+    editVersion = version;
+    updateGallerySaveButtons();
     pressChangedDrawing = false;
   }
   isDrawing = false;
+}
+
+function startPinch(touches) {
+  // The first finger had already started a stroke or filled: take it back,
+  // the gesture turned out to be a pinch. An eye being dragged is let go.
+  cancelPressMark();
   draggedEyeIndex = -1;
 
   const a = touchPoint(touches[0]);
@@ -650,6 +666,52 @@ function clampViewPan() {
   const limit = (viewZoom - 1) * canvasSize / 2;
   viewPan.x = constrain(viewPan.x, -limit, limit);
   viewPan.y = constrain(viewPan.y, -limit, limit);
+}
+
+// ---- Touch and hold: peek under the lines ----
+// On a touch screen, holding one finger still on the canvas hides the
+// scrawl lines until the finger lifts, to see the drawing without them. It
+// is only a view: Hide lines (sheet / sidebar) is what hides them for good.
+const linesPeekMs = 500;
+let linesPeekTimer = null;
+let linesPeekStart = null; // where the finger went down (page px)
+let peekingLines = false;
+
+function startLinesPeekTimer(touch) {
+  cancelLinesPeekTimer();
+  if (isBlankStart() || !showScrawl) return;
+  linesPeekStart = { x: touch.clientX, y: touch.clientY };
+  linesPeekTimer = setTimeout(startLinesPeek, linesPeekMs);
+}
+
+// A finger that moves is drawing or dragging, not holding
+function moveLinesPeekTimer(touch) {
+  if (!linesPeekTimer || !touch) return;
+  if (Math.hypot(touch.clientX - linesPeekStart.x, touch.clientY - linesPeekStart.y) > tapSlop) {
+    cancelLinesPeekTimer();
+  }
+}
+
+function cancelLinesPeekTimer() {
+  clearTimeout(linesPeekTimer);
+  linesPeekTimer = null;
+}
+
+function startLinesPeek() {
+  linesPeekTimer = null;
+  // Holding an eye still is part of moving it, not a peek
+  if (pinch || draggedEyeIndex !== -1) return;
+  cancelPressMark();
+  peekingLines = true;
+  if (navigator.vibrate) navigator.vibrate(15);
+  redrawCanvas();
+}
+
+function endLinesPeek() {
+  cancelLinesPeekTimer();
+  if (!peekingLines) return;
+  peekingLines = false;
+  redrawCanvas();
 }
 
 function mouseReleased() {
@@ -745,7 +807,7 @@ function redrawCanvas() {
   // on top of the paint so its lines can still be followed; Hide lines
   // takes them away.
   image(drawingGraphics, 0, 0);
-  if (showScrawl) {
+  if (showScrawl && !peekingLines) {
     image(baseScrawlGraphics, 0, 0);
   }
 
@@ -1227,7 +1289,6 @@ function updateScrawlToggleButtons() {
   const label = showScrawl ? "Hide lines" : "Show lines";
   select("#toggle-eyes-btn").html(label);
   select("#toggle-eyes-btn-mobile").html(label);
-  select("#toggle-lines-btn-header").html(label);
 }
 
 // ---- Tools ----
