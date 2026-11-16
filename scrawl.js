@@ -1727,6 +1727,7 @@ let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
 let draftTimer = null;
 let dbPromise = null;
 let thumbUrls = [];      // object URLs of thumbnails on screen, freed on redraw
+let gallerySelection = null; // ids picked in the gallery's Select mode, else null
 
 function hasUnsavedChanges() {
   return editVersion !== savedVersion;
@@ -1957,31 +1958,30 @@ async function renderGallery() {
   const grid = document.getElementById('gallery-grid');
   grid.replaceChildren(...records.map(record => {
     const item = document.createElement('li');
-    const open = document.createElement('button');
-    open.type = 'button';
-    open.className = 'gallery-tile';
-    open.append(thumbImage(record));
-    open.addEventListener('click', () => openFromGallery(record.id));
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.className = 'gallery-delete';
-    del.setAttribute('aria-label', 'Delete this scrawlface');
-    del.title = 'Delete';
-    del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
-    del.addEventListener('click', async () => {
-      if (!confirm('Delete this scrawlface? This can\'t be undone.')) return;
-      await dbRequest('gallery', 'readwrite', store => store.delete(record.id));
-      // The open scrawlface was this one: a later Save makes a new entry
-      if (galleryId === record.id) {
-        galleryId = null;
-        updateGallerySaveButtons();
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'gallery-tile';
+    tile.dataset.id = record.id;
+    tile.append(thumbImage(record));
+    // Opens it, or in Select mode picks it
+    tile.addEventListener('click', () => {
+      if (!gallerySelection) {
+        openFromGallery(record.id);
+        return;
       }
-      renderGallery();
+      if (gallerySelection.has(record.id)) {
+        gallerySelection.delete(record.id);
+      } else {
+        gallerySelection.add(record.id);
+      }
+      updateGallerySelection();
     });
-    item.append(open, del);
+    item.append(tile);
     return item;
   }));
   document.getElementById('gallery-empty').hidden = records.length > 0;
+  document.getElementById('gallery-select').hidden = records.length === 0;
+  updateGallerySelection();
 
   const recents = document.getElementById('recents');
   document.getElementById('recents-list').replaceChildren(...records.slice(0, 4).map(record => {
@@ -2000,6 +2000,52 @@ function openGallery() {
   document.getElementById('gallery-dialog').showModal();
 }
 
+// Select mode: tapping tiles picks them, and Delete removes the picked ones.
+// The header swaps Select / Close for Cancel / Delete (n).
+function setGallerySelecting(on) {
+  gallerySelection = on ? new Set() : null;
+  updateGallerySelection();
+}
+
+function updateGallerySelection() {
+  const dialog = document.getElementById('gallery-dialog');
+  const selecting = gallerySelection !== null;
+  const count = selecting ? gallerySelection.size : 0;
+  dialog.classList.toggle('selecting', selecting);
+  dialog.querySelectorAll('.gallery-tile').forEach(tile => {
+    const picked = selecting && gallerySelection.has(tile.dataset.id);
+    tile.classList.toggle('selected', picked);
+    if (selecting) {
+      tile.setAttribute('aria-pressed', picked);
+    } else {
+      tile.removeAttribute('aria-pressed');
+    }
+  });
+  document.getElementById('gallery-title').textContent =
+    !selecting ? 'My scrawlfaces' : count ? `${count} selected` : 'Select scrawlfaces';
+  const del = document.getElementById('gallery-delete');
+  del.disabled = count === 0;
+  del.textContent = count ? `Delete (${count})` : 'Delete';
+}
+
+async function deleteSelected() {
+  const ids = [...gallerySelection];
+  const what = ids.length === 1 ? 'this scrawlface' : `these ${ids.length} scrawlfaces`;
+  if (!ids.length || !confirm(`Delete ${what}? This can't be undone.`)) return;
+  await dbRequest('gallery', 'readwrite', store => {
+    let req;
+    ids.forEach(id => { req = store.delete(id); });
+    return req;
+  });
+  // The open scrawlface was one of them: a later Save makes a new entry
+  if (ids.includes(galleryId)) {
+    galleryId = null;
+    updateGallerySaveButtons();
+  }
+  gallerySelection = null;
+  renderGallery();
+}
+
 function setupGallery() {
   document.querySelectorAll('.gallery-save-btn').forEach(btn => btn.addEventListener('click', () => {
     saveToGallery().catch(() => alert('Sorry, this scrawlface couldn\'t be saved.'));
@@ -2008,6 +2054,11 @@ function setupGallery() {
   document.getElementById('gallery-close').addEventListener('click', () => {
     document.getElementById('gallery-dialog').close();
   });
+  document.getElementById('gallery-select').addEventListener('click', () => setGallerySelecting(true));
+  document.getElementById('gallery-cancel').addEventListener('click', () => setGallerySelecting(false));
+  document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
+  // Closing (Close, Esc, backdrop) always leaves Select mode
+  document.getElementById('gallery-dialog').addEventListener('close', () => setGallerySelecting(false));
   // Tapping the dimmed backdrop closes a dialog, like Esc (the click lands
   // on the dialog itself only outside its content)
   ['leave-dialog', 'gallery-dialog'].forEach(id => {

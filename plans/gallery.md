@@ -52,7 +52,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - Opened from "My scrawlfaces" (sheet + sidebar) and "See all" in the recents row.
 - Full-screen overlay; grid of thumbnails, newest `updatedAt` first; close button.
 - Tap a tile → open it (Save / Discard dialog first if the current scrawlface was edited).
-- Trash key on each tile → Delete, with a confirm. (A ⋯ menu with Delete as its only item was one tap more for nothing.)
+- Delete: **Select** in the header turns on select mode (tap tiles to pick them; header shows Cancel / Delete (n)), then Delete removes the picked ones after one confirm. No per-tile delete keys.
 - Empty state: short line + the create button.
 
 ### Recents on the blank start
@@ -91,7 +91,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 23).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 24).
 
 ## Notes from the build
 - Desktop sidebar at exactly 1024×768: the extra Save row makes it 27px taller than the panel, so it scrolls slightly (its overflow safety net). Fits at 800px tall and above.

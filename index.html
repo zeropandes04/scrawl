@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=23"></script>
+  <script src="scrawl.js?v=24"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -279,8 +279,18 @@
       justify-content: space-between;
     }
 
+    .gallery-actions {
+      display: flex;
+      gap: 8px;
+    }
+
     .gallery-head button {
       padding: 8px 14px;
+    }
+
+    .gallery-dialog:not(.selecting) .when-selecting,
+    .gallery-dialog.selecting .when-browsing {
+      display: none;
     }
 
     .gallery-empty {
@@ -297,29 +307,43 @@
       padding: 2px 2px 8px;
     }
 
-    .gallery-grid li {
-      position: relative;
-    }
-
     .gallery-tile {
       width: 100%;
       aspect-ratio: 1;
     }
 
-    .gallery-delete {
+    /* Select mode: an empty circle on each tile; picked tiles get a dark
+       ring and a filled tick (the ring matches the selected eye set) */
+    .gallery-dialog.selecting .gallery-tile::before {
+      content: '';
       position: absolute;
-      top: 6px;
-      right: 6px;
-      min-width: 0;
-      width: 36px;
-      height: 36px;
-      padding: 8px;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: inset 0 0 0 2px var(--muted);
     }
 
-    .gallery-delete svg {
-      display: block;
-      width: 20px;
-      height: 20px;
+    .gallery-dialog.selecting .gallery-tile.selected::before {
+      content: '✓';
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--ink);
+      box-shadow: none;
+    }
+
+    .gallery-tile.selected::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 3px var(--ink);
     }
 
     @media (max-width: 768px) {
@@ -1335,8 +1359,14 @@
       <!-- My scrawlfaces: the saved ones, newest first (renderGallery) -->
       <dialog id="gallery-dialog" class="gallery-dialog" aria-labelledby="gallery-title">
         <div class="gallery-head">
-          <h2 id="gallery-title">My scrawlfaces</h2>
-          <button type="button" id="gallery-close">Close</button>
+          <h2 id="gallery-title" aria-live="polite">My scrawlfaces</h2>
+          <!-- Normal: Select, Close. Select mode: Cancel, Delete (n) -->
+          <div class="gallery-actions">
+            <button type="button" id="gallery-select" class="when-browsing">Select</button>
+            <button type="button" id="gallery-close" class="when-browsing">Close</button>
+            <button type="button" id="gallery-cancel" class="when-selecting">Cancel</button>
+            <button type="button" id="gallery-delete" class="when-selecting" disabled>Delete</button>
+          </div>
         </div>
         <p class="gallery-empty" id="gallery-empty">Nothing saved yet. Tap Save to keep a scrawlface here.</p>
         <ul class="gallery-grid" id="gallery-grid"></ul>
