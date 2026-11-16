@@ -70,6 +70,12 @@ let hasDrawings = false;
 let isDrawing = false;
 const eyeRadius = 35;
 const canvasSize = 800;
+// The paint layer is bigger than the scrawl: the scrawl is a canvasSize
+// square in its middle, and paint can go past it to the edges of the screen,
+// whatever the rotation. Positions on the drawing (getTransformedCoords)
+// are relative to the scrawl square, so the layer starts at -layerOffset.
+const layerSize = 1600;
+const layerOffset = (layerSize - canvasSize) / 2;
 const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
@@ -91,18 +97,22 @@ const scrawlDrawInFramesPerSegment = 2;
 let scrawlDrawInRate = 0;      // segments per frame (can be a fraction)
 let scrawlDrawInProgress = 0;  // fraction of a segment carried to the next frame
 
-// Memento pattern for undo/redo
+// Memento pattern for undo/redo. Each memento is the part of the paint
+// layer a change touched, as it was before (see saveState).
 let historyStack = [];
 let redoStack = [];
-// Each snapshot is a full 800x800 RGBA copy (~2.7MB measured); undo + redo
-// share this budget, so 25 keeps a full history around 70MB on mobile.
+// A whole-layer copy is ~10MB, so the history is limited by area as well as
+// by count: at most 16M pixels (~64MB), and never fewer than the last step.
+// Undo and redo swap mementos of the same size, so the total stays put.
 const maxHistorySize = 25;
+const maxHistoryPixels = 16e6;
 
 // Brush stroke tracking for easing
 let strokePoints = 0;
 let maxStrokePoints = 20; // Points to reach full size
 let currentBrushSize = 0;
 let strokeLength = 0; // Canvas px travelled in the current stroke
+let strokeBounds = null; // layer area the current stroke has painted (see dab)
 const tapSlop = 10;   // Strokes shorter than this count as a tap
 
 function setup() {
@@ -156,7 +166,7 @@ function setup() {
 
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.drawingContext.willReadFrequently = true;
-  drawingGraphics = createGraphics(canvasSize, canvasSize);
+  drawingGraphics = createGraphics(layerSize, layerSize);
   drawingGraphics.drawingContext.willReadFrequently = true;
   drawingGraphics.clear();
   background(bgColor);
@@ -492,9 +502,7 @@ function draw() {
 
     for (let i = 0; i <= steps; i++) {
       const t = steps > 0 ? i / steps : 0;
-      const x = lerp(previous.x, current.x, t);
-      const y = lerp(previous.y, current.y, t);
-      drawingGraphics.ellipse(x, y, currentBrushSize, currentBrushSize);
+      dab(lerp(previous.x, current.x, t), lerp(previous.y, current.y, t), currentBrushSize);
     }
 
     if (eraseMode) {
@@ -508,6 +516,17 @@ function draw() {
 
     redrawCanvas();
   }
+}
+
+// One round mark of the brush or eraser at a position on the drawing (the
+// pen is set by the caller). Grows strokeBounds to cover it, so the stroke's
+// undo memento only keeps the area it painted.
+function dab(x, y, size) {
+  const lx = x + layerOffset;
+  const ly = y + layerOffset;
+  drawingGraphics.ellipse(lx, ly, size, size);
+  const r = size / 2 + 2; // + the anti-aliased edge
+  strokeBounds = unionRect(strokeBounds, { x: lx - r, y: ly - r, w: 2 * r, h: 2 * r });
 }
 
 function updateCursor() {
@@ -569,8 +588,8 @@ function mousePressed(event) {
     strokePoints = 0;
     currentBrushSize = 0;
     strokeLength = 0;
-    // Save state BEFORE starting to draw so we can undo to the clean state
-    saveState();
+    // Keep the layer as it is BEFORE drawing, to undo to (see beginStroke)
+    beginStroke();
     pressChangedDrawing = true;
   }
 
@@ -598,7 +617,12 @@ function touchPoint(touch) {
 // gesture (a pinch, or a touch and hold to peek): take its mark back. It
 // isn't a change to the scrawlface, so it doesn't count as unsaved.
 function cancelPressMark() {
-  if (pressChangedDrawing) {
+  if (pressChangedDrawing && isDrawing) {
+    // A stroke: it isn't in the history yet, so just paint over it
+    restoreStrokeArea();
+    pressChangedDrawing = false;
+  } else if (pressChangedDrawing) {
+    // A fill: already a history step
     const version = editVersion;
     undo();
     redoStack.pop(); // undo() queued the cancelled mark for redo
@@ -741,7 +765,7 @@ function mouseReleased() {
       drawingGraphics.fill(brushColor);
       drawingGraphics.noStroke();
     }
-    drawingGraphics.ellipse(pos.x, pos.y, size, size);
+    dab(pos.x, pos.y, size);
     if (eraseMode) {
       drawingGraphics.noErase();
     }
@@ -753,6 +777,7 @@ function mouseReleased() {
 
     redrawCanvas();
   }
+  if (isDrawing && pressChangedDrawing) commitStroke();
 
   isDrawing = false;
   pressChangedDrawing = false;
@@ -769,14 +794,10 @@ function keyPressed() {
 
   // Undo: Cmd+Z. Redo: Cmd+Shift+Z or Cmd+Y
   if (cmd && (keyCode === 90 || keyCode === 89)) {
-    // Not mid-stroke: the stroke's undo point is already saved, so undoing
-    // now would split it, with the rest of the stroke left un-undoable
-    if (!isDrawing) {
-      if (keyCode === 89 || keyIsDown(SHIFT)) {
-        redo();
-      } else {
-        undo();
-      }
+    if (keyCode === 89 || keyIsDown(SHIFT)) {
+      redo();
+    } else {
+      undo();
     }
     return false; // Prevent default browser behavior
   }
@@ -1255,34 +1276,96 @@ function rotateCanvas() {
   markChanged();
 }
 
-// The picture Share sends and the gallery thumbnails show: the whole
-// drawing at normal size, with its eyes, rotation and scrawl visibility,
-// whatever the zoom on screen.
+// The picture Share and Download give and the gallery thumbnails show: the
+// drawing at normal size, in its rotation, with its eyes and scrawl
+// visibility, whatever the zoom on screen. It's cropped to the artwork: the
+// scrawl square and everything painted or placed past it, on white.
+// Returns a canvas.
 function exportImage() {
-  // Draw one frame with the zoom taken out, grab the square middle of the
-  // canvas (exactly the drawing), then put the view back. It all happens
-  // within one frame, so nothing flickers on screen.
   finishScrawlDrawIn();
-  const zoom = viewZoom;
-  const pan = viewPan;
-  viewZoom = 1;
-  viewPan = { x: 0, y: 0 };
-  redrawCanvas();
-  const image = get(round((width - canvasSize) / 2), round((height - canvasSize) / 2), canvasSize, canvasSize);
-  viewZoom = zoom;
-  viewPan = pan;
-  redrawCanvas();
-  return image;
+
+  // Draw it all, turned, onto the biggest upright square the turned paint
+  // layer covers completely, centred on the middle of the scrawl square.
+  // Nothing outside it can show an empty corner (a background fill covers
+  // the whole layer), and it always holds the whole turned scrawl square.
+  const angle = radians(rotation);
+  const turn = Math.abs(cos(angle)) + Math.abs(sin(angle)); // 1 upright .. 1.41 at 45°
+  const side = 2 * Math.floor(layerSize / turn / 2); // even, so the centre is a whole pixel
+  const c = side / 2;
+  const g = createGraphics(side, side);
+  g.pixelDensity(1);
+  g.push();
+  g.translate(c, c);
+  g.rotate(radians(rotation));
+  g.imageMode(CENTER);
+  g.image(drawingGraphics, 0, 0);
+  if (showScrawl) g.image(baseScrawlGraphics, 0, 0);
+  g.pop();
+
+  // The eyes, as redrawCanvas places them at zoom 1
+  const turned = eyePositions.map(pos => {
+    const dx = pos.x - canvasSize / 2;
+    const dy = pos.y - canvasSize / 2;
+    return { x: c + dx * cos(angle) - dy * sin(angle), y: c + dx * sin(angle) + dy * cos(angle) };
+  });
+  eyePositions.forEach((pos, i) => {
+    const isRight = turned[i].x > turned[1 - i].x ? 1 : 0;
+    drawEye(g, turned[i].x, turned[i].y, pos.scale, eyeStyles[i], isRight);
+  });
+
+  // Crop: everything drawn, plus the scrawl square itself (even where its
+  // lines don't reach the edges), as turned
+  let crop = alphaBounds(g.drawingContext, side, side);
+  [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([u, v]) => {
+    const dx = (u - 0.5) * canvasSize;
+    const dy = (v - 0.5) * canvasSize;
+    const x = c + dx * cos(angle) - dy * sin(angle);
+    const y = c + dx * sin(angle) + dy * cos(angle);
+    crop = unionBox(crop, { x, y, w: 0, h: 0 });
+  });
+  const x0 = Math.max(0, Math.floor(crop.x));
+  const y0 = Math.max(0, Math.floor(crop.y));
+  const w = Math.min(side, Math.ceil(crop.x + crop.w)) - x0;
+  const h = Math.min(side, Math.ceil(crop.y + crop.h)) - y0;
+
+  const out = document.createElement('canvas');
+  out.width = w;
+  out.height = h;
+  const ctx = out.getContext('2d');
+  ctx.fillStyle = `rgb(${bgColor.join(',')})`;
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(g.elt, x0, y0, w, h, 0, 0, w, h);
+  g.remove();
+  return out;
+}
+
+// The smallest box covering two boxes ({ x, y, w, h }; a may be null)
+function unionBox(a, b) {
+  if (!a) return b;
+  const x = Math.min(a.x, b.x);
+  const y = Math.min(a.y, b.y);
+  return {
+    x, y,
+    w: Math.max(a.x + a.w, b.x + b.w) - x,
+    h: Math.max(a.y + a.h, b.y + b.h) - y
+  };
 }
 
 // Saves the image as a PNG file (desktop)
 function downloadImage() {
-  exportImage().save('scrawlface', 'png');
+  exportImage().toBlob(blob => {
+    if (!blob) return; // the browser couldn't encode the image
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'scrawlface.png';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }, 'image/png');
 }
 
 // Hands the image to the phone's share sheet (messages, socials, ...)
 function shareImage() {
-  exportImage().canvas.toBlob(blob => {
+  exportImage().toBlob(blob => {
     if (!blob) return; // the browser couldn't encode the image
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
     // Rejects when the share sheet is dismissed - nothing to do then
@@ -1368,8 +1451,10 @@ function windowResized() {
 function clearDrawings() {
   if (!hasDrawings) return;
 
-  // Save state BEFORE clearing so Clear can be undone
-  saveState();
+  // Save state BEFORE clearing so Clear can be undone (only the painted
+  // area: it's all Clear changes). Paint that was all erased leaves nothing.
+  const bounds = drawingBounds();
+  if (bounds) saveState(bounds);
 
   drawingGraphics.clear();
   hasDrawings = false;
@@ -1397,10 +1482,10 @@ function disableClearButton() {
 
 // startX/startY are a position on the drawing (see getTransformedCoords).
 // The fill works on the unrotated, unzoomed layers, so the view doesn't matter.
+// It spreads over the whole paint layer, past the scrawl square too.
 function floodFill(startX, startY, fillColor) {
   startX = Math.floor(startX);
   startY = Math.floor(startY);
-  if (startX < 0 || startX >= canvasSize || startY < 0 || startY >= canvasSize) return;
 
   finishScrawlDrawIn();
 
@@ -1412,28 +1497,35 @@ function floodFill(startX, startY, fillColor) {
   // Don't fill if clicking on a scrawl line. The scrawl layer is
   // transparent apart from its lines; alpha above 21 matches the old
   // "darker than near-white" test on the faint anti-aliased edges.
-  if (showScrawl && baseScrawlGraphics.drawingContext.getImageData(startX, startY, 1, 1).data[3] > 21) {
+  const onScrawl = startX >= 0 && startX < canvasSize && startY >= 0 && startY < canvasSize;
+  if (showScrawl && onScrawl && baseScrawlGraphics.drawingContext.getImageData(startX, startY, 1, 1).data[3] > 21) {
     return;
   }
+
+  // From here on, positions are on the paint layer
+  const N = layerSize;
+  const sx = startX + layerOffset;
+  const sy = startY + layerOffset;
+  if (sx < 0 || sx >= N || sy < 0 || sy >= N) return;
 
   // Build a temporary canvas of everything that bounds a fill, stacked as
   // on screen: background, drawings, then the scrawl (if shown) on top.
   const tempCanvas = document.createElement('canvas');
-  tempCanvas.width = canvasSize;
-  tempCanvas.height = canvasSize;
+  tempCanvas.width = N;
+  tempCanvas.height = N;
   const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
 
   tempCtx.fillStyle = `rgb(${bgColor.join(',')})`;
-  tempCtx.fillRect(0, 0, canvasSize, canvasSize);
+  tempCtx.fillRect(0, 0, N, N);
   tempCtx.drawImage(drawingGraphics.canvas, 0, 0);
   if (showScrawl) {
-    tempCtx.drawImage(baseScrawlGraphics.canvas, 0, 0);
+    tempCtx.drawImage(baseScrawlGraphics.canvas, layerOffset, layerOffset);
   }
 
-  const data = tempCtx.getImageData(0, 0, canvasSize, canvasSize).data;
+  const data = tempCtx.getImageData(0, 0, N, N).data;
 
   // Target color (the color we're replacing) is whatever was clicked
-  const clickIndex = (startY * canvasSize + startX) * 4;
+  const clickIndex = (sy * N + sx) * 4;
   const targetR = data[clickIndex];
   const targetG = data[clickIndex + 1];
   const targetB = data[clickIndex + 2];
@@ -1455,81 +1547,107 @@ function floodFill(startX, startY, fillColor) {
     return;
   }
 
-  // Save state BEFORE filling - only now that we know a fill will happen
-  saveState();
+  // Flood fill to find all pixels to fill: a scanline fill, which takes each
+  // row run in one go and only queues the start of each run above and below
+  // it, so it's quick even across the whole layer on a phone. Pixels are
+  // addressed by flat index (y * N + x).
+  const totalPixels = N * N;
+  const inRegion = new Uint8Array(totalPixels); // 1 = in the fill region, 2 = edge done
+  // Most of an area is exactly the clicked colour: compare whole pixels first
+  const data32 = new Uint32Array(data.buffer);
+  const target32 = data32[sy * N + sx];
+  const matches = (i) => !inRegion[i] &&
+    (data32[i] === target32 || distanceFromTarget(i * 4) <= fillTolerance);
 
-  // Flood fill to find all pixels to fill.
-  // Pixels are addressed by flat index (y * canvasSize + x) and tracked in typed
-  // arrays: far faster on mobile than string keys in a Set and [x, y] pairs.
-  const totalPixels = canvasSize * canvasSize;
-  const inRegion = new Uint8Array(totalPixels); // 1 = pixel is part of the fill region
-  const stack = new Int32Array(totalPixels);    // each pixel is pushed at most once
-  let stackSize = 0;
+  const seeds = [sy * N + sx];
+  const runs = [];  // [first, last] index of each row run in the region
+  const edges = []; // pixels next to the region (some may join it later)
+  let minX = sx, maxX = sx, minY = sy, maxY = sy;
 
-  // Add a neighbour to the region if it is close to the target color and isn't in yet
-  const visit = (i) => {
-    if (inRegion[i]) return;
-    if (distanceFromTarget(i * 4) <= fillTolerance) {
-      inRegion[i] = 1;
-      stack[stackSize++] = i;
+  while (seeds.length > 0) {
+    const i = seeds.pop();
+    if (inRegion[i]) continue; // queued twice, already filled
+    const y = (i / N) | 0;
+    const rowStart = y * N;
+    let l = i;
+    let r = i;
+    while (l > rowStart && matches(l - 1)) l--;
+    while (r < rowStart + N - 1 && matches(r + 1)) r++;
+    inRegion.fill(1, l, r + 1);
+    runs.push(l, r);
+    if (l > rowStart) edges.push(l - 1);
+    if (r < rowStart + N - 1) edges.push(r + 1);
+
+    if (l - rowStart < minX) minX = l - rowStart;
+    if (r - rowStart > maxX) maxX = r - rowStart;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+
+    // Queue the start of every matching run in the rows above and below;
+    // the rest of those rows' pixels here are edge
+    for (const dy of [-N, N]) {
+      if (rowStart + dy < 0 || rowStart + dy >= totalPixels) continue;
+      let inRun = false;
+      for (let k = l + dy; k <= r + dy; k++) {
+        if (inRegion[k]) {
+          inRun = false;
+        } else if (matches(k)) {
+          if (!inRun) seeds.push(k);
+          inRun = true;
+        } else {
+          edges.push(k);
+          inRun = false;
+        }
+      }
     }
+  }
+
+  // The area the fill changes: the region plus the 1px edge ring around it
+  const rect = unionRect(null, { x: minX - 1, y: minY - 1, w: maxX - minX + 3, h: maxY - minY + 3 });
+
+  // Save state BEFORE filling - only now that we know a fill will happen
+  saveState(rect);
+
+  // Write the region into the drawing layer
+  const ctx = drawingGraphics.drawingContext;
+  const image = ctx.getImageData(rect.x, rect.y, rect.w, rect.h);
+  const px = image.data;
+  // Position of a layer pixel in `image`
+  const local = (i) => {
+    const x = i % N;
+    return ((i - x) / N - rect.y) * rect.w + x - rect.x;
   };
 
-  visit(startY * canvasSize + startX);
-
-  while (stackSize > 0) {
-    const i = stack[--stackSize];
-    const x = i % canvasSize;
-    if (x > 0) visit(i - 1);
-    if (x < canvasSize - 1) visit(i + 1);
-    if (i >= canvasSize) visit(i - canvasSize);
-    if (i < totalPixels - canvasSize) visit(i + canvasSize);
+  // The region: whole runs at a time (RGBA bytes read as one little-endian
+  // number, so alpha is the high byte)
+  const px32 = new Uint32Array(px.buffer);
+  const fill32 = ((255 << 24) | (fillB << 16) | (fillG << 8) | fillR) >>> 0;
+  for (let k = 0; k < runs.length; k += 2) {
+    const start = local(runs[k]);
+    px32.fill(fill32, start, start + runs[k + 1] - runs[k] + 1);
   }
 
   // The 1px ring just outside the region is the soft edge of whatever bounds it.
   // Blend the fill into those pixels, more strongly the closer they are to the
   // target color, so no white halo is left along lines but the lines stay visible.
   // This ring never spreads further, so it can't leak through a line.
-  const edgeAlpha = new Uint8Array(totalPixels);
-  const markEdge = (j) => {
-    if (!inRegion[j]) edgeAlpha[j] = 255 - distanceFromTarget(j * 4);
-  };
-  for (let i = 0; i < totalPixels; i++) {
-    if (!inRegion[i]) continue;
-    const x = i % canvasSize;
-    if (x > 0) markEdge(i - 1);
-    if (x < canvasSize - 1) markEdge(i + 1);
-    if (i >= canvasSize) markEdge(i - canvasSize);
-    if (i < totalPixels - canvasSize) markEdge(i + canvasSize);
+  for (const j of edges) {
+    if (inRegion[j]) continue; // joined the region, or already blended
+    inRegion[j] = 2;
+    const a = (255 - distanceFromTarget(j * 4)) / 255;
+    if (a <= 0) continue;
+
+    // Composite the fill at partial opacity over what's already drawn
+    const idx = local(j) * 4;
+    const existingA = px[idx + 3] / 255;
+    const outA = a + existingA * (1 - a);
+    px[idx] = (fillR * a + px[idx] * existingA * (1 - a)) / outA;
+    px[idx + 1] = (fillG * a + px[idx + 1] * existingA * (1 - a)) / outA;
+    px[idx + 2] = (fillB * a + px[idx + 2] * existingA * (1 - a)) / outA;
+    px[idx + 3] = outA * 255;
   }
 
-  // Write the region into the drawing layer
-  drawingGraphics.loadPixels();
-  const px = drawingGraphics.pixels;
-
-  for (let i = 0; i < totalPixels; i++) {
-    if (!inRegion[i] && !edgeAlpha[i]) continue;
-
-    const idx = i * 4;
-
-    if (inRegion[i]) {
-      px[idx] = fillR;
-      px[idx + 1] = fillG;
-      px[idx + 2] = fillB;
-      px[idx + 3] = 255;
-    } else {
-      // Edge pixel: composite the fill at partial opacity over what's already drawn
-      const a = edgeAlpha[i] / 255;
-      const existingA = px[idx + 3] / 255;
-      const outA = a + existingA * (1 - a);
-      px[idx] = (fillR * a + px[idx] * existingA * (1 - a)) / outA;
-      px[idx + 1] = (fillG * a + px[idx + 1] * existingA * (1 - a)) / outA;
-      px[idx + 2] = (fillB * a + px[idx + 2] * existingA * (1 - a)) / outA;
-      px[idx + 3] = outA * 255;
-    }
-  }
-
-  drawingGraphics.updatePixels();
+  ctx.putImageData(image, rect.x, rect.y);
 
   if (!hasDrawings) {
     hasDrawings = true;
@@ -1543,18 +1661,54 @@ function getComplementaryColor(color) {
   return [255 - color[0], 255 - color[1], 255 - color[2]];
 }
 
-// Memento pattern implementation
-function saveState() {
-  // Create a memento (snapshot) of the current drawing state
-  const memento = drawingGraphics.get();
+// ---- Undo / redo (memento pattern) ----
+// A memento is { x, y, w, h, img }: a copy of that rectangle of the paint
+// layer (img is a canvas). Undo puts it back and keeps what it replaces as
+// the redo memento, so only the changed area is ever copied.
 
-  // Add to history stack
+// The smallest rectangle (on the paint layer, whole pixels) covering a and
+// b, trimmed to the layer. Either may be null; null if nothing is left.
+function unionRect(a, b) {
+  if (!a) a = b;
+  if (!b) b = a;
+  if (!a) return null;
+  const x0 = Math.max(0, Math.floor(Math.min(a.x, b.x)));
+  const y0 = Math.max(0, Math.floor(Math.min(a.y, b.y)));
+  const x1 = Math.min(layerSize, Math.ceil(Math.max(a.x + a.w, b.x + b.w)));
+  const y1 = Math.min(layerSize, Math.ceil(Math.max(a.y + a.h, b.y + b.h)));
+  if (x1 <= x0 || y1 <= y0) return null;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+// A memento of rect (default: the whole layer), copied from source (default:
+// the paint layer; the source's corner sits at sourceX, sourceY on it)
+function copyRegion(rect, source = drawingGraphics.elt, sourceX = 0, sourceY = 0) {
+  const img = document.createElement('canvas');
+  img.width = rect.w;
+  img.height = rect.h;
+  img.getContext('2d').drawImage(source, rect.x - sourceX, rect.y - sourceY, rect.w, rect.h, 0, 0, rect.w, rect.h);
+  return { ...rect, img };
+}
+
+// Puts a memento back on the paint layer, replacing what's in its rectangle
+function putRegion(m) {
+  const ctx = drawingGraphics.drawingContext;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over'; // not the eraser's mode
+  ctx.clearRect(m.x, m.y, m.w, m.h);
+  ctx.drawImage(m.img, m.x, m.y);
+  ctx.restore();
+}
+
+// Call BEFORE a change (fill, Clear), with the area it will change
+function saveState(rect) {
+  pushState(copyRegion(rect));
+}
+
+function pushState(memento) {
   historyStack.push(memento);
-
-  // Limit history size
-  if (historyStack.length > maxHistorySize) {
-    historyStack.shift();
-  }
+  trimHistory();
 
   // Clear redo stack when new action is performed
   redoStack = [];
@@ -1562,56 +1716,106 @@ function saveState() {
   updateUndoRedoButtons();
 }
 
-function undo() {
-  if (historyStack.length === 0) return;
+// A stroke doesn't know where it will go when it starts, so the whole layer
+// is copied aside (into one canvas kept for this, so it's quick), and the
+// stroke's memento is cut from that copy once it's done
+let strokeBackup = null;
 
-  // Save current state to redo stack
-  const currentState = drawingGraphics.get();
-  redoStack.push(currentState);
+function beginStroke() {
+  if (!strokeBackup) {
+    strokeBackup = document.createElement('canvas');
+    strokeBackup.width = strokeBackup.height = layerSize;
+  }
+  const ctx = strokeBackup.getContext('2d', { willReadFrequently: true });
+  ctx.clearRect(0, 0, layerSize, layerSize);
+  ctx.drawImage(drawingGraphics.elt, 0, 0);
+  strokeBounds = null;
+}
 
-  // Restore previous state
-  const previousState = historyStack.pop();
-  drawingGraphics.clear();
-  drawingGraphics.image(previousState, 0, 0);
+// The stroke is done: it becomes one undo step covering what it painted
+// (none if it painted nothing)
+function commitStroke() {
+  if (strokeBounds) pushState(copyRegion(strokeBounds, strokeBackup));
+}
 
-  // Update canvas
+// Takes back the stroke in progress
+function restoreStrokeArea() {
+  if (strokeBounds) putRegion(copyRegion(strokeBounds, strokeBackup));
+  strokeBounds = null;
+  hasDrawings = checkIfDrawingHasContent();
+  hasDrawings ? enableClearButton() : disableClearButton();
+  redrawCanvas();
+}
+
+// Drops the oldest steps once there are too many or they take too much memory
+function trimHistory() {
+  let pixels = historyStack.reduce((sum, m) => sum + m.w * m.h, 0);
+  while (historyStack.length > 1 &&
+         (historyStack.length > maxHistorySize || pixels > maxHistoryPixels)) {
+    const m = historyStack.shift();
+    pixels -= m.w * m.h;
+  }
+}
+
+// Swaps the memento on top of `from` with that area of the layer, which
+// goes on top of `to`
+function swapState(from, to) {
+  const m = from.pop();
+  to.push(copyRegion(m));
+  putRegion(m);
+
+  // Redoing a Clear (or undoing the first mark) leaves the drawing empty
   hasDrawings = checkIfDrawingHasContent();
   hasDrawings ? enableClearButton() : disableClearButton();
 
   redrawCanvas();
   updateUndoRedoButtons();
   markChanged();
+}
+
+// Not mid-stroke: the stroke isn't a step yet, and its "before" copy
+// would no longer match the layer
+function undo() {
+  if (historyStack.length > 0 && !isDrawing) swapState(historyStack, redoStack);
 }
 
 function redo() {
-  if (redoStack.length === 0) return;
-
-  // Save current state to history
-  const currentState = drawingGraphics.get();
-  historyStack.push(currentState);
-
-  // Restore redo state
-  const redoState = redoStack.pop();
-  drawingGraphics.clear();
-  drawingGraphics.image(redoState, 0, 0);
-
-  // Update canvas (redoing a Clear leaves the drawing empty)
-  hasDrawings = checkIfDrawingHasContent();
-  hasDrawings ? enableClearButton() : disableClearButton();
-
-  redrawCanvas();
-  updateUndoRedoButtons();
-  markChanged();
+  if (redoStack.length > 0 && !isDrawing) swapState(redoStack, historyStack);
 }
 
+// Read in bands, stopping at the first paint found: reading the whole
+// layer back at once is slow on a phone
 function checkIfDrawingHasContent() {
-  drawingGraphics.loadPixels();
-  for (let i = 3; i < drawingGraphics.pixels.length; i += 4) {
-    if (drawingGraphics.pixels[i] > 0) {
-      return true;
+  const band = 100;
+  for (let y = 0; y < layerSize; y += band) {
+    const alpha = drawingGraphics.drawingContext.getImageData(0, y, layerSize, Math.min(band, layerSize - y)).data;
+    for (let i = 3; i < alpha.length; i += 4) {
+      if (alpha[i] > 0) return true;
     }
   }
   return false;
+}
+
+// The part of the paint layer that has paint on it, or null
+function drawingBounds() {
+  return alphaBounds(drawingGraphics.drawingContext, layerSize, layerSize);
+}
+
+// Bounding box of the pixels that aren't fully transparent, or null
+function alphaBounds(ctx, w, h) {
+  const alpha = ctx.getImageData(0, 0, w, h).data;
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let y = 0; y < h; y++) {
+    const row = y * w * 4;
+    for (let x = 0; x < w; x++) {
+      if (alpha[row + x * 4 + 3] === 0) continue;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      maxY = y;
+    }
+  }
+  return maxX < 0 ? null : { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
 }
 
 function updateUndoRedoButtons() {
@@ -1879,12 +2083,19 @@ async function captureScrawlface(withThumb) {
     updatedAt: Date.now()
   };
   if (withThumb) {
-    // Exactly what Share sends, scaled down for the gallery grid
+    // Exactly what Share sends, scaled down to fit the square gallery tile
+    // (a tall or wide picture gets white bars, so none of it is cut off)
+    const image = exportImage();
     const thumb = document.createElement('canvas');
     thumb.width = thumb.height = 320; // sharp on a 2x phone screen
     const ctx = thumb.getContext('2d');
+    ctx.fillStyle = `rgb(${bgColor.join(',')})`;
+    ctx.fillRect(0, 0, 320, 320);
     ctx.imageSmoothingQuality = 'high'; // keeps the 1px lines from breaking up
-    ctx.drawImage(exportImage().canvas, 0, 0, 320, 320);
+    const k = 320 / Math.max(image.width, image.height);
+    const w = image.width * k;
+    const h = image.height * k;
+    ctx.drawImage(image, (320 - w) / 2, (320 - h) / 2, w, h);
     record.thumb = canvasToBlob(thumb, 'image/jpeg');
   }
   for (const key of ['scrawl', 'drawing', 'thumb']) {
@@ -1905,7 +2116,9 @@ async function restoreScrawlface(record) {
   baseScrawlGraphics.clear();
   baseScrawlGraphics.drawingContext.drawImage(scrawl, 0, 0);
   drawingGraphics.clear();
-  drawingGraphics.drawingContext.drawImage(drawing, 0, 0);
+  // Centred: scrawlfaces saved before the paint layer grew past the scrawl
+  // square have a canvasSize drawing
+  drawingGraphics.drawingContext.drawImage(drawing, (layerSize - drawing.width) / 2, (layerSize - drawing.height) / 2);
 
   eyePositions = record.eyes.map(pos => ({ ...pos }));
   setEyeStyles(record.eyeStyles);
