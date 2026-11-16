@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=21"></script>
+  <script src="scrawl.js?v=22"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -59,8 +59,9 @@
       padding: 0 22px;
     }
 
-    /* Compact one-line header: wordmark, then the tagline beside it (the
-       tagline wraps underneath when there isn't room) */
+    /* Compact one-line header: the wordmark, plus the Hide lines key at
+       the right on phones (items share a baseline, so the key's label sits
+       on the wordmark's baseline) */
     header {
       display: flex;
       flex-wrap: wrap;
@@ -144,20 +145,18 @@
       pointer-events: auto;
     }
 
-    /* Hide/show scrawl on the canvas itself, phones only (the desktop
-       sidebar has its own key). Absolutely placed, so it takes no room. */
-    .canvas-scrawl-toggle {
+    /* Hide/show lines in the header, phones only (the desktop sidebar has
+       its own key). The negative block margins stop it from making the
+       header taller, so the canvas doesn't shift when it appears. */
+    .header-lines-toggle {
       display: none;
-      position: absolute;
-      top: 12px;
-      right: 16px;
-      z-index: 1;
+      margin: -8px 0 -8px auto;
       padding: 8px 14px;
       font-size: 13px;
     }
 
-    #scrawl-container:not(.is-blank) .blank-cta,
-    #scrawl-container.is-blank .canvas-scrawl-toggle {
+    body:not(.is-blank) .blank-cta,
+    body.is-blank .header-lines-toggle {
       display: none;
     }
 
@@ -862,7 +861,7 @@
         min-height: 100vw;
       }
 
-      #scrawl-container:not(.is-blank) .canvas-scrawl-toggle {
+      body:not(.is-blank) .header-lines-toggle {
         display: block;
       }
 
@@ -1013,23 +1012,24 @@
     }
   </style>
 </head>
-<body>
+<body class="is-blank">
   <div class="container">
     <header>
       <h1>Scrawlface</h1>
+      <button type="button" id="toggle-lines-btn-header" class="header-lines-toggle" title="Hide or show the scrawl lines">Hide lines</button>
     </header>
 
     <main>
       <section class="canvas-section">
         <div class="canvas-area">
-          <!-- p5 adds the canvas in here. is-blank until the first scrawl:
-               the create button shows, the scrawl toggle doesn't. -->
-          <div id="scrawl-container" class="is-blank">
+          <!-- p5 adds the canvas in here. While <body> has is-blank (until
+               the first scrawl) the create button shows and the header's
+               Hide lines key doesn't. -->
+          <div id="scrawl-container">
             <div class="blank-cta" id="blank-cta">
               <button type="button" id="blank-cta-btn" class="cta-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>Create your first scrawlface</button>
               <p class="subtitle">Move the eyes, find the face, doodle on top</p>
             </div>
-            <button type="button" id="toggle-scrawl-btn-canvas" class="canvas-scrawl-toggle" title="Hide or show the scrawl lines">Hide lines</button>
           </div>
         </div>
 

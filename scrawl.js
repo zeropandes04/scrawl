@@ -166,7 +166,7 @@ function setup() {
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
-  select("#toggle-scrawl-btn-canvas").mousePressed(toggleEyes);
+  select("#toggle-lines-btn-header").mousePressed(toggleEyes);
   select("#blank-cta-btn").mousePressed(generateScrawlface);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
@@ -257,7 +257,7 @@ function generateScrawlface() {
 
   // Leave the blank start state (hides the create button, shows the
   // on-canvas scrawl toggle)
-  document.getElementById('scrawl-container').classList.remove('is-blank');
+  document.body.classList.remove('is-blank');
   try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
 
   // Ensure scrawl is visible when generating new scrawl
@@ -533,7 +533,7 @@ function mousePressed(event) {
   if (pinch) return;
 
   // Blank start: nothing to draw on until the first scrawl is created
-  if (document.getElementById('scrawl-container').classList.contains('is-blank')) return;
+  if (document.body.classList.contains('is-blank')) return;
 
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
@@ -1212,7 +1212,7 @@ function updateScrawlToggleButtons() {
   const label = showScrawl ? "Hide lines" : "Show lines";
   select("#toggle-eyes-btn").html(label);
   select("#toggle-eyes-btn-mobile").html(label);
-  select("#toggle-scrawl-btn-canvas").html(label);
+  select("#toggle-lines-btn-header").html(label);
 }
 
 // ---- Tools ----
