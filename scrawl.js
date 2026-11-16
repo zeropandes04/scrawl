@@ -1728,7 +1728,7 @@ let draftTimer = null;
 let dbPromise = null;
 let thumbUrls = [];      // object URLs of thumbnails on screen, freed on redraw
 let gallerySelection = null; // ids picked in the gallery's select mode, else null
-const longPressMs = 500;     // press and hold on a gallery tile to start selecting
+const longPressMs = 500;     // touch: press and hold a gallery tile to start selecting
 
 function hasUnsavedChanges() {
   return editVersion !== savedVersion;
@@ -1965,29 +1965,30 @@ async function renderGallery() {
     tile.className = 'gallery-tile';
     tile.dataset.id = record.id;
     tile.append(thumbImage(record));
+
+    // The tick circle picks / unpicks this one, starting select mode on
+    // the first pick: works the same with a mouse, a finger or the keyboard
+    const check = document.createElement('button');
+    check.type = 'button';
+    check.className = 'gallery-check';
+    check.dataset.id = record.id;
+    check.setAttribute('aria-label', 'Select');
+    check.addEventListener('click', () => toggleGalleryPick(record.id));
+
+    // Touch shortcut, as in phone photo galleries: press and hold to pick
     addLongPress(tile, () => {
-      // Starts select mode with this one picked (or adds it if selecting)
-      if (!gallerySelection) gallerySelection = new Set();
-      gallerySelection.add(record.id);
+      if (!gallerySelection || !gallerySelection.has(record.id)) toggleGalleryPick(record.id);
       if (navigator.vibrate) navigator.vibrate(15);
-      updateGallerySelection();
     });
-    // A tap opens it, or in select mode picks / unpicks it. Unpicking the
-    // last one leaves select mode.
+    // A tap opens it, or in select mode picks / unpicks it
     tile.addEventListener('click', () => {
-      if (!gallerySelection) {
-        openFromGallery(record.id);
-        return;
-      }
-      if (gallerySelection.has(record.id)) {
-        gallerySelection.delete(record.id);
+      if (gallerySelection) {
+        toggleGalleryPick(record.id);
       } else {
-        gallerySelection.add(record.id);
+        openFromGallery(record.id);
       }
-      if (gallerySelection.size === 0) gallerySelection = null;
-      updateGallerySelection();
     });
-    item.append(tile);
+    item.append(tile, check);
     return item;
   }));
   document.getElementById('gallery-empty').hidden = records.length > 0;
@@ -2010,9 +2011,23 @@ function openGallery() {
   document.getElementById('gallery-dialog').showModal();
 }
 
-// Calls onLongPress when the element is pressed and held, like selecting
-// in a photo gallery. Moving the finger (scrolling) cancels it, and the
-// click that ends a long press is swallowed so it doesn't also tap.
+// Picks or unpicks one gallery tile. The first pick starts select mode;
+// unpicking the last one ends it.
+function toggleGalleryPick(id) {
+  if (!gallerySelection) gallerySelection = new Set();
+  if (gallerySelection.has(id)) {
+    gallerySelection.delete(id);
+  } else {
+    gallerySelection.add(id);
+  }
+  if (gallerySelection.size === 0) gallerySelection = null;
+  updateGallerySelection();
+}
+
+// Calls onLongPress when a finger presses and holds the element (touch
+// only: a mouse picks with the tick circle). Moving the finger (scrolling)
+// cancels it, and the click that ends a long press is swallowed so it
+// doesn't also tap.
 function addLongPress(el, onLongPress) {
   let timer = null;
   let start = null;
@@ -2023,6 +2038,7 @@ function addLongPress(el, onLongPress) {
   };
   el.addEventListener('pointerdown', e => {
     fired = false;
+    if (e.pointerType !== 'touch') return;
     start = { x: e.clientX, y: e.clientY };
     timer = setTimeout(() => {
       fired = true;
@@ -2045,8 +2061,9 @@ function addLongPress(el, onLongPress) {
   });
 }
 
-// Select mode (press and hold a tile): taps pick tiles, and Delete removes
-// the picked ones. The header swaps Close for Cancel / Delete (n).
+// Select mode (started from a tick circle, or a long press on touch): taps
+// pick tiles, and Delete removes the picked ones. The header swaps Close
+// for Cancel / Delete (n).
 function setGallerySelecting(on) {
   gallerySelection = on ? new Set() : null;
   updateGallerySelection();
@@ -2058,13 +2075,10 @@ function updateGallerySelection() {
   const count = selecting ? gallerySelection.size : 0;
   dialog.classList.toggle('selecting', selecting);
   dialog.querySelectorAll('.gallery-tile').forEach(tile => {
-    const picked = selecting && gallerySelection.has(tile.dataset.id);
-    tile.classList.toggle('selected', picked);
-    if (selecting) {
-      tile.setAttribute('aria-pressed', picked);
-    } else {
-      tile.removeAttribute('aria-pressed');
-    }
+    tile.classList.toggle('selected', selecting && gallerySelection.has(tile.dataset.id));
+  });
+  dialog.querySelectorAll('.gallery-check').forEach(check => {
+    check.setAttribute('aria-pressed', selecting && gallerySelection.has(check.dataset.id));
   });
   document.getElementById('gallery-title').textContent =
     selecting ? `${count} selected` : 'My scrawlfaces';
