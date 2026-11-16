@@ -70,11 +70,17 @@ let hasDrawings = false;
 let isDrawing = false;
 const eyeRadius = 35;
 const canvasSize = 800;
-// The paint layer is bigger than the scrawl: the scrawl is a canvasSize
-// square in its middle, and paint can go past it to the edges of the screen,
-// whatever the rotation. Positions on the drawing (getTransformedCoords)
-// are relative to the scrawl square, so the layer starts at -layerOffset.
-const layerSize = 1600;
+// The picture is a fixed 4:5 portrait frame (Instagram's portrait post)
+// around the scrawl square, upright in the view: what Share and Download
+// give is always exactly this frame, at zoom 1, in the current rotation.
+const frameWidth = canvasSize;
+const frameHeight = canvasSize * 5 / 4;
+// The paint layer covers the frame at any rotation (its side is the frame's
+// diagonal, rounded up to keep layerOffset whole). The scrawl is a
+// canvasSize square in its middle. Positions on the drawing
+// (getTransformedCoords) are relative to the scrawl square, so the layer
+// starts at -layerOffset.
+const layerSize = 2 * Math.ceil(Math.hypot(frameWidth, frameHeight) / 2);
 const layerOffset = (layerSize - canvasSize) / 2;
 const eyeMargin = 200;
 const eyeSize = 70;
@@ -851,6 +857,19 @@ function redrawCanvas() {
     const isRight = onScreen[i].x > onScreen[1 - i].x ? 1 : 0;
     drawEye(window, onScreen[i].x, onScreen[i].y, pos.scale * viewZoom, eyeStyles[i], isRight);
   });
+
+  // Shade what's outside the picture frame: it isn't in the saved picture
+  const ctx = drawingContext;
+  const fw = frameWidth * viewZoom;
+  const fh = frameHeight * viewZoom;
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = 'rgba(30, 30, 30, 0.16)';
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  ctx.rect(width / 2 + viewPan.x - fw / 2, height / 2 + viewPan.y - fh / 2, fw, fh);
+  ctx.fill('evenodd');
+  ctx.restore();
 }
 
 // Position on the drawing -> screen (canvas element) position
@@ -1276,26 +1295,20 @@ function rotateCanvas() {
   markChanged();
 }
 
-// The picture Share and Download give and the gallery thumbnails show: the
-// drawing at normal size, in its rotation, with its eyes and scrawl
-// visibility, whatever the zoom on screen. It's cropped to the artwork: the
-// scrawl square and everything painted or placed past it, on white.
+// The picture Share and Download give: the frame (frameWidth x
+// frameHeight) at zoom 1, with the drawing in its rotation, its eyes and its
+// scrawl visibility, whatever the zoom on screen. Always the same size.
 // Returns a canvas.
 function exportImage() {
   finishScrawlDrawIn();
 
-  // Draw it all, turned, onto the biggest upright square the turned paint
-  // layer covers completely, centred on the middle of the scrawl square.
-  // Nothing outside it can show an empty corner (a background fill covers
-  // the whole layer), and it always holds the whole turned scrawl square.
-  const angle = radians(rotation);
-  const turn = Math.abs(cos(angle)) + Math.abs(sin(angle)); // 1 upright .. 1.41 at 45°
-  const side = 2 * Math.floor(layerSize / turn / 2); // even, so the centre is a whole pixel
-  const c = side / 2;
-  const g = createGraphics(side, side);
+  const g = createGraphics(frameWidth, frameHeight);
   g.pixelDensity(1);
+  g.background(bgColor);
+  const cx = frameWidth / 2;
+  const cy = frameHeight / 2;
   g.push();
-  g.translate(c, c);
+  g.translate(cx, cy);
   g.rotate(radians(rotation));
   g.imageMode(CENTER);
   g.image(drawingGraphics, 0, 0);
@@ -1303,52 +1316,24 @@ function exportImage() {
   g.pop();
 
   // The eyes, as redrawCanvas places them at zoom 1
+  const angle = radians(rotation);
   const turned = eyePositions.map(pos => {
     const dx = pos.x - canvasSize / 2;
     const dy = pos.y - canvasSize / 2;
-    return { x: c + dx * cos(angle) - dy * sin(angle), y: c + dx * sin(angle) + dy * cos(angle) };
+    return { x: cx + dx * cos(angle) - dy * sin(angle), y: cy + dx * sin(angle) + dy * cos(angle) };
   });
   eyePositions.forEach((pos, i) => {
     const isRight = turned[i].x > turned[1 - i].x ? 1 : 0;
     drawEye(g, turned[i].x, turned[i].y, pos.scale, eyeStyles[i], isRight);
   });
 
-  // Crop: everything drawn, plus the scrawl square itself (even where its
-  // lines don't reach the edges), as turned
-  let crop = alphaBounds(g.drawingContext, side, side);
-  [[0, 0], [1, 0], [0, 1], [1, 1]].forEach(([u, v]) => {
-    const dx = (u - 0.5) * canvasSize;
-    const dy = (v - 0.5) * canvasSize;
-    const x = c + dx * cos(angle) - dy * sin(angle);
-    const y = c + dx * sin(angle) + dy * cos(angle);
-    crop = unionBox(crop, { x, y, w: 0, h: 0 });
-  });
-  const x0 = Math.max(0, Math.floor(crop.x));
-  const y0 = Math.max(0, Math.floor(crop.y));
-  const w = Math.min(side, Math.ceil(crop.x + crop.w)) - x0;
-  const h = Math.min(side, Math.ceil(crop.y + crop.h)) - y0;
-
+  // A plain canvas to hand on; the p5 graphic is removed from the page
   const out = document.createElement('canvas');
-  out.width = w;
-  out.height = h;
-  const ctx = out.getContext('2d');
-  ctx.fillStyle = `rgb(${bgColor.join(',')})`;
-  ctx.fillRect(0, 0, w, h);
-  ctx.drawImage(g.elt, x0, y0, w, h, 0, 0, w, h);
+  out.width = frameWidth;
+  out.height = frameHeight;
+  out.getContext('2d').drawImage(g.elt, 0, 0);
   g.remove();
   return out;
-}
-
-// The smallest box covering two boxes ({ x, y, w, h }; a may be null)
-function unionBox(a, b) {
-  if (!a) return b;
-  const x = Math.min(a.x, b.x);
-  const y = Math.min(a.y, b.y);
-  return {
-    x, y,
-    w: Math.max(a.x + a.w, b.x + b.w) - x,
-    h: Math.max(a.y + a.h, b.y + b.h) - y
-  };
 }
 
 // Saves the image as a PNG file (desktop)
@@ -1426,14 +1411,14 @@ function setBrushCursor() {
 }
 
 // The canvas element fills its container, which is rarely square, so the
-// canvas takes the container's proportions. The shorter side is always
-// canvasSize units: the whole drawing fits at zoom 1, and the extra room
-// shows more of it when zoomed in or rotated.
+// canvas takes the container's proportions, scaled so the whole picture
+// frame (frameWidth x frameHeight units) just fits at zoom 1. The room
+// around the frame is shaded (see redrawCanvas).
 function fitCanvasToContainer() {
   const box = document.getElementById('scrawl-container');
   if (box.clientWidth === 0 || box.clientHeight === 0) return;
 
-  const k = canvasSize / min(box.clientWidth, box.clientHeight);
+  const k = max(frameWidth / box.clientWidth, frameHeight / box.clientHeight);
   const w = round(box.clientWidth * k);
   const h = round(box.clientHeight * k);
   if (w === width && h === height) return;
@@ -1798,16 +1783,12 @@ function checkIfDrawingHasContent() {
 
 // The part of the paint layer that has paint on it, or null
 function drawingBounds() {
-  return alphaBounds(drawingGraphics.drawingContext, layerSize, layerSize);
-}
-
-// Bounding box of the pixels that aren't fully transparent, or null
-function alphaBounds(ctx, w, h) {
-  const alpha = ctx.getImageData(0, 0, w, h).data;
-  let minX = w, minY = h, maxX = -1, maxY = -1;
-  for (let y = 0; y < h; y++) {
-    const row = y * w * 4;
-    for (let x = 0; x < w; x++) {
+  const n = layerSize;
+  const alpha = drawingGraphics.drawingContext.getImageData(0, 0, n, n).data;
+  let minX = n, minY = n, maxX = -1, maxY = -1;
+  for (let y = 0; y < n; y++) {
+    const row = y * n * 4;
+    for (let x = 0; x < n; x++) {
       if (alpha[row + x * 4 + 3] === 0) continue;
       if (x < minX) minX = x;
       if (x > maxX) maxX = x;
@@ -2083,19 +2064,14 @@ async function captureScrawlface(withThumb) {
     updatedAt: Date.now()
   };
   if (withThumb) {
-    // Exactly what Share sends, scaled down to fit the square gallery tile
-    // (a tall or wide picture gets white bars, so none of it is cut off)
+    // The square middle of what Share sends (the scrawl square, for the
+    // square gallery tiles), scaled down
     const image = exportImage();
     const thumb = document.createElement('canvas');
     thumb.width = thumb.height = 320; // sharp on a 2x phone screen
     const ctx = thumb.getContext('2d');
-    ctx.fillStyle = `rgb(${bgColor.join(',')})`;
-    ctx.fillRect(0, 0, 320, 320);
     ctx.imageSmoothingQuality = 'high'; // keeps the 1px lines from breaking up
-    const k = 320 / Math.max(image.width, image.height);
-    const w = image.width * k;
-    const h = image.height * k;
-    ctx.drawImage(image, (320 - w) / 2, (320 - h) / 2, w, h);
+    ctx.drawImage(image, 0, (frameHeight - frameWidth) / 2, frameWidth, frameWidth, 0, 0, 320, 320);
     record.thumb = canvasToBlob(thumb, 'image/jpeg');
   }
   for (const key of ['scrawl', 'drawing', 'thumb']) {

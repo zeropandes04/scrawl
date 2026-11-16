@@ -181,23 +181,18 @@ async function run(label, contextOpts) {
   });
   check('degenerate pinch keeps zoom finite', await ev(() => Number.isFinite(viewZoom) && Number.isFinite(viewPan.x)), await ev(() => JSON.stringify({ viewZoom, viewPan })));
 
-  // Export has canvas size regardless of zoom
+  // Export is the 4:5 frame regardless of zoom
   await ev('viewZoom = 3; viewPan = {x: 100, y: 50}');
   const dims = await ev(() => { const im = exportImage(); return [im.width, im.height, viewZoom]; });
-  check('export is 800x800 and restores zoom', dims[0] === 800 && dims[1] === 800 && dims[2] === 3, JSON.stringify(dims));
+  check('export is 800x1000 and keeps the zoom', dims[0] === 800 && dims[1] === 1000 && dims[2] === 3, JSON.stringify(dims));
 
   // ---- Painting past the scrawl square ----
   await ev('viewZoom = 1; viewPan = {x: 0, y: 0}; rotation = 0; redrawCanvas()');
   const alphaAt = (x, y) => ev(`drawingGraphics.drawingContext.getImageData(${x} + layerOffset, ${y} + layerOffset, 1, 1).data[3]`);
   const historyPixels = () => ev(() => historyStack.reduce((a, m) => a + m.w * m.h, 0));
 
-  // A stroke outside the square (the canvas is wider/taller than it)
-  const extra = await ev(() => ({ w: width, h: height }));
-  // Halfway into the margin the canvas has beside the square (above it when
-  // the canvas is taller than wide, left of it when wider)
-  const margin = Math.abs(extra.h - extra.w) / 2;
-  const off = -margin / 2;
-  const outside = extra.h > extra.w ? [[300, off], [500, off]] : [[off, 300], [off, 500]];
+  // A stroke above the square, in the frame's extra room (100 units)
+  const outside = [[300, -50], [500, -50]];
   await tool('brush');
   await drag(outside[0], outside[1]);
   const mid = [(outside[0][0] + outside[1][0]) / 2, (outside[0][1] + outside[1][1]) / 2];
@@ -211,9 +206,10 @@ async function run(label, contextOpts) {
   // Fill the background: reaches the corners of the paint layer
   await ev('clearDrawings(); clearHistory()');
   await ev(`floodFill(${pt[0]}, ${pt[1]}, '#66BD0F')`);
-  check('fill spreads past the square', await alphaAt(-350, -350) === 255 && await alphaAt(1150, 1150) === 255);
+  const far = await ev('[-layerOffset, canvasSize + layerOffset - 1]');
+  check('fill spreads past the square', await alphaAt(far[0], far[0]) === 255 && await alphaAt(far[1], far[1]) === 255);
   await ev('undo()');
-  check('undo fill outside the square', await alphaAt(-350, -350) === 0 && !(await ev('hasDrawings')));
+  check('undo fill outside the square', await alphaAt(far[0], far[0]) === 0 && !(await ev('hasDrawings')));
 
   // Pinch / hold cancelling a stroke in progress leaves no trace (Redo is
   // kept: nothing happened)
@@ -230,18 +226,24 @@ async function run(label, contextOpts) {
   const hp = await historyPixels();
   check('history stays within its memory limit', hp <= await ev('maxHistoryPixels') && (await state()).h >= 1, `${hp} px, ${(await state()).h} steps`);
 
-  // Export fits the artwork
+  // Export: always the 4:5 frame, whatever is drawn or the rotation
   await ev('clearDrawings(); clearHistory()');
-  let dimsNow = await ev(() => { const im = exportImage(); return [im.width, im.height]; });
-  check('export of square-only art is the square', dimsNow[0] === 800 && dimsNow[1] === 800, JSON.stringify(dimsNow));
-  await ev(() => { drawingGraphics.fill('#CC0000'); drawingGraphics.noStroke(); drawingGraphics.ellipse(layerOffset + 400, layerOffset - 150, 40, 40); });
-  dimsNow = await ev(() => { const im = exportImage(); return [im.width, im.height]; });
-  check('export grows to paint past the square', dimsNow[0] === 800 && dimsNow[1] >= 965 && dimsNow[1] <= 975, JSON.stringify(dimsNow));
-  const topPixel = await ev(() => { const im = exportImage(); return [...im.getContext('2d').getImageData(Math.floor(im.width / 2), 12, 1, 1).data]; });
-  check('exported paint is in the picture', topPixel[0] > 150 && topPixel[1] < 60, JSON.stringify(topPixel));
-  await ev('rotation = 45; drawingGraphics.clear()');
-  dimsNow = await ev(() => { const im = exportImage(); return [im.width, im.height]; });
-  check('rotated export covers the turned square', Math.abs(dimsNow[0] - 1132) <= 3 && Math.abs(dimsNow[1] - 1132) <= 3, JSON.stringify(dimsNow));
+  const exportOf = () => ev(() => {
+    const im = exportImage();
+    const ctx = im.getContext('2d');
+    const at = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
+    return { size: [im.width, im.height], top: at(400, 50), corners: [at(2, 2), at(797, 2), at(2, 997), at(797, 997)] };
+  });
+  let ex = await exportOf();
+  check('export of square-only art is 800x1000', ex.size[0] === 800 && ex.size[1] === 1000, JSON.stringify(ex.size));
+  await ev(() => { drawingGraphics.fill('#CC0000'); drawingGraphics.noStroke(); drawingGraphics.ellipse(layerOffset + 400, layerOffset - 50, 40, 40); });
+  ex = await exportOf();
+  check('paint above the square is in the picture', ex.size[1] === 1000 && ex.top[0] > 150 && ex.top[1] < 60, JSON.stringify(ex));
+  // Turned and the background filled: no empty corners in the picture
+  await ev(`drawingGraphics.clear(); rotation = 28; floodFill(${pt[0]}, ${pt[1]}, '#66BD0F')`);
+  ex = await exportOf();
+  const green = c => c[0] < 130 && c[1] > 150 && c[2] < 60;
+  check('turned + background fill: corners painted, same size', ex.size[0] === 800 && ex.size[1] === 1000 && ex.corners.every(green), JSON.stringify(ex));
   await ev('rotation = 0; redrawCanvas()');
 
   check('no page errors', errors.length === 0, errors.join(' | '));
