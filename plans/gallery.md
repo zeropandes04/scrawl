@@ -53,7 +53,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
 - Full-screen overlay; grid of thumbnails, newest `updatedAt` first; close button.
 - Tap a tile → open it (Save / Discard dialog first if the current scrawlface was edited).
 - Delete: a **tick circle** on each tile picks it and starts select mode (always shown on touch screens; on hover / keyboard focus with a mouse; on every tile while selecting). Touch also has press-and-hold as a shortcut. Taps then pick / unpick tiles; unpicking the last one leaves select mode; the header shows "n selected" with Cancel / Delete (n). Moving the finger while holding (scrolling) doesn't select, and the phone's own image menu is suppressed.
-- Empty state: short line + the create button.
+- Empty state: the same as the blank start — a faint scrawl, the create key ("Create your first / a new scrawlface") and the tagline. The key closes the gallery and starts a new scrawl (Save / Discard first if there are unsaved changes).
 
 ### Recents on the blank start
 - Up to 4 latest saved thumbnails under the subtitle, plus "See all". Hidden when the gallery is empty.
@@ -91,7 +91,7 @@ The draft holds the same, plus `galleryId` (the entry it was saved to or opened 
   - [x] 🟩 New after an edit: Save keeps it in the gallery, Discard drops it, Cancel leaves everything as it was (including undo/redo). New on an untouched scrawl shows no dialog.
   - [x] 🟩 360×640, Pixel 5 and desktop (1280×800, 1024×768) in headless Chromium.
   - [ ] 🟥 Chrome mobile on a real device.
-  - [x] 🟩 Bump `scrawl.js?v=N` (now 29).
+  - [x] 🟩 Bump `scrawl.js?v=N` (now 30).
 
 ## Notes from the build
 - Desktop sidebar at exactly 1024×768: with Export image gone the Save section is one row again (two where Share is offered), so it fits.

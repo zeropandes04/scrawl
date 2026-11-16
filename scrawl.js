@@ -1986,7 +1986,29 @@ async function renderGallery() {
     item.append(tile, check);
     return item;
   }));
-  document.getElementById('gallery-empty').hidden = records.length > 0;
+  const empty = records.length === 0;
+  document.getElementById('gallery-empty').hidden = !empty;
+  grid.hidden = empty;
+  if (empty) {
+    // A fresh faint scrawl and the blank start's create label ("first"
+    // only for someone who has never made one)
+    const ctx = document.getElementById('gallery-empty-scrawl').getContext('2d');
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+    ctx.strokeStyle = 'rgb(200, 200, 200)';
+    ctx.lineWidth = scrawlStrokeWeight;
+    const preview = scrawlSegments(intensity);
+    fitScrawlToCanvas(preview);
+    preview.forEach(([x1, y1, cx1, cy1, cx2, cy2, x2, y2]) => {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
+      ctx.stroke();
+    });
+    let created = false;
+    try { created = localStorage.getItem('createdScrawlface') === '1'; } catch (e) {}
+    document.getElementById('gallery-empty-btn').lastChild.textContent =
+      created ? 'Create a new scrawlface' : 'Create your first scrawlface';
+  }
   updateGallerySelection();
 
   const recents = document.getElementById('recents');
@@ -2121,6 +2143,12 @@ function setupGallery() {
     document.getElementById('gallery-dialog').close();
   });
   document.getElementById('gallery-cancel').addEventListener('click', () => setGallerySelecting(false));
+  // Empty gallery's create key: back to the canvas with a new scrawl
+  // (asking first if the current one has unsaved changes)
+  document.getElementById('gallery-empty-btn').addEventListener('click', () => {
+    document.getElementById('gallery-dialog').close();
+    requestNewScrawl();
+  });
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode
   document.getElementById('gallery-dialog').addEventListener('close', () => setGallerySelecting(false));
