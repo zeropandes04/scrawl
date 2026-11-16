@@ -2028,10 +2028,22 @@ function updateGallerySelection() {
   del.textContent = count ? `Delete (${count})` : 'Delete';
 }
 
+// Asks to delete the picked scrawlfaces. Resolves true for Delete; Cancel,
+// Esc and the backdrop resolve false.
+function confirmDelete(count) {
+  const dialog = document.getElementById('delete-dialog');
+  document.getElementById('delete-title').textContent =
+    count === 1 ? 'Delete this scrawlface?' : `Delete these ${count} scrawlfaces?`;
+  dialog.returnValue = '';
+  dialog.showModal();
+  return new Promise(resolve => {
+    dialog.addEventListener('close', () => resolve(dialog.returnValue === 'delete'), { once: true });
+  });
+}
+
 async function deleteSelected() {
   const ids = [...gallerySelection];
-  const what = ids.length === 1 ? 'this scrawlface' : `these ${ids.length} scrawlfaces`;
-  if (!ids.length || !confirm(`Delete ${what}? This can't be undone.`)) return;
+  if (!ids.length || !(await confirmDelete(ids.length))) return;
   await dbRequest('gallery', 'readwrite', store => {
     let req;
     ids.forEach(id => { req = store.delete(id); });
@@ -2061,7 +2073,7 @@ function setupGallery() {
   document.getElementById('gallery-dialog').addEventListener('close', () => setGallerySelecting(false));
   // Tapping the dimmed backdrop closes a dialog, like Esc (the click lands
   // on the dialog itself only outside its content)
-  ['leave-dialog', 'gallery-dialog'].forEach(id => {
+  ['leave-dialog', 'delete-dialog', 'gallery-dialog'].forEach(id => {
     const dialog = document.getElementById(id);
     dialog.addEventListener('click', e => {
       if (e.target === dialog) dialog.close();

@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=24"></script>
+  <script src="scrawl.js?v=25"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -257,6 +257,12 @@
 
     .dialog-actions button {
       padding: 10px 14px;
+    }
+
+    /* A destructive action: a normal key with red text */
+    .danger-button {
+      color: #c4281c;
+      font-weight: 600;
     }
 
     /* Full screen on phones, a large panel on wider screens */
@@ -1352,6 +1358,19 @@
             <button value="cancel">Cancel</button>
             <button value="discard">Discard</button>
             <button value="save" class="cta-button" autofocus>Save</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- Deleting the picked scrawlfaces (deleteSelected). Cancel has the
+           focus, so Enter doesn't delete by accident. -->
+      <dialog id="delete-dialog" class="app-dialog" aria-labelledby="delete-title">
+        <form method="dialog">
+          <h2 id="delete-title">Delete these scrawlfaces?</h2>
+          <p>This can't be undone.</p>
+          <div class="dialog-actions">
+            <button value="cancel" autofocus>Cancel</button>
+            <button value="delete" class="danger-button">Delete</button>
           </div>
         </form>
       </dialog>
