@@ -159,23 +159,23 @@ function setup() {
   new ResizeObserver(fitCanvasToContainer).observe(document.getElementById('scrawl-container'));
 
   // Desktop and mobile keys that do the same thing
-  select("#generate-btn").mousePressed(generateScrawlface);
-  select("#generate-btn-mobile").mousePressed(generateScrawlface);
-  select("#generate-btn-sheet").mousePressed(generateScrawlface);
+  select("#generate-btn").mousePressed(requestNewScrawl);
+  select("#generate-btn-mobile").mousePressed(requestNewScrawl);
+  select("#generate-btn-sheet").mousePressed(requestNewScrawl);
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
   select("#toggle-lines-btn-header").mousePressed(toggleEyes);
-  select("#blank-cta-btn").mousePressed(generateScrawlface);
+  select("#blank-cta-btn").mousePressed(requestNewScrawl);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
   select("#undo-btn").mousePressed(undo);
   select("#undo-btn-mobile").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);
   select("#redo-btn-mobile").mousePressed(redo);
-  select("#save-btn").mousePressed(saveImage);
-  select("#save-btn-mobile").mousePressed(saveImage);
+  select("#export-btn").mousePressed(downloadImage);
+  select("#export-btn-mobile").mousePressed(downloadImage);
 
   // Intensity faders (sidebar and sheet) stay in sync. The value only
   // applies at the next Generate.
@@ -228,14 +228,14 @@ function setup() {
 
   setTool('eyes');
   redrawCanvas();
+
+  // Save, the gallery, and last time's unsaved work (see the Gallery section)
+  setupGallery();
 }
 
+// Replaces the scrawlface on the canvas with a new one. The keys go through
+// requestNewScrawl, which first offers to save unsaved changes.
 function generateScrawlface() {
-  // Generating wipes the drawing and its undo history, so check first
-  if (hasDrawings && !confirm('Start a new scrawl? Your drawing will be lost.')) {
-    return;
-  }
-
   drawingGraphics.clear();
   hasDrawings = false;
   disableClearButton();
@@ -259,6 +259,13 @@ function generateScrawlface() {
   // on-canvas scrawl toggle)
   document.body.classList.remove('is-blank');
   try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
+
+  // A new scrawlface: not in the gallery, nothing unsaved, no draft
+  scrawlfaceToken++;
+  galleryId = null;
+  savedVersion = editVersion;
+  forgetDraft();
+  updateGallerySaveButtons();
 
   // Ensure scrawl is visible when generating new scrawl
   if (!showScrawl) {
@@ -648,6 +655,10 @@ function clampViewPan() {
 }
 
 function mouseReleased() {
+  // A stroke, fill or eye drag is a change to the scrawlface (for Save and
+  // the draft)
+  const changed = pressChangedDrawing || draggedEyeIndex !== -1;
+
   if (draggedEyeIndex !== -1) {
     draggedEyeIndex = -1;
     cursor(ARROW);
@@ -680,6 +691,7 @@ function mouseReleased() {
 
   isDrawing = false;
   pressChangedDrawing = false;
+  if (changed) markChanged();
 }
 
 function keyPressed() {
@@ -704,7 +716,7 @@ function keyPressed() {
   if (cmd || keyIsDown(ALT)) return;
   const tool = { b: 'brush', e: 'eraser', f: 'fill', v: 'eyes' }[key.toLowerCase()];
   if (tool) setTool(tool);
-  if (key.toLowerCase() === 'n') generateScrawlface();
+  if (key.toLowerCase() === 'n') requestNewScrawl();
 }
 
 // Screen (canvas element) position -> position on the drawing
@@ -1124,11 +1136,17 @@ function setupEyeSetButtons() {
     img.src = previews[set];
     img.alt = '';
     btn.prepend(img);
-    btn.addEventListener('click', () => setEyeStyles(eyeSets[set]));
+    btn.addEventListener('click', () => {
+      setEyeStyles(eyeSets[set]);
+      markChanged();
+    });
   });
 
   document.querySelectorAll('.mix-eyes-btn').forEach(btn => {
-    btn.addEventListener('click', mixEyes);
+    btn.addEventListener('click', () => {
+      mixEyes();
+      markChanged();
+    });
   });
 
   updateEyeSetButtons();
@@ -1165,6 +1183,7 @@ function updateEyeSetButtons() {
 function rotateCanvas() {
   rotation = (rotation + 90) % 360;
   redrawCanvas();
+  markChanged();
 }
 
 // The picture Save and Share export: the whole drawing at normal size, with
@@ -1186,7 +1205,7 @@ function exportImage() {
   return image;
 }
 
-function saveImage() {
+function downloadImage() {
   exportImage().save('scrawlface', 'png');
 }
 
@@ -1204,6 +1223,7 @@ function toggleEyes() {
   showScrawl = !showScrawl;
   updateScrawlToggleButtons();
   redrawCanvas();
+  markChanged();
 }
 
 // The buttons name what pressing them will do, rather than lighting up when
@@ -1286,6 +1306,7 @@ function clearDrawings() {
   disableClearButton();
 
   redrawCanvas();
+  markChanged();
 }
 
 // Enables or disables the buttons with the given ids (sidebar and mobile twins)
@@ -1489,6 +1510,7 @@ function undo() {
 
   redrawCanvas();
   updateUndoRedoButtons();
+  markChanged();
 }
 
 function redo() {
@@ -1509,6 +1531,7 @@ function redo() {
 
   redrawCanvas();
   updateUndoRedoButtons();
+  markChanged();
 }
 
 function checkIfDrawingHasContent() {
@@ -1689,4 +1712,334 @@ function setupMobileSheet() {
       setOpen(false);
     }
   });
+}
+
+// ---- Gallery: saved scrawlfaces and the draft ----
+// Saved scrawlfaces live in IndexedDB, in this browser only. The gallery
+// holds only what the user saved; the scrawlface in progress is also kept
+// in a single hidden draft (while it has unsaved changes), so a reload or a
+// tab the phone killed doesn't lose it. Undo history is never stored.
+
+let galleryId = null;    // gallery entry the current scrawlface is saved as
+let editVersion = 0;     // bumped on every change...
+let savedVersion = 0;    // ...and copied here when saved: unsaved = they differ
+let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
+let draftTimer = null;
+let dbPromise = null;
+let thumbUrls = [];      // object URLs of thumbnails on screen, freed on redraw
+
+function hasUnsavedChanges() {
+  return editVersion !== savedVersion;
+}
+
+function isBlankStart() {
+  return document.body.classList.contains('is-blank');
+}
+
+// Runs fn(store) in one transaction; resolves with its request's result
+// once the transaction has completed
+function dbRequest(storeName, mode, fn) {
+  if (!dbPromise) {
+    dbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open('scrawlface', 1);
+      req.onupgradeneeded = () => {
+        req.result.createObjectStore('gallery', { keyPath: 'id' });
+        req.result.createObjectStore('draft'); // one record, key 'current'
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  return dbPromise.then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, mode);
+    const req = fn(tx.objectStore(storeName));
+    tx.oncomplete = () => resolve(req.result);
+    tx.onerror = tx.onabort = () => reject(tx.error);
+  }));
+}
+
+function canvasToBlob(canvasEl, type) {
+  return new Promise(resolve => canvasEl.toBlob(resolve, type, 0.85));
+}
+
+// Everything needed to carry on with the current scrawlface. The layers are
+// read when this is called, so changes made while it encodes aren't mixed in.
+async function captureScrawlface(withThumb) {
+  finishScrawlDrawIn();
+  const record = {
+    scrawl: canvasToBlob(baseScrawlGraphics.elt, 'image/png'),
+    drawing: canvasToBlob(drawingGraphics.elt, 'image/png'),
+    eyes: eyePositions.map(pos => ({ ...pos })),
+    eyeStyles: [...eyeStyles],
+    showScrawl,
+    rotation,
+    updatedAt: Date.now()
+  };
+  if (withThumb) {
+    // Exactly what Export gives, scaled down for the gallery grid
+    const thumb = document.createElement('canvas');
+    thumb.width = thumb.height = 320; // sharp on a 2x phone screen
+    const ctx = thumb.getContext('2d');
+    ctx.imageSmoothingQuality = 'high'; // keeps the 1px lines from breaking up
+    ctx.drawImage(exportImage().canvas, 0, 0, 320, 320);
+    record.thumb = canvasToBlob(thumb, 'image/jpeg');
+  }
+  for (const key of ['scrawl', 'drawing', 'thumb']) {
+    if (record[key]) record[key] = await record[key];
+  }
+  return record;
+}
+
+// Puts a saved scrawlface (or the draft) on the canvas, as if just opened:
+// whole view, Eyes tool, empty undo history
+async function restoreScrawlface(record) {
+  const [scrawl, drawing] = await Promise.all([
+    createImageBitmap(record.scrawl),
+    createImageBitmap(record.drawing)
+  ]);
+
+  scrawlQueue = [];
+  baseScrawlGraphics.clear();
+  baseScrawlGraphics.drawingContext.drawImage(scrawl, 0, 0);
+  drawingGraphics.clear();
+  drawingGraphics.drawingContext.drawImage(drawing, 0, 0);
+
+  eyePositions = record.eyes.map(pos => ({ ...pos }));
+  setEyeStyles(record.eyeStyles);
+  showScrawl = record.showScrawl;
+  updateScrawlToggleButtons();
+  rotation = record.rotation;
+  viewZoom = 1;
+  viewPan = { x: 0, y: 0 };
+
+  isDrawing = false;
+  pressChangedDrawing = false;
+  draggedEyeIndex = -1;
+  setTool('eyes');
+  clearHistory();
+  hasDrawings = checkIfDrawingHasContent();
+  hasDrawings ? enableClearButton() : disableClearButton();
+
+  document.body.classList.remove('is-blank');
+  redrawCanvas();
+}
+
+// Called after every change to the scrawlface: it now has unsaved changes,
+// and the draft is written once the changes settle
+function markChanged() {
+  if (isBlankStart()) return;
+  editVersion++;
+  updateGallerySaveButtons();
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(saveDraft, 1000);
+}
+
+async function saveDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = null;
+  if (!hasUnsavedChanges()) return;
+  const token = scrawlfaceToken;
+  const record = await captureScrawlface(false);
+  // Saved, discarded or replaced while encoding: this draft is stale
+  if (token !== scrawlfaceToken || !hasUnsavedChanges()) return;
+  record.galleryId = galleryId;
+  await dbRequest('draft', 'readwrite', store => store.put(record, 'current')).catch(() => {});
+}
+
+// The scrawlface on the canvas is now saved, or replaced by another one
+function forgetDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = null;
+  dbRequest('draft', 'readwrite', store => store.delete('current')).catch(() => {});
+}
+
+async function saveToGallery() {
+  if (isBlankStart()) return;
+  const version = editVersion;
+  const token = scrawlfaceToken;
+  const record = await captureScrawlface(true);
+  if (token !== scrawlfaceToken) return;
+  record.id = galleryId || Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  await dbRequest('gallery', 'readwrite', store => store.put(record));
+  galleryId = record.id;
+  savedVersion = version;
+  if (!hasUnsavedChanges()) forgetDraft();
+  updateGallerySaveButtons();
+  flashSaved();
+}
+
+// Save is offered for a scrawlface that was never saved, or that changed
+// since it was
+function updateGallerySaveButtons() {
+  const canSave = !isBlankStart() && (galleryId === null || hasUnsavedChanges());
+  document.querySelectorAll('.gallery-save-btn').forEach(btn => {
+    btn.disabled = !canSave;
+  });
+}
+
+function flashSaved() {
+  document.querySelectorAll('.gallery-save-btn').forEach(btn => {
+    btn.textContent = 'Saved';
+    clearTimeout(btn.savedTimer);
+    btn.savedTimer = setTimeout(() => { btn.textContent = 'Save'; }, 1500);
+  });
+}
+
+// Leaving a scrawlface with unsaved changes (New, or opening another one)
+// asks first: Save, Discard or Cancel. Resolves true to go ahead.
+function confirmLeave() {
+  if (isBlankStart() || !hasUnsavedChanges()) return Promise.resolve(true);
+  // No storage, so nothing to save to
+  if (document.body.classList.contains('no-storage')) {
+    return Promise.resolve(confirm('Start a new scrawl? Your drawing will be lost.'));
+  }
+  const dialog = document.getElementById('leave-dialog');
+  dialog.returnValue = '';
+  dialog.showModal();
+  return new Promise(resolve => {
+    dialog.addEventListener('close', async () => {
+      if (dialog.returnValue === 'save') {
+        // If saving fails, stay: going ahead would lose the work
+        try {
+          await saveToGallery();
+          resolve(true);
+        } catch (e) {
+          alert('Sorry, this scrawlface couldn\'t be saved.');
+          resolve(false);
+        }
+      } else {
+        resolve(dialog.returnValue === 'discard'); // '' = Esc or backdrop
+      }
+    }, { once: true });
+  });
+}
+
+// New scrawl from the keys and the N shortcut: asks first if needed
+async function requestNewScrawl() {
+  if (await confirmLeave()) generateScrawlface();
+}
+
+async function openFromGallery(id) {
+  if (!(await confirmLeave())) return;
+  const record = await dbRequest('gallery', 'readonly', store => store.get(id));
+  if (!record) return;
+  scrawlfaceToken++;
+  forgetDraft();
+  await restoreScrawlface(record);
+  galleryId = record.id;
+  savedVersion = editVersion;
+  updateGallerySaveButtons();
+  document.getElementById('gallery-dialog').close();
+  try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
+}
+
+// Saved scrawlfaces, most recently saved first
+async function listGallery() {
+  const records = await dbRequest('gallery', 'readonly', store => store.getAll());
+  return records.sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+function thumbImage(record) {
+  const url = URL.createObjectURL(record.thumb);
+  thumbUrls.push(url);
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Saved scrawlface';
+  return img;
+}
+
+// Redraws the gallery grid and the recents row on the blank start
+async function renderGallery() {
+  const records = await listGallery();
+  thumbUrls.forEach(url => URL.revokeObjectURL(url));
+  thumbUrls = [];
+
+  const grid = document.getElementById('gallery-grid');
+  grid.replaceChildren(...records.map(record => {
+    const item = document.createElement('li');
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'gallery-tile';
+    open.append(thumbImage(record));
+    open.addEventListener('click', () => openFromGallery(record.id));
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'gallery-delete';
+    del.setAttribute('aria-label', 'Delete this scrawlface');
+    del.title = 'Delete';
+    del.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>';
+    del.addEventListener('click', async () => {
+      if (!confirm('Delete this scrawlface? This can\'t be undone.')) return;
+      await dbRequest('gallery', 'readwrite', store => store.delete(record.id));
+      // The open scrawlface was this one: a later Save makes a new entry
+      if (galleryId === record.id) {
+        galleryId = null;
+        updateGallerySaveButtons();
+      }
+      renderGallery();
+    });
+    item.append(open, del);
+    return item;
+  }));
+  document.getElementById('gallery-empty').hidden = records.length > 0;
+
+  const recents = document.getElementById('recents');
+  document.getElementById('recents-list').replaceChildren(...records.slice(0, 4).map(record => {
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'recent-tile';
+    open.append(thumbImage(record));
+    open.addEventListener('click', () => openFromGallery(record.id));
+    return open;
+  }));
+  recents.hidden = records.length === 0;
+}
+
+function openGallery() {
+  renderGallery();
+  document.getElementById('gallery-dialog').showModal();
+}
+
+function setupGallery() {
+  document.querySelectorAll('.gallery-save-btn').forEach(btn => btn.addEventListener('click', () => {
+    saveToGallery().catch(() => alert('Sorry, this scrawlface couldn\'t be saved.'));
+  }));
+  document.querySelectorAll('.gallery-open-btn').forEach(btn => btn.addEventListener('click', openGallery));
+  document.getElementById('gallery-close').addEventListener('click', () => {
+    document.getElementById('gallery-dialog').close();
+  });
+  // Tapping the dimmed backdrop closes a dialog, like Esc (the click lands
+  // on the dialog itself only outside its content)
+  ['leave-dialog', 'gallery-dialog'].forEach(id => {
+    const dialog = document.getElementById(id);
+    dialog.addEventListener('click', e => {
+      if (e.target === dialog) dialog.close();
+    });
+  });
+  updateGallerySaveButtons();
+
+  // Write the draft straight away when the page is hidden: the phone may
+  // kill the tab after that
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && draftTimer) saveDraft();
+  });
+
+  // Without IndexedDB (or if it fails to open) the app works as before,
+  // just without Save and the gallery
+  if (!window.indexedDB) {
+    document.body.classList.add('no-storage');
+    return;
+  }
+  dbRequest('draft', 'readonly', store => store.get('current'))
+    .then(async draft => {
+      // Unsaved work from last time (a reload, or a tab the phone killed)
+      if (draft && isBlankStart()) {
+        await restoreScrawlface(draft);
+        galleryId = draft.galleryId;
+        editVersion = savedVersion + 1;
+        updateGallerySaveButtons();
+      }
+      renderGallery();
+    })
+    .catch(() => document.body.classList.add('no-storage'));
 }

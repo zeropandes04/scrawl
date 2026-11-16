@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=22"></script>
+  <script src="scrawl.js?v=23"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -158,6 +158,179 @@
     body:not(.is-blank) .blank-cta,
     body.is-blank .header-lines-toggle {
       display: none;
+    }
+
+    /* No IndexedDB: no Save, gallery or recents (see setupGallery) */
+    body.no-storage .needs-storage {
+      display: none !important;
+    }
+
+    /* ---- Gallery ----
+       Recents on the blank start, the Save / Discard dialog and the
+       My scrawlfaces screen. Both dialogs are native <dialog>s in the top
+       layer, so they don't affect the page layout. */
+    .recents {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      pointer-events: auto;
+    }
+
+    .recents-list {
+      display: flex;
+      gap: 8px;
+    }
+
+    .recent-tile,
+    .gallery-tile {
+      display: block;
+      padding: 0;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px var(--chassis-edge), 0 2px 4px rgba(0,0,0,0.08);
+    }
+
+    .recent-tile {
+      width: 56px;
+      height: 56px;
+      min-width: 0;
+    }
+
+    .recent-tile img,
+    .gallery-tile img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* A text link rather than a key, so it doesn't compete with Create */
+    .recents-all {
+      padding: 6px 10px;
+      background: none;
+      box-shadow: none;
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: underline;
+    }
+
+    .app-dialog,
+    .gallery-dialog {
+      margin: auto; /* the global reset removes the centring */
+      border: none;
+      color: var(--ink);
+      background: var(--key);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .app-dialog::backdrop,
+    .gallery-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.35);
+    }
+
+    .app-dialog {
+      width: min(340px, calc(100vw - 32px));
+      padding: 20px;
+      border-radius: 16px;
+    }
+
+    .app-dialog h2,
+    .gallery-dialog h2 {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .app-dialog p {
+      margin-top: 6px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .dialog-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .dialog-actions button {
+      padding: 10px 14px;
+    }
+
+    /* Full screen on phones, a large panel on wider screens */
+    .gallery-dialog {
+      width: min(900px, calc(100vw - 32px));
+      height: min(720px, calc(100dvh - 32px));
+      padding: 16px;
+      border-radius: 16px;
+    }
+
+    .gallery-dialog[open] {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .gallery-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .gallery-head button {
+      padding: 8px 14px;
+    }
+
+    .gallery-empty {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      list-style: none;
+      overflow-y: auto;
+      padding: 2px 2px 8px;
+    }
+
+    .gallery-grid li {
+      position: relative;
+    }
+
+    .gallery-tile {
+      width: 100%;
+      aspect-ratio: 1;
+    }
+
+    .gallery-delete {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      min-width: 0;
+      width: 36px;
+      height: 36px;
+      padding: 8px;
+    }
+
+    .gallery-delete svg {
+      display: block;
+      width: 20px;
+      height: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .gallery-dialog {
+        width: 100vw;
+        max-width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+      }
     }
 
     /* No frame of its own: the canvas blends into the white area */
@@ -520,8 +693,9 @@
       padding: 8px 6px;
     }
 
-    /* Save spans the row when Share is hidden (no file sharing) */
-    .tools-grid.two-keys > :first-child:has(+ [hidden]) {
+    /* A key whose row partner is hidden spans the row (e.g. Export image
+       when the browser can't share files) */
+    .tools-grid.two-keys > :nth-child(odd):has(+ [hidden]) {
       grid-column: 1 / -1;
     }
 
@@ -1029,6 +1203,11 @@
             <div class="blank-cta" id="blank-cta">
               <button type="button" id="blank-cta-btn" class="cta-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>Create your first scrawlface</button>
               <p class="subtitle">Move the eyes, find the face, doodle on top</p>
+              <!-- Latest saved scrawlfaces (filled in by renderGallery) -->
+              <div class="recents needs-storage" id="recents" hidden>
+                <div class="recents-list" id="recents-list"></div>
+                <button type="button" class="recents-all gallery-open-btn">See all</button>
+              </div>
             </div>
           </div>
         </div>
@@ -1128,13 +1307,40 @@
 
           <div class="sidebar-section">
             <h3>Save</h3>
+            <!-- Save keeps the scrawlface in My scrawlfaces (this browser);
+                 Export downloads it as a PNG -->
             <div class="tools-grid two-keys">
-              <button type="button" id="save-btn" title="Save as PNG">Save image</button>
+              <button type="button" class="gallery-save-btn needs-storage" title="Save to My scrawlfaces" disabled>Save</button>
+              <button type="button" class="gallery-open-btn needs-storage" title="Your saved scrawlfaces">My scrawlfaces</button>
+              <button type="button" id="export-btn" title="Download as PNG">Export image</button>
               <button type="button" id="share-btn" class="share-btn" title="Share the image" hidden>Share</button>
             </div>
           </div>
         </aside>
       </section>
+
+      <!-- Leaving a scrawlface with unsaved changes (confirmLeave) -->
+      <dialog id="leave-dialog" class="app-dialog" aria-labelledby="leave-title">
+        <form method="dialog">
+          <h2 id="leave-title">Save this scrawlface?</h2>
+          <p>You've changed it since it was last saved.</p>
+          <div class="dialog-actions">
+            <button value="cancel">Cancel</button>
+            <button value="discard">Discard</button>
+            <button value="save" class="cta-button" autofocus>Save</button>
+          </div>
+        </form>
+      </dialog>
+
+      <!-- My scrawlfaces: the saved ones, newest first (renderGallery) -->
+      <dialog id="gallery-dialog" class="gallery-dialog" aria-labelledby="gallery-title">
+        <div class="gallery-head">
+          <h2 id="gallery-title">My scrawlfaces</h2>
+          <button type="button" id="gallery-close">Close</button>
+        </div>
+        <p class="gallery-empty" id="gallery-empty">Nothing saved yet. Tap Save to keep a scrawlface here.</p>
+        <ul class="gallery-grid" id="gallery-grid"></ul>
+      </dialog>
 
       <!-- Mobile bottom bar: a bottom sheet (see the CSS for its states) -->
       <div class="sheet-scrim" id="sheet-scrim"></div>
@@ -1158,6 +1364,19 @@
               </div>
 
               <div class="mobile-section">
+                <!-- Right under Scrawl, so Save is in view when the sheet opens
+                     on a short phone -->
+                <div class="mobile-section-label">Save</div>
+                <!-- Save stays open, so its "Saved" shows -->
+                <div class="tools-grid two-keys">
+                  <button type="button" class="mobile-control-btn gallery-save-btn needs-storage" disabled>Save</button>
+                  <button type="button" class="mobile-control-btn gallery-open-btn needs-storage closes-sheet">My scrawlfaces</button>
+                  <button type="button" id="export-btn-mobile" class="mobile-control-btn closes-sheet">Export image</button>
+                  <button type="button" id="share-btn-mobile" class="mobile-control-btn share-btn closes-sheet" hidden>Share</button>
+                </div>
+              </div>
+
+              <div class="mobile-section">
                 <div class="mobile-section-label">View</div>
                 <div class="tools-grid two-keys">
                   <button type="button" id="rotate-btn-mobile-controls" class="mobile-control-btn closes-sheet">Rotate</button>
@@ -1170,14 +1389,6 @@
                 <div class="tools-grid two-keys">
                   <button type="button" id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
-                </div>
-              </div>
-
-              <div class="mobile-section">
-                <div class="mobile-section-label">Save</div>
-                <div class="tools-grid two-keys">
-                  <button type="button" id="save-btn-mobile" class="mobile-control-btn closes-sheet">Save image</button>
-                  <button type="button" id="share-btn-mobile" class="mobile-control-btn share-btn closes-sheet" hidden>Share</button>
                 </div>
               </div>
             </div>
