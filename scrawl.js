@@ -532,6 +532,9 @@ function mousePressed(event) {
   // A second finger is a pinch, not another press
   if (pinch) return;
 
+  // Blank start: nothing to draw on until the first scrawl is created
+  if (document.getElementById('scrawl-container').classList.contains('is-blank')) return;
+
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
     const eyeIndex = findEyeAt(transformed.x, transformed.y);
