@@ -299,6 +299,7 @@ function generateScrawlface() {
   // Transparent, not white: the scrawl is drawn on top of the paint, so
   // the lines stay visible to follow (the canvas background is the white)
   baseScrawlGraphics.clear();
+  scrawlVersion++;
   strokeColor = getComplementaryColor(bgColor);
   baseScrawlGraphics.stroke(strokeColor);
   baseScrawlGraphics.strokeWeight(scrawlStrokeWeight);
@@ -2036,12 +2037,25 @@ function canvasToBlob(canvasEl, type) {
   return new Promise(resolve => canvasEl.toBlob(resolve, type, 0.85));
 }
 
+// The scrawl layer as a PNG. It doesn't change while a scrawlface is being
+// worked on, so it's encoded once (per scrawlVersion) instead of on every
+// draft and save.
+let scrawlVersion = 0; // bumped whenever the scrawl layer is replaced
+let scrawlBlobCache = null; // { version, blob: Promise }
+
+function scrawlBlob() {
+  if (!scrawlBlobCache || scrawlBlobCache.version !== scrawlVersion) {
+    scrawlBlobCache = { version: scrawlVersion, blob: canvasToBlob(baseScrawlGraphics.elt, 'image/png') };
+  }
+  return scrawlBlobCache.blob;
+}
+
 // Everything needed to carry on with the current scrawlface. The layers are
 // read when this is called, so changes made while it encodes aren't mixed in.
 async function captureScrawlface(withThumb) {
   finishScrawlDrawIn();
   const record = {
-    scrawl: canvasToBlob(baseScrawlGraphics.elt, 'image/png'),
+    scrawl: scrawlBlob(),
     drawing: canvasToBlob(drawingGraphics.elt, 'image/png'),
     eyes: eyePositions.map(pos => ({ ...pos })),
     eyeStyles: [...eyeStyles],
@@ -2076,6 +2090,7 @@ async function restoreScrawlface(record) {
 
   scrawlQueue = [];
   baseScrawlGraphics.clear();
+  scrawlVersion++;
   baseScrawlGraphics.drawingContext.drawImage(scrawl, 0, 0);
   drawingGraphics.clear();
   // Centred: scrawlfaces saved before the paint layer grew past the scrawl

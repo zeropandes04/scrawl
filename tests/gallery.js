@@ -58,6 +58,23 @@ async function run(label, contextOpts) {
   await page.waitForFunction(() => scrawlQueue.length === 0);
   check('new scrawl can be saved', await ev(() => !document.querySelector('.gallery-save-btn').disabled));
 
+  // The scrawl's PNG is encoded once per scrawl, and a new scrawl gets its own
+  const scrawlCache = await ev(async () => {
+    const a = scrawlBlob(), b = scrawlBlob();
+    const before = await a;
+    generateScrawlface(); finishScrawlDrawIn();
+    const after = await scrawlBlob();
+    // the new blob shows the new scrawl: decode it and compare with the layer
+    const bmp = await createImageBitmap(after);
+    const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+    const ctx = c.getContext('2d'); ctx.drawImage(bmp, 0, 0);
+    const got = ctx.getImageData(0, 0, c.width, c.height).data;
+    const want = baseScrawlGraphics.drawingContext.getImageData(0, 0, c.width, c.height).data;
+    let diff = 0; for (let i = 3; i < got.length; i += 4) if (Math.abs(got[i] - want[i]) > 2) diff++;
+    return { reused: a === b, replaced: before !== after, diff };
+  });
+  check('scrawl PNG reused, and replaced on New', scrawlCache.reused && scrawlCache.replaced && scrawlCache.diff === 0, JSON.stringify(scrawlCache));
+
   // Double-tapping Save must make one entry, not two
   // (the database is slowed down so the two saves overlap, as on a slow phone)
   await ev(() => {
