@@ -1510,6 +1510,64 @@
       }
     }
 
+    /* ---- Touch screens: Apple's 44 x 44pt minimum tap target ----
+       Phones, and tablets that get the sidebar. With a mouse the smaller
+       keys above stay (desktop guidelines allow smaller targets). */
+    @media (pointer: coarse) {
+      /* Loops fader: the whole 44px row takes the drag */
+      input[type="range"] {
+        height: 44px;
+      }
+
+      /* Phone options strip: 44px chips (the row grows to fit them and
+         their selected ring) */
+      .strip-row {
+        height: 56px;
+      }
+
+      .strip-scroll .swatch,
+      .strip-scroll .eye-set-btn {
+        width: 44px;
+        height: 44px;
+      }
+
+      /* Grab handle: 30px, plus the 14px above it (::after) = 44px */
+      .sheet-handle {
+        height: 30px;
+      }
+
+      /* Sidebar on tablets: six 44px keys a row. A little less padding and
+         gap makes room in the 320px sidebar; colours go 6 a row */
+      .sidebar {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .eye-set-grid,
+      .size-keys,
+      .swatches {
+        gap: 4px;
+      }
+
+      .eye-set-grid button,
+      .size-key {
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      .swatches {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+
+    /* Phones by touch: the bar above is 10px taller (strip + handle), so
+       the canvas card keeps 10px more clear of it */
+    @media (max-width: 768px) and (pointer: coarse) {
+      .canvas-section {
+        margin-bottom: calc(166px + env(safe-area-inset-bottom));
+      }
+    }
+
     /* Respect the OS "reduce motion" setting: no transitions or animations
        (the scrawl draw-in is skipped in scrawl.js too) */
     @media (prefers-reduced-motion: reduce) {
