@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=49"></script>
+  <script src="scrawl.js?v=50"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -575,6 +575,71 @@
       text-transform: none;
     }
 
+    /* Making a scrawl is set apart from the tools: a rule under it */
+    .scrawl-section {
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--chassis-edge);
+    }
+
+    /* Loops: an advanced setting, folded into one line ("Loops for the
+       next scrawl: 10 >") that opens to the fader. The whole line is the
+       target: 32px with a mouse, 44px on touch screens (below). */
+    .loops-setting summary {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 32px;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--muted);
+      cursor: pointer;
+      list-style: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* On touch screens the line is a full 44px finger target */
+    @media (pointer: coarse) {
+      .loops-setting summary {
+        min-height: 44px;
+      }
+    }
+
+    .loops-setting summary::-webkit-details-marker {
+      display: none;
+    }
+
+    /* A chevron after the value, turning down when open */
+    .loops-setting summary::after {
+      content: '';
+      width: 6px;
+      height: 6px;
+      margin-left: 2px;
+      border-right: 1.5px solid currentColor;
+      border-bottom: 1.5px solid currentColor;
+      transform: rotate(-45deg);
+      transition: transform 0.15s;
+    }
+
+    .loops-setting[open] summary::after {
+      transform: rotate(45deg);
+    }
+
+    .loops-setting summary:focus-visible {
+      outline: 2px solid var(--focus);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    .loops-setting .fader-row {
+      margin: 4px 0 8px;
+    }
+
+    /* In the sheet, a little room between New scrawl and the loops line */
+    .mobile-section .loops-setting {
+      margin-top: 6px;
+    }
+
     /* Info box: a tip next to a key, as tall as the key. Recessed into the
        panel (not raised like a key) so it doesn't read as a button. */
     .info-box {
@@ -1006,14 +1071,13 @@
       display: block;
     }
 
-    /* Full-width New scrawl key under the intensity fader in the sheet */
+    /* Full-width New scrawl key in the sheet, the loops folded below it */
     .new-scrawl-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
-      margin-top: 10px;
     }
 
     .mobile-control-btn {
@@ -1446,6 +1510,64 @@
       }
     }
 
+    /* ---- Touch screens: Apple's 44 x 44pt minimum tap target ----
+       Phones, and tablets that get the sidebar. With a mouse the smaller
+       keys above stay (desktop guidelines allow smaller targets). */
+    @media (pointer: coarse) {
+      /* Loops fader: the whole 44px row takes the drag */
+      input[type="range"] {
+        height: 44px;
+      }
+
+      /* Phone options strip: 44px chips (the row grows to fit them and
+         their selected ring) */
+      .strip-row {
+        height: 56px;
+      }
+
+      .strip-scroll .swatch,
+      .strip-scroll .eye-set-btn {
+        width: 44px;
+        height: 44px;
+      }
+
+      /* Grab handle: 30px, plus the 14px above it (::after) = 44px */
+      .sheet-handle {
+        height: 30px;
+      }
+
+      /* Sidebar on tablets: six 44px keys a row. A little less padding and
+         gap makes room in the 320px sidebar; colours go 6 a row */
+      .sidebar {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      .eye-set-grid,
+      .size-keys,
+      .swatches {
+        gap: 4px;
+      }
+
+      .eye-set-grid button,
+      .size-key {
+        min-width: 44px;
+        min-height: 44px;
+      }
+
+      .swatches {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+
+    /* Phones by touch: the bar above is 10px taller (strip + handle), so
+       the canvas card keeps 10px more clear of it */
+    @media (max-width: 768px) and (pointer: coarse) {
+      .canvas-section {
+        margin-bottom: calc(166px + env(safe-area-inset-bottom));
+      }
+    }
+
     /* Respect the OS "reduce motion" setting: no transitions or animations
        (the scrawl draw-in is skipped in scrawl.js too) */
     @media (prefers-reduced-motion: reduce) {
@@ -1485,16 +1607,18 @@
         </div>
 
         <aside class="sidebar" aria-label="Tools">
-          <div class="sidebar-section">
+          <!-- Making a scrawl, set apart from the tools below: New scrawl,
+               then its advanced setting, the loops (folded away) -->
+          <div class="sidebar-section scrawl-section">
             <h3>Scrawl</h3>
             <button id="generate-btn" class="cta-button" title="Generate a new scrawl (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
-            <div class="control-group">
-              <label for="intensity-slider">Loops (applies to the next scrawl)</label>
+            <details class="loops-setting">
+              <summary>Loops for the next scrawl: <span class="loops-value">10</span></summary>
               <div class="fader-row">
-                <input type="range" id="intensity-slider" min="1" max="25" value="10" step="1">
+                <input type="range" id="intensity-slider" min="1" max="25" value="10" step="1" aria-label="Loops in the next scrawl">
                 <span class="lcd" id="intensity-value">10</span>
               </div>
-            </div>
+            </details>
           </div>
 
           <div class="sidebar-section">
@@ -1561,19 +1685,19 @@
           </div>
 
           <div class="sidebar-section">
-            <h3>View</h3>
-            <div class="tools-grid two-keys">
-              <button type="button" id="rotate-btn" title="Rotate 90°">Rotate</button>
-              <button type="button" id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide lines</button>
-            </div>
-          </div>
-
-          <div class="sidebar-section">
             <h3>History</h3>
             <div class="tools-grid history-keys">
               <button type="button" id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
               <button type="button" id="undo-btn" class="arrow-key" title="Undo (⌘Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
               <button type="button" id="redo-btn" class="arrow-key" title="Redo (⌘⇧Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Redo</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>View</h3>
+            <div class="tools-grid two-keys">
+              <button type="button" id="rotate-btn" title="Rotate 90°">Rotate</button>
+              <button type="button" id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide lines</button>
             </div>
           </div>
 
@@ -1656,15 +1780,17 @@
           <div class="sheet-inner">
             <div class="sheet-content">
               <div class="mobile-section">
-                <!-- Same pairing as the sidebar: the intensity applies to the
-                     next scrawl, so New sits right under it -->
+                <!-- Same as the sidebar: New scrawl, then the loops for the
+                     next one (folded away) -->
                 <div class="mobile-section-label">Scrawl</div>
-                <label class="hint" for="intensity-slider-mobile">Loops</label>
-                <div class="fader-row">
-                  <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1">
-                  <span class="lcd" id="intensity-value-mobile">10</span>
-                </div>
                 <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
+                <details class="loops-setting">
+                  <summary>Loops for the next scrawl: <span class="loops-value">10</span></summary>
+                  <div class="fader-row">
+                    <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1" aria-label="Loops in the next scrawl">
+                    <span class="lcd" id="intensity-value-mobile">10</span>
+                  </div>
+                </details>
               </div>
 
               <!-- Rotate is two fingers on the canvas here; Undo and Redo sit in
@@ -1672,8 +1798,8 @@
               <div class="mobile-section">
                 <div class="mobile-section-label">Drawing</div>
                 <div class="tools-grid two-keys">
-                  <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet">Hide lines</button>
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
+                  <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet">Hide lines</button>
                 </div>
               </div>
 
