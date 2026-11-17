@@ -33,6 +33,27 @@ async function run(label, contextOpts) {
   page.on('dialog', d => d.accept());
   if (p5src) await page.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
   await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+  // Before setup() runs, the page already shows the default tool's options
+  // (Eyes), so nothing switches when the script starts. The font stylesheet
+  // is held back: it delays the load event, which is when p5 runs setup().
+  {
+    const early = await ctx.newPage();
+    if (p5src) await early.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
+    await early.route('https://fonts.googleapis.com/**', async r => { await new Promise(res => setTimeout(res, 2000)); r.fulfill({ body: '', contentType: 'text/css' }); });
+    early.goto('file://' + path.join(repo, 'index.html')).catch(() => {});
+    await early.waitForSelector('.tool-keys', { state: 'attached' });
+    await early.waitForTimeout(300);
+    const seen = await early.evaluate(() => {
+      const shown = el => !!el && el.getClientRects().length > 0;
+      const q = s => document.querySelector(s);
+      return { setupRan: typeof drawingGraphics !== 'undefined',
+        sizes: shown(q('.sidebar .size-keys')) || shown(q('[data-strip="sizes"]')),
+        colours: shown(q('.sidebar .swatches')) || shown(q('[data-strip="colours"]')),
+        eyes: shown(q('.sidebar [data-for="eyes"]')) || shown(q('[data-strip="eyes"]')) };
+    });
+    check('before the script starts, only the Eyes options show', !seen.setupRan && seen.eyes && !seen.sizes && !seen.colours, JSON.stringify(seen));
+    await early.close();
+  }
   await page.goto('file://' + path.join(repo, 'index.html'));
   // The app opens on a blank start: create the first scrawl from its button
   await page.waitForFunction(() => typeof drawingGraphics !== 'undefined');
