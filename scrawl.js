@@ -93,7 +93,7 @@ const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
 
-let intensity = 10;
+let intensity = 15; // loops in the next scrawl (the faders go 1-30)
 let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
 let brushSize = 32; // the biggest size key: bold strokes from the start
 let brushColor = '#000000';
@@ -104,7 +104,7 @@ let brushSizesShown = false; // mobile strip: brush sizes instead of colours
 let scrawlQueue = [];
 // The draw-in takes a short fixed start plus a little per segment, so a
 // simple scrawl appears quickly and a dense one takes longer
-// (at 60fps: intensity 1 ~0.3s, 10 ~0.6s, 25 ~1.1s)
+// (at 60fps: intensity 1 ~0.3s, 15 ~0.75s, 30 ~1.25s)
 const scrawlDrawInBaseFrames = 15;
 const scrawlDrawInFramesPerSegment = 2;
 let scrawlDrawInRate = 0;      // segments per frame (can be a fraction)

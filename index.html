@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=57"></script>
+  <script src="scrawl.js?v=58"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1671,10 +1671,10 @@
             <h3>Scrawl</h3>
             <button id="generate-btn" class="cta-button" title="Generate a new scrawl (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
             <details class="loops-setting">
-              <summary>Loops for the next scrawl: <span class="loops-value">10</span></summary>
+              <summary>Loops for the next scrawl: <span class="loops-value">15</span></summary>
               <div class="fader-row">
-                <input type="range" id="intensity-slider" min="1" max="25" value="10" step="1" aria-label="Loops in the next scrawl">
-                <span class="lcd" id="intensity-value">10</span>
+                <input type="range" id="intensity-slider" min="1" max="30" value="15" step="1" aria-label="Loops in the next scrawl">
+                <span class="lcd" id="intensity-value">15</span>
               </div>
             </details>
           </div>
@@ -1843,10 +1843,10 @@
                 <div class="mobile-section-label">Scrawl</div>
                 <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
                 <details class="loops-setting">
-                  <summary>Loops for the next scrawl: <span class="loops-value">10</span></summary>
+                  <summary>Loops for the next scrawl: <span class="loops-value">15</span></summary>
                   <div class="fader-row">
-                    <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1" aria-label="Loops in the next scrawl">
-                    <span class="lcd" id="intensity-value-mobile">10</span>
+                    <input type="range" id="intensity-slider-mobile" min="1" max="30" value="15" step="1" aria-label="Loops in the next scrawl">
+                    <span class="lcd" id="intensity-value-mobile">15</span>
                   </div>
                 </details>
               </div>
