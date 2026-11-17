@@ -209,20 +209,10 @@ function setup() {
   select("#redo-btn").mousePressed(redo);
   select("#redo-btn-mobile").mousePressed(redo);
 
-  // Loops faders (sidebar and sheet) stay in sync, with their folded
-  // "Loops: n" lines. The value only applies at the next Generate.
+  // Loops faders (sidebar and sheet); see setLoops
   ['intensity-slider', 'intensity-slider-mobile'].forEach(id => {
     const slider = document.getElementById(id);
-    slider.addEventListener('input', () => {
-      intensity = parseInt(slider.value);
-      ['', '-mobile'].forEach(suffix => {
-        document.getElementById('intensity-slider' + suffix).value = intensity;
-        document.getElementById('intensity-value' + suffix).textContent = intensity;
-      });
-      // The folded "Loops: n" lines
-      document.querySelectorAll('.loops-value').forEach(el => { el.textContent = intensity; });
-      tickLcd(id.replace('slider', 'value'));
-    });
+    slider.addEventListener('input', () => setLoops(parseInt(slider.value)));
   });
 
   // Tool, size and colour keys, Share
@@ -234,12 +224,11 @@ function setup() {
   // Eye set keys (desktop and mobile share data-eye-set)
   setupEyeSetButtons();
 
-  // A short buzz when a control key is tapped, so the keys feel physical.
-  // Android Chrome only; other browsers have no navigator.vibrate.
+  // A short buzz when a control key is tapped, so the keys feel physical
   document.addEventListener('pointerdown', (e) => {
-    if (e.pointerType !== 'touch' || !navigator.vibrate) return;
+    if (e.pointerType !== 'touch') return;
     const key = e.target.closest('.sidebar button, .bottom-toolbar button');
-    if (key && !key.disabled) navigator.vibrate(8);
+    if (key && !key.disabled) haptic('tap');
   });
 
   // The app opens on a blank canvas with a "create" call to action
@@ -445,6 +434,19 @@ function drawScrawlSegments(count) {
 // a fill started mid-animation would leak through lines not drawn yet.
 function finishScrawlDrawIn() {
   drawScrawlSegments(scrawlQueue.length);
+}
+
+// Loops in the next scrawl (1-30). Keeps both faders, their readouts and
+// the folded "Loops: n" lines in sync. Only applies at the next New.
+function setLoops(n) {
+  intensity = constrain(Math.round(n), 1, 30);
+  ['', '-mobile'].forEach(suffix => {
+    document.getElementById('intensity-slider' + suffix).value = intensity;
+    document.getElementById('intensity-value' + suffix).textContent = intensity;
+    tickLcd('intensity-value' + suffix);
+  });
+  document.querySelectorAll('.loops-value').forEach(el => { el.textContent = intensity; });
+  stateChanged();
 }
 
 // Flashes an intensity readout so the change is noticed
@@ -798,7 +800,7 @@ function startLinesPeek() {
   if (pinch || draggedEyeIndex !== -1) return;
   cancelPressMark();
   peekingLines = true;
-  if (navigator.vibrate) navigator.vibrate(15);
+  haptic('hold');
   redrawCanvas();
 }
 
@@ -1294,17 +1296,11 @@ function setupEyeSetButtons() {
     img.src = previews[set];
     img.alt = '';
     btn.prepend(img);
-    btn.addEventListener('click', () => {
-      setEyeStyles(eyeSets[set]);
-      markChanged();
-    });
+    btn.addEventListener('click', () => pickEyeSet(set));
   });
 
   document.querySelectorAll('.mix-eyes-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      mixEyes();
-      markChanged();
-    });
+    btn.addEventListener('click', mixEyes);
   });
 
   updateEyeSetButtons();
@@ -1320,6 +1316,15 @@ function mixEyes() {
     pair = shuffle(styles).slice(0, 2);
   } while (pair[0] === eyeStyles[0] && pair[1] === eyeStyles[1]);
   setEyeStyles(pair);
+  markChanged();
+}
+
+// The user picks one of the eye sets (eyeSets) for both eyes. A change to
+// the scrawlface, unlike setEyeStyles on its own (also used when opening
+// a saved one).
+function pickEyeSet(name) {
+  setEyeStyles(eyeSets[name]);
+  markChanged();
 }
 
 function setEyeStyles(styles) {
@@ -1336,6 +1341,7 @@ function updateEyeSetButtons() {
     btn.classList.toggle('active', on);
     btn.setAttribute('aria-pressed', on);
   });
+  stateChanged();
 }
 
 function rotateCanvas() {
@@ -1385,26 +1391,48 @@ function exportImage() {
   return out;
 }
 
+// The picture as a PNG: what Share and Download give, and what a native
+// shell would hand to its own share sheet or Photos. Resolves null if the
+// browser couldn't encode it.
+function exportPNG() {
+  return new Promise(resolve => exportImage().toBlob(resolve, 'image/png'));
+}
+
 // Saves the image as a PNG file (desktop)
 function downloadImage() {
-  exportImage().toBlob(blob => {
-    if (!blob) return; // the browser couldn't encode the image
+  exportPNG().then(blob => {
+    if (!blob) return;
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = 'scrawlface.png';
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-  }, 'image/png');
+  });
 }
 
 // Hands the image to the phone's share sheet (messages, socials, ...)
 function shareImage() {
-  exportImage().toBlob(blob => {
-    if (!blob) return; // the browser couldn't encode the image
+  exportPNG().then(blob => {
+    if (!blob) return;
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
     // Rejects when the share sheet is dismissed - nothing to do then
     navigator.share({ files: [file] }).catch(() => {});
-  }, 'image/png');
+  });
+}
+
+// ---- Swap points for a native shell ----
+// Each browser-only feature goes through one function, so a native shell
+// replaces one function per feature (see plans/native-shell-readiness.md).
+
+// A short buzz: 'tap' for a key, 'hold' for a touch-and-hold. Android
+// Chrome only; iPhones have no navigator.vibrate (a shell uses haptics).
+function haptic(kind) {
+  if (navigator.vibrate) navigator.vibrate(kind === 'hold' ? 15 : 8);
+}
+
+// Something went wrong that the user should know about
+function showError(message) {
+  alert(message);
 }
 
 function toggleEyes() {
@@ -1420,6 +1448,7 @@ function updateScrawlToggleButtons() {
   const label = showScrawl ? "Hide lines" : "Show lines";
   select("#toggle-eyes-btn").html(label);
   select("#toggle-eyes-btn-mobile").html(label);
+  stateChanged();
 }
 
 // ---- Tools ----
@@ -1500,10 +1529,12 @@ function setButtonsDisabled(ids, disabled) {
 
 function enableClearButton() {
   setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], false);
+  stateChanged();
 }
 
 function disableClearButton() {
   setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], true);
+  stateChanged();
 }
 
 // startX/startY are a position on the drawing (see getTransformedCoords).
@@ -1845,6 +1876,7 @@ function drawingBounds() {
 function updateUndoRedoButtons() {
   setButtonsDisabled(['undo-btn', 'undo-btn-mobile'], historyStack.length === 0);
   setButtonsDisabled(['redo-btn', 'redo-btn-mobile'], redoStack.length === 0);
+  stateChanged();
 }
 
 function clearHistory() {
@@ -1863,27 +1895,14 @@ function setupToolbar() {
   // Size keys set the size of the tool in use (they show for brush and eraser)
   document.querySelectorAll('[data-size]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const size = parseInt(btn.dataset.size);
-      if (eraseMode) {
-        eraserSize = size;
-      } else {
-        brushSize = size;
-      }
       brushSizesShown = false; // mobile: back to the colours
-      setBrushCursor();
-      updateToolButtons();
+      const size = parseInt(btn.dataset.size);
+      eraseMode ? setEraserSize(size) : setBrushSize(size);
     });
   });
 
   document.querySelectorAll('[data-color]').forEach(swatch => {
-    swatch.addEventListener('click', () => {
-      brushColor = swatch.dataset.color;
-      document.querySelectorAll('[data-color]').forEach(s => {
-        s.classList.toggle('selected', s.dataset.color === brushColor);
-      });
-      // Size dots and the mobile colour chip are drawn in the brush colour
-      document.documentElement.style.setProperty('--brush-color', brushColor);
-    });
+    swatch.addEventListener('click', () => setBrushColor(swatch.dataset.color));
   });
 
   // Mobile strip, brush only: the leading chip swaps between the colours
@@ -1936,6 +1955,30 @@ function setupToolbar() {
   });
 }
 
+// Brush and eraser sizes (in units; the size keys offer 4-32)
+function setBrushSize(size) {
+  brushSize = size;
+  if (drawMode) setBrushCursor();
+  updateToolButtons();
+}
+
+function setEraserSize(size) {
+  eraserSize = size;
+  if (eraseMode) setBrushCursor();
+  updateToolButtons();
+}
+
+// The paint colour for the brush and fill (#RRGGBB)
+function setBrushColor(hex) {
+  brushColor = hex;
+  document.querySelectorAll('[data-color]').forEach(s => {
+    s.classList.toggle('selected', s.dataset.color === brushColor);
+  });
+  // Size dots and the mobile colour chip are drawn in the brush colour
+  document.documentElement.style.setProperty('--brush-color', brushColor);
+  stateChanged();
+}
+
 // Reflects the selected tool and its size on every key, and shows only the
 // options that apply to it
 function updateToolButtons() {
@@ -1971,6 +2014,7 @@ function updateToolButtons() {
   document.querySelectorAll('[data-strip]').forEach(row => {
     row.hidden = row.dataset.strip !== strip;
   });
+  stateChanged();
 }
 
 // Mobile bottom sheet. Collapsed it shows the options strip and the tool
@@ -2070,6 +2114,7 @@ function leaveBlankStart() {
   document.body.classList.remove('is-blank');
   setButtonsDisabled(['rotate-btn', 'toggle-eyes-btn', 'toggle-eyes-btn-mobile',
                       'save-more-btn', 'image-btn', 'image-btn-mobile'], false);
+  stateChanged();
 }
 
 function isBlankStart() {
@@ -2271,6 +2316,7 @@ function updateGallerySaveButtons() {
   document.querySelectorAll('.gallery-save-btn').forEach(btn => {
     btn.disabled = !canSave;
   });
+  stateChanged();
 }
 
 function flashSaved() {
@@ -2300,7 +2346,7 @@ function confirmLeave() {
           await saveToGallery();
           resolve(true);
         } catch (e) {
-          alert('Sorry, this scrawlface couldn\'t be saved.');
+          showError('Sorry, this scrawlface couldn\'t be saved.');
           resolve(false);
         }
       } else {
@@ -2324,7 +2370,7 @@ async function openFromGallery(id) {
   try {
     await restoreScrawlface(record);
   } catch (e) {
-    alert('Sorry, this scrawlface couldn\'t be opened.');
+    showError('Sorry, this scrawlface couldn\'t be opened.');
     return;
   }
   scrawlfaceToken++;
@@ -2380,7 +2426,7 @@ async function renderGallery() {
     // Touch shortcut, as in phone photo galleries: press and hold to pick
     addLongPress(tile, () => {
       if (!gallerySelection || !gallerySelection.has(record.id)) toggleGalleryPick(record.id);
-      if (navigator.vibrate) navigator.vibrate(15);
+      haptic('hold');
     });
     // A tap opens it, or in select mode picks / unpicks it
     tile.addEventListener('click', () => {
@@ -2574,7 +2620,7 @@ async function deleteSelected() {
 
 function setupGallery() {
   document.querySelectorAll('.gallery-save-btn').forEach(btn => btn.addEventListener('click', () => {
-    saveToGallery().catch(() => alert('Sorry, this scrawlface couldn\'t be saved.'));
+    saveToGallery().catch(() => showError('Sorry, this scrawlface couldn\'t be saved.'));
   }));
   document.querySelectorAll('.gallery-open-btn').forEach(btn => btn.addEventListener('click', openGallery));
   document.getElementById('gallery-close').addEventListener('click', () => {
@@ -2591,7 +2637,7 @@ function setupGallery() {
     }
     saveToGallery()
       .then(renderGallery)
-      .catch(() => alert('Sorry, this scrawlface couldn\'t be saved.'));
+      .catch(() => showError('Sorry, this scrawlface couldn\'t be saved.'));
   });
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode
@@ -2637,3 +2683,62 @@ function setupGallery() {
     })
     .catch(() => document.body.classList.add('no-storage'));
 }
+
+// ---- For a native shell: the app's state and the functions to drive it ----
+// A shell draws its own controls and talks to the page through
+// window.scrawlface (see plans/native-shell-readiness.md). The web keys use
+// the same functions.
+
+// What any toolbar needs to show
+function appState() {
+  return {
+    tool: currentTool(),
+    brushSize,
+    eraserSize,
+    brushColor,
+    loops: intensity,
+    eyeStyles: [...eyeStyles],
+    linesShown: showScrawl,
+    canUndo: historyStack.length > 0,
+    canRedo: redoStack.length > 0,
+    hasDrawings,
+    blankStart: isBlankStart(),
+    unsavedChanges: hasUnsavedChanges(),
+    saved: galleryId !== null
+  };
+}
+
+// Listeners get appState() after something changed. A burst of changes
+// (an undo updates several keys) is reported once.
+const stateListeners = [];
+let stateChangePending = false;
+
+function stateChanged() {
+  if (stateChangePending || stateListeners.length === 0) return;
+  stateChangePending = true;
+  queueMicrotask(() => {
+    stateChangePending = false;
+    const state = appState();
+    stateListeners.forEach(fn => fn(state));
+  });
+}
+
+// Returns a function that stops listening
+function onStateChange(fn) {
+  stateListeners.push(fn);
+  return () => {
+    const i = stateListeners.indexOf(fn);
+    if (i !== -1) stateListeners.splice(i, 1);
+  };
+}
+
+window.scrawlface = {
+  appState, onStateChange,
+  newScrawl: requestNewScrawl,
+  setTool, setBrushSize, setEraserSize, setBrushColor, setLoops,
+  eyeSets: Object.keys(eyeSets), pickEyeSet, mixEyes,
+  undo, redo, clear: clearDrawings,
+  rotate: rotateCanvas, toggleLines: toggleEyes,
+  save: saveToGallery, listGallery, openFromGallery,
+  exportPNG
+};

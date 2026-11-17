@@ -357,6 +357,52 @@ async function run(label, contextOpts) {
   check('turned + background fill: corners painted, same size', ex.size[0] === 1080 && ex.size[1] === 1350 && ex.corners.every(green), JSON.stringify(ex));
   await ev('rotation = 0; redrawCanvas()');
 
+  // ---- Driving the app through window.scrawlface only (what a native shell does) ----
+  const api = await ev(async () => {
+    const sf = window.scrawlface;
+    const seen = [];
+    const stop = sf.onStateChange(st => seen.push(st));
+    const tick = () => new Promise(r => setTimeout(r, 0));
+    sf.setTool('brush'); sf.setBrushColor('#CC0000'); sf.setBrushSize(8); sf.setLoops(40);
+    await tick();
+    const afterSet = sf.appState();
+    const burst = seen.length; // several changes, reported once
+    sf.clear();
+    // paint a stroke as a press would, then undo it
+    beginStroke(); isDrawing = true; pressChangedDrawing = true; drawingGraphics.fill(brushColor); dab(100, 100, brushSize); strokeLength = 99; hasDrawings = true; mouseReleased();
+    sf.undo(); await tick();
+    const afterUndo = sf.appState();
+    sf.redo(); sf.pickEyeSet('cat'); await tick();
+    const afterEyes = sf.appState();
+    const png = await sf.exportPNG();
+    const bmp = await createImageBitmap(png);
+    stop(); sf.mixEyes(); await tick();
+    return { afterSet, burst, afterUndo, afterEyes, png: [png.type, bmp.width, bmp.height], stoppedListening: seen.length };
+  });
+  check('API: tool, colour, size, loops (clamped)', api.afterSet.tool === 'brush' && api.afterSet.brushColor === '#CC0000' &&
+    api.afterSet.brushSize === 8 && api.afterSet.loops === 30, JSON.stringify(api.afterSet));
+  check('API: a burst of changes is reported once', api.burst === 1, String(api.burst));
+  check('API: undo / redo state', api.afterUndo.canRedo && !api.afterUndo.hasDrawings, JSON.stringify(api.afterUndo));
+  check('API: eye set marks the scrawlface changed', api.afterEyes.eyeStyles.join() === 'cat,cat' && api.afterEyes.unsavedChanges, JSON.stringify(api.afterEyes));
+  check('API: exportPNG gives the 1080x1350 picture; listeners can stop', api.png.join() === 'image/png,1080,1350' && api.stoppedListening === api.burst + 2, JSON.stringify(api));
+  await ev(() => { window.scrawlface.setLoops(15); window.scrawlface.setBrushSize(32); window.scrawlface.setBrushColor('#000000'); });
+
+  // The web keys go through the same functions: a real click still works
+  await ev(() => setTool('brush'));
+  if (mobile) {
+    await page.click('[data-strip="colours"] [data-color="#006635"]');
+    await page.click('#size-chip');
+    await page.click('[data-strip="sizes"] [data-size="12"]');
+  } else {
+    await page.click('.sidebar [data-color="#006635"]');
+    await page.click('.sidebar [data-size="12"]');
+  }
+  const clicked = await ev(() => ({ color: brushColor, size: brushSize,
+    marked: [...document.querySelectorAll('[data-color].selected')].map(b => b.dataset.color) }));
+  check('size and colour keys still work by click', clicked.color === '#006635' && clicked.size === 12 &&
+    clicked.marked.every(c => c === '#006635'), JSON.stringify(clicked));
+  await ev(() => { window.scrawlface.setBrushSize(32); window.scrawlface.setBrushColor('#000000'); setTool('eyes'); });
+
   check('no page errors', errors.length === 0, errors.join(' | '));
   await page.screenshot({ path: path.join(shotsDir, `${label}.png`) });
   await browser.close();
