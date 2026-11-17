@@ -112,14 +112,21 @@ async function run(label, contextOpts) {
   // Loops: folded away by default; opened, its fader sets the next scrawl's loops
   const loopsId = mobile ? '#intensity-slider-mobile' : '#intensity-slider';
   const folded = await ev(() => [...document.querySelectorAll('.loops-setting')].every(d => !d.open));
+  const loopsDefaults = await ev(() => ({ intensity, sliders: [...document.querySelectorAll('input[type=range]')].map(r => [r.min, r.max, r.value].join('/')),
+    lines: [...document.querySelectorAll('.loops-value, .lcd')].map(e => e.textContent) }));
+  check('Loops go 1-30 and start at 15', loopsDefaults.intensity === 15 && loopsDefaults.sliders.every(t => t === '1/30/15') &&
+    loopsDefaults.lines.every(t => t === '15'), JSON.stringify(loopsDefaults));
   if (mobile) { await page.click('#toggle-mobile-menu'); await page.waitForTimeout(400); }
   const summary = page.locator('.loops-setting summary').nth(mobile ? 1 : 0);
   await summary.click();
+  await page.locator(loopsId).fill('30');
+  const max30 = await ev(() => (generateScrawlface(), scrawlQueue.length));
+  check('a 30-loop scrawl has 30 segments', max30 === 30, String(max30));
   await page.locator(loopsId).fill('4');
-  const loops = await ev(() => ({ intensity, lines: [...document.querySelectorAll('.loops-value')].map(e => e.textContent),
+  const loops4 = await ev(() => ({ intensity, lines: [...document.querySelectorAll('.loops-value')].map(e => e.textContent),
     segments: (generateScrawlface(), scrawlQueue.length) }));
-  check('Loops folded by default; fader sets the next scrawl', folded && loops.intensity === 4 && loops.lines.every(t => t === '4') && loops.segments === 4, JSON.stringify(loops));
-  await page.locator(loopsId).fill('10');
+  check('Loops folded by default; fader sets the next scrawl', folded && loops4.intensity === 4 && loops4.lines.every(t => t === '4') && loops4.segments === 4, JSON.stringify(loops4));
+  await page.locator(loopsId).fill('15'); // back to the default
   await summary.click(); // fold it again
   if (mobile) { await page.click('#toggle-mobile-menu'); await page.waitForTimeout(400); }
   await page.waitForFunction(() => scrawlQueue.length === 0);
