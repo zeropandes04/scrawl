@@ -311,6 +311,7 @@ function generateScrawlface() {
   scrawlDrawInRate = scrawlQueue.length /
     (scrawlDrawInBaseFrames + scrawlDrawInFramesPerSegment * scrawlQueue.length);
   scrawlDrawInProgress = 0;
+  loop(); // draw() animates the draw-in
   // Reduced motion: draw the whole scrawl straight away
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     finishScrawlDrawIn();
@@ -472,10 +473,6 @@ function draw() {
     return;
   }
 
-  if (!drawMode && !eraseMode && !bucketMode && moveEyesMode && !mouseIsPressed) {
-    updateCursor();
-  }
-
   if ((drawMode || eraseMode) && isDrawing && mouseIsPressed && isMouseInCanvas()) {
     const current = getTransformedCoords(mouseX, mouseY);
     // On the first frame of a touch stroke pmouseX/Y still hold the previous
@@ -530,6 +527,14 @@ function draw() {
 
     redrawCanvas();
   }
+
+  // Nothing to animate or follow: stop the frame loop, so an idle page costs
+  // nothing (60 wake-ups a second otherwise). Whatever starts something
+  // calls loop() again: a press (mousePressed) and New (the draw-in). Pinch,
+  // undo, fill, the keys and opening a scrawlface redraw directly.
+  if (scrawlQueue.length === 0 && !mouseIsPressed && draggedEyeIndex === -1 && !isDrawing) {
+    noLoop();
+  }
 }
 
 // One round mark of the brush or eraser at a position on the drawing (the
@@ -569,6 +574,12 @@ function keepInView(pos) {
   return getTransformedCoords(sx, sy);
 }
 
+// The pointer over the eyes (desktop): while the loop is paused, draw()
+// doesn't run, so this follows the mouse instead
+function mouseMoved() {
+  if (moveEyesMode && !drawMode && !eraseMode && !bucketMode) updateCursor();
+}
+
 function updateCursor() {
   const transformed = getTransformedCoords(mouseX, mouseY);
   const overEye = findEyeAt(transformed.x, transformed.y) !== -1;
@@ -596,6 +607,9 @@ function isMouseInCanvas() {
 }
 
 function mousePressed(event) {
+  // Any press may start a stroke or a drag, which draw() follows frame by frame
+  loop();
+
   // mousePressed is window-wide. Ignore presses on anything other than the
   // canvas (e.g. mobile toolbar buttons that overlap it when the menu is open),
   // even if their coordinates fall inside the canvas bounds.

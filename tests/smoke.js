@@ -67,6 +67,14 @@ async function run(label, contextOpts) {
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
 
+  // Idle, the frame loop is paused; New runs it for the draw-in, then it pauses again
+  await page.waitForTimeout(100);
+  check('frame loop paused when idle', !(await ev(() => isLooping())));
+  const during = await ev(() => { generateScrawlface(); return isLooping(); });
+  await page.waitForFunction(() => scrawlQueue.length === 0);
+  await page.waitForTimeout(100);
+  check('frame loop runs for the draw-in, then pauses', during && !(await ev(() => isLooping())));
+
   // The canvas is the 4:5 picture, covering its area (which masks the rest), centred
   const fit = await ev(() => {
     const c = canvas.elt.getBoundingClientRect();
