@@ -829,7 +829,7 @@
     .size-keys {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
+      gap: 8px; /* the 8pt spacing used between all keys */
     }
 
     .size-key {
@@ -871,7 +871,7 @@
     .swatches {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
+      gap: 8px; /* the 8pt spacing used between all keys */
     }
 
     .swatch {
@@ -904,7 +904,7 @@
     .eye-set-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 6px;
+      gap: 8px; /* the 8pt spacing used between all keys */
     }
 
     .eye-set-grid button {
@@ -1548,17 +1548,12 @@
         height: 30px;
       }
 
-      /* Sidebar on tablets: six 44px keys a row. A little less padding and
-         gap makes room in the 320px sidebar */
+      /* Sidebar on tablets: six 44px keys a row with the usual 8px gaps
+         need 304px, so the sidebar is 336px wide (16px padding) here */
       .sidebar {
+        width: 336px;
         padding-left: 16px;
         padding-right: 16px;
-      }
-
-      .eye-set-grid,
-      .size-keys,
-      .swatches {
-        gap: 4px;
       }
 
       .eye-set-grid button,
@@ -1566,6 +1561,13 @@
       .swatches .swatch {
         min-width: 44px;
         min-height: 44px;
+      }
+    }
+
+    /* Tablets by touch: the card's width allows for the 336px sidebar */
+    @media (min-width: 769px) and (pointer: coarse) {
+      .canvas-section {
+        height: min(100cqh - 36px, max(672px, (100cqw - 336px) * 1.25));
       }
     }
 
