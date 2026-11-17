@@ -29,6 +29,7 @@
       --te-green: #2fb35a;
       --primary: #26ACD9;      /* primary: Nano Blue from the swatch palette */
       --primary-edge: #1880A3; /* the key's side, a darker shade of it */
+      --primary-hover: #40B6DE; /* a little lighter, like the keys' hover */
       --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
     }
 
@@ -826,7 +827,7 @@
 
     @media (hover: hover) {
       .cta-button:hover {
-        background: #ff7b33;
+        background: var(--primary-hover);
       }
     }
 
