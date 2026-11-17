@@ -8,13 +8,12 @@
 // Run from the repo root:
 //   NODE_PATH=~/.scrawl-test/node_modules node tests/smoke.js
 //
-// Optional: P5_PATH=/path/to/p5.min.js serves p5 from disk instead of the CDN.
+// The app bundles everything (p5.js, fonts), so the tests need no network.
 const { chromium, devices } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
 const repo = path.resolve(__dirname, '..');
-const p5src = process.env.P5_PATH ? fs.readFileSync(process.env.P5_PATH) : null;
 const shotsDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'scrawl-smoke-'));
 
 let failures = 0;
@@ -31,17 +30,23 @@ async function run(label, contextOpts) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('dialog', d => d.accept());
-  if (p5src) await page.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
-  await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+  // Serves the repo at a made-up http origin (file:// requests can't be
+  // intercepted); `block` lists paths to refuse
+  const serveRepo = (p, block = []) => p.route('http://scrawl.test/**', r => {
+    const rel = new URL(r.request().url()).pathname;
+    const file = path.join(repo, rel);
+    if (block.some(b => rel.endsWith(b)) || !fs.existsSync(file)) return r.abort();
+    const type = { '.html': 'text/html', '.js': 'application/javascript', '.woff2': 'font/woff2' }[path.extname(file)];
+    r.fulfill({ body: fs.readFileSync(file), contentType: type });
+  });
+
   // Before setup() runs, the page already shows the default tool's options
-  // (Eyes), so nothing switches when the script starts. The font stylesheet
-  // is held back: it delays the load event, which is when p5 runs setup().
+  // (Eyes), so nothing switches when the script starts. p5 is refused here,
+  // so setup() never runs and the page stays as its markup.
   {
     const early = await ctx.newPage();
-    if (p5src) await early.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
-    await early.route('https://fonts.googleapis.com/**', async r => { await new Promise(res => setTimeout(res, 2000)); r.fulfill({ body: '', contentType: 'text/css' }); });
-    early.goto('file://' + path.join(repo, 'index.html')).catch(() => {});
-    await early.waitForSelector('.tool-keys', { state: 'attached' });
+    await serveRepo(early, ['vendor/p5.min.js']);
+    await early.goto('http://scrawl.test/index.html');
     await early.waitForTimeout(300);
     const seen = await early.evaluate(() => {
       const shown = el => !!el && el.getClientRects().length > 0;
@@ -53,6 +58,26 @@ async function run(label, contextOpts) {
     });
     check('before the script starts, only the Eyes options show', !seen.setupRan && seen.eyes && !seen.sizes && !seen.colours, JSON.stringify(seen));
     await early.close();
+  }
+
+  // Offline: every request outside the repo is refused, and the app still
+  // starts, draws and shows its wordmark in one of the bundled fonts
+  {
+    const off = await ctx.newPage();
+    const remote = [];
+    await off.route(/^https?:\/\/(?!scrawl\.test\/)/, r => { remote.push(r.request().url()); r.abort(); });
+    await serveRepo(off);
+    await off.goto('http://scrawl.test/index.html');
+    await off.waitForFunction(() => typeof drawingGraphics !== 'undefined');
+    await off.click('#blank-cta-btn');
+    await off.waitForFunction(() => scrawlQueue.length === 0 && eyePositions.length === 2);
+    const font = await off.evaluate(async () => {
+      await document.fonts.ready;
+      const family = getComputedStyle(document.documentElement).getPropertyValue('--wordmark-font').split(',')[0].trim();
+      return { family, loaded: document.fonts.check(`32px ${family}`, 'Scrawlface') && [...document.fonts].some(f => f.status === 'loaded') };
+    });
+    check('works offline: no remote requests, app runs, wordmark font loaded', remote.length === 0 && font.loaded, JSON.stringify({ remote, font }));
+    await off.close();
   }
   await page.goto('file://' + path.join(repo, 'index.html'));
   // The app opens on a blank start: create the first scrawl from its button

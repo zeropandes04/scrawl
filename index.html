@@ -6,11 +6,12 @@
        iPhone home indicator (env(safe-area-inset-bottom)) -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Scrawlface - Generate Pareidolia Art</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  <!-- p5.js 1.4.0, bundled so the app works offline (licence: vendor/p5.license.txt) -->
+  <script src="vendor/p5.min.js"></script>
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=59"></script>
+  <script src="scrawl.js?v=60"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
