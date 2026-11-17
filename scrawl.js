@@ -2383,6 +2383,10 @@ async function renderGallery() {
     item.append(tile, check);
     return item;
   }));
+  // First tile: start a new scrawlface from here, without going back to the
+  // sidebar or the sheet (hidden while selecting; the empty gallery has
+  // its own key)
+  if (records.length > 0) grid.prepend(newScrawlTile());
   const empty = records.length === 0;
   document.getElementById('gallery-empty').hidden = !empty;
   grid.hidden = empty;
@@ -2425,6 +2429,26 @@ async function renderGallery() {
     return open;
   }));
   recents.hidden = records.length === 0;
+}
+
+// The gallery's "New scrawl" tile: back to the canvas with a new scrawl,
+// asking to save unsaved changes first (requestNewScrawl)
+function newScrawlTile() {
+  const item = document.createElement('li');
+  item.className = 'when-browsing';
+  const tile = document.createElement('button');
+  tile.type = 'button';
+  tile.className = 'gallery-tile gallery-new-tile';
+  // The same scrawl icon as the New scrawl keys
+  tile.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl';
+  tile.addEventListener('click', () => {
+    document.getElementById('gallery-dialog').close();
+    requestNewScrawl();
+  });
+  item.append(tile);
+  return item;
 }
 
 function openGallery() {
