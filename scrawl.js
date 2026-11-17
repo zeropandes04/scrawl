@@ -289,9 +289,7 @@ function generateScrawlface() {
   // Clear undo/redo history
   clearHistory();
 
-  // Leave the blank start state (hides the create button, shows the
-  // on-canvas scrawl toggle)
-  document.body.classList.remove('is-blank');
+  leaveBlankStart();
   try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
 
   // A new scrawlface: not in the gallery, nothing unsaved, no draft
@@ -2065,6 +2063,15 @@ function hasUnsavedChanges() {
   return editVersion !== savedVersion;
 }
 
+// Leaves the blank start (New, or opening a saved scrawlface): the create
+// button goes, and the keys that need a scrawlface on the canvas come on.
+// Save follows its own rule (updateGallerySaveButtons).
+function leaveBlankStart() {
+  document.body.classList.remove('is-blank');
+  setButtonsDisabled(['rotate-btn', 'toggle-eyes-btn', 'toggle-eyes-btn-mobile',
+                      'save-more-btn', 'image-btn', 'image-btn-mobile'], false);
+}
+
 function isBlankStart() {
   return document.body.classList.contains('is-blank');
 }
@@ -2181,7 +2188,7 @@ async function restoreScrawlface(record) {
   hasDrawings = checkIfDrawingHasContent();
   hasDrawings ? enableClearButton() : disableClearButton();
 
-  document.body.classList.remove('is-blank');
+  leaveBlankStart();
   redrawCanvas();
 }
 
@@ -2387,7 +2394,7 @@ async function renderGallery() {
     return item;
   }));
   // First tile: start a new scrawlface from here, without going back to the
-  // sidebar or the sheet (hidden while selecting; the empty gallery has
+  // sidebar or the sheet (disabled while selecting; the empty gallery has
   // its own key)
   if (records.length > 0) grid.prepend(newScrawlTile());
   const empty = records.length === 0;
@@ -2436,7 +2443,6 @@ async function renderGallery() {
 // asking to save unsaved changes first (requestNewScrawl)
 function newScrawlTile() {
   const item = document.createElement('li');
-  item.className = 'when-browsing';
   const tile = document.createElement('button');
   tile.type = 'button';
   tile.className = 'gallery-tile gallery-new-tile';
@@ -2526,6 +2532,9 @@ function updateGallerySelection() {
   dialog.querySelectorAll('.gallery-check').forEach(check => {
     check.setAttribute('aria-pressed', selecting && gallerySelection.has(check.dataset.id));
   });
+  // The New scrawl tile stays in place while selecting (so the tiles don't
+  // shift), but is disabled: it isn't something to select or delete
+  dialog.querySelectorAll('.gallery-new-tile').forEach(tile => { tile.disabled = selecting; });
   document.getElementById('gallery-title').textContent =
     selecting ? `${count} selected` : 'My Scrawls';
   const del = document.getElementById('gallery-delete');

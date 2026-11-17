@@ -221,17 +221,22 @@ async function run(label, contextOpts) {
   await ev(() => openGallery());
   await page.waitForSelector('#gallery-dialog[open] .gallery-new-tile');
   const first = await ev(() => document.querySelector('#gallery-grid > li:first-child .gallery-tile').classList.contains('gallery-new-tile'));
-  // Selecting hides it; Cancel brings it back
+  // Selecting keeps it in place (no tile moves) but disables it; Cancel enables it again
   const savedId = await ev(() => document.querySelector('.gallery-tile[data-id]').dataset.id);
+  const tilePositions = () => ev(() => [...document.querySelectorAll('#gallery-grid .gallery-tile')].map(t => { const r = t.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; }));
+  const tilesBefore = await tilePositions();
   await ev(`toggleGalleryPick('${savedId}')`);
-  const hiddenWhileSelecting = await ev(() => getComputedStyle(document.querySelector('.gallery-new-tile').parentElement).display === 'none');
+  const tilesDuring = await tilePositions();
+  const disabledWhileSelecting = await ev(() => document.querySelector('.gallery-new-tile').disabled);
   await ev(() => setGallerySelecting(false));
+  const enabledAfter = await ev(() => !document.querySelector('.gallery-new-tile').disabled);
   const tokenBefore = await ev('scrawlfaceToken');
   await ev(() => { hasDrawings = false; editVersion = savedVersion; }); // nothing unsaved: no prompt
   await page.click('.gallery-new-tile');
   await page.waitForFunction(() => !document.getElementById('gallery-dialog').open);
   await page.waitForFunction(() => scrawlQueue.length === 0);
-  check('first tile is New scrawl, hidden while selecting', first && hiddenWhileSelecting);
+  check('first tile is New scrawl; selecting disables it and moves no tile', first && disabledWhileSelecting && enabledAfter &&
+    JSON.stringify(tilesBefore) === JSON.stringify(tilesDuring), JSON.stringify({ disabledWhileSelecting, enabledAfter, moved: JSON.stringify(tilesBefore) !== JSON.stringify(tilesDuring) }));
   check('New scrawl tile closes My Scrawls with a new scrawl', await ev('scrawlfaceToken') === tokenBefore + 1 && !(await ev('isBlankStart()')));
 
   // Delete
