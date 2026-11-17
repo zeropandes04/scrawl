@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=51"></script>
+  <script src="scrawl.js?v=52"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -669,6 +669,12 @@
       min-height: 44px;
     }
 
+    /* ...except the colour keys, which stay square (their size comes from
+       the 6-a-row grid, like the eye-set keys) */
+    .sidebar .swatch {
+      min-height: 0;
+    }
+
     .sidebar .cta-button {
       display: flex;
       align-items: center;
@@ -859,10 +865,12 @@
         0 0 0 2px var(--ink);
     }
 
-    /* Colour keys: square caps in the paint colour */
+    /* Colour keys: square caps in the paint colour. Laid out exactly like
+       the eye-set keys (6 a row, same gap and corners), so the two grids
+       match when switching between the Eyes and Brush tools */
     .swatches {
       display: grid;
-      grid-template-columns: repeat(8, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 6px;
     }
 
@@ -872,7 +880,7 @@
       min-height: 0;
       padding: 0;
       aspect-ratio: 1 / 1;
-      border-radius: 6px;
+      border-radius: 8px;
       border: 2px solid transparent;
       box-shadow:
         inset 0 1px 0 rgba(255,255,255,0.3),
@@ -1495,9 +1503,13 @@
          touch-sized keys, so its spacing is tight; overflow-y is a safety
          net rather than the norm */
       .sidebar {
-        padding: 16px 20px;
-        gap: 14px;
+        padding: 12px 20px;
+        gap: 12px;
         overflow-y: auto;
+      }
+
+      .scrawl-section {
+        padding-bottom: 12px;
       }
 
       .sidebar-section {
@@ -1537,7 +1549,7 @@
       }
 
       /* Sidebar on tablets: six 44px keys a row. A little less padding and
-         gap makes room in the 320px sidebar; colours go 6 a row */
+         gap makes room in the 320px sidebar */
       .sidebar {
         padding-left: 16px;
         padding-right: 16px;
@@ -1550,13 +1562,10 @@
       }
 
       .eye-set-grid button,
-      .size-key {
+      .size-key,
+      .swatches .swatch {
         min-width: 44px;
         min-height: 44px;
-      }
-
-      .swatches {
-        grid-template-columns: repeat(6, 1fr);
       }
     }
 

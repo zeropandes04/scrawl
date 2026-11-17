@@ -600,10 +600,11 @@ function updateCursor() {
 }
 
 // Index of the eye nearest to a point (canvas coords), or -1 if none is in reach.
-// The canvas is scaled down on small screens, so the reach grows to stay a
-// ~44px touch target (and shrinks again when zoomed in).
+// The canvas is scaled down on small screens, so the reach grows to keep a
+// touch target at least 48px across (Apple's minimum is 44pt), and shrinks
+// again when zoomed in.
 function findEyeAt(x, y) {
-  let reach = max(eyeRadius, 22 * width / canvas.elt.clientWidth / viewZoom);
+  let reach = max(eyeRadius, 24 * width / canvas.elt.clientWidth / viewZoom);
   let found = -1;
   eyePositions.forEach((pos, i) => {
     const d = dist(x, y, pos.x, pos.y);
