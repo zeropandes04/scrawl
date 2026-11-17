@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=48"></script>
+  <script src="scrawl.js?v=49"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -415,6 +415,23 @@
       -webkit-touch-callout: none;
       -webkit-user-select: none;
       user-select: none;
+    }
+
+    /* The first tile starts a new scrawlface: the New scrawl key's icon
+       and label in the primary colour, on the tile's white */
+    .gallery-new-tile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: var(--primary-edge);
+      font-weight: 600;
+    }
+
+    .gallery-new-tile svg {
+      width: 36px;
+      height: 36px;
     }
 
     /* Tick circle in each tile's corner: picks the tile (and starts select
