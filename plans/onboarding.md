@@ -72,10 +72,12 @@ Add onboarding as a learning resource, not just a first-launch carousel: a short
 Promise: *boost your imagination by discovering the unexpected in the ordinary.* The intro avoids presenting Scrawlface as a drawing app.
 - [x] 🟩 **Three screens + a first experience** (step labels `01 · what is it?` …):
   1. "There's more than meets the eye.": a scribble draws in, then eyes pop in: it was someone all along.
-  2. "Every scribble hides a surprise.": the pile of three finished discoveries.
+  2. "Every scribble holds a possibility.": the pile of three finished discoveries.
   3. "Look again. What do you see?": the three steps as a list; the illustration loops through them (scribble → eyes → fill and mouth), a new scribble each round, and the step it's on is marked.
   4. "Let's find something unexpected.": scribble after scribble draws in, no eyes. CTA **Start discovering** (Done when replayed over a scrawlface).
 - [x] 🟩 **Interactive first scribble** (`findingFace`): the scribble the intro creates comes without eyes, and a tip asks "Can you spot a face? Tap where you see one." The tap puts the eyes there (a change for Save; not an undo step, like an eye drag), then "Found one!" points at them (key: Let's go!). **Surprise me!**, choosing another tool, Save or Share puts the eyes in their random spots instead.
 - [x] 🟩 Tour copy: Brush, Fill and Eraser "bring what you found to life".
 - The reference images in the brief are not used: everything is drawn live by the app (nothing remote, no third-party art).
 - [x] 🟩 **Tone pass**: playful, curious, slightly mischievous; short sentences, fewer instructions, and "imagination" left for the experience to show rather than the copy to say.
+- [x] 🟩 **Copywriter pass** (all of it, intro to tour). Principles: playful, not childish; concise, not cryptic; conversational, not instructional. Exclamation marks only for the interactive moments. Terms: scribble (the random drawing), scrawlface (the finished piece), discover / spot / find, bring it to life / make it yours, My Scrawls, and the controls' exact names.
+  - Tour steps now have a short title over their text (`coach-title`).

@@ -221,7 +221,7 @@ async function run(label, contextOpts) {
     check('drag-eyes tip doesn\'t show again', !(await coachShown(t.page)));
     await t.ev(() => setTool('fill'));
     const fill = await t.ev(() => [!document.getElementById('coach').hidden, document.getElementById('coach-text').textContent]);
-    check('first time on Fill: a tip', fill[0] && fill[1].includes('closed in by lines'), JSON.stringify(fill));
+    check('first time on Fill: a tip', fill[0] && fill[1].includes('enclosed area'), JSON.stringify(fill));
     await t.page.click('#coach-next');
     await t.ev(() => setTool('brush'));
     const gestures = await coachShown(t.page);
@@ -229,7 +229,7 @@ async function run(label, contextOpts) {
     if (gestures) await t.page.click('#coach-next');
     for (let i = 0; i < 6; i++) await t.ev(() => markChanged());
     const save = await t.ev(() => [!document.getElementById('coach').hidden, document.getElementById('coach-text').textContent]);
-    check('after a few changes, a tip to Save', save[0] && save[1].includes('Save'), JSON.stringify(save));
+    check('after a few changes, a tip to Save', save[0] && save[1].toLowerCase().includes('save it to my scrawls'), JSON.stringify(save));
     await t.ev(() => saveToGallery());
     check('saving puts the Save tip away', !(await coachShown(t.page)));
     const st = await state(t.page);

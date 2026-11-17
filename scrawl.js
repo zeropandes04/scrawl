@@ -2747,13 +2747,13 @@ const ONBOARDING_VERSION = 1;
 // the first scribble, where you find the face yourself (see findingFace).
 const introScreens = [
   { step: 'What is it?', art: 'reveal', title: 'There\'s more than meets the eye.',
-    text: 'Hidden in every scribble are faces, creatures and characters waiting to be discovered.' },
-  { step: 'What can I do?', art: 'pile', title: 'Every scribble hides a surprise.',
+    text: 'Look closely and you\'ll find faces, creatures and characters hiding in the lines.' },
+  { step: 'What can I do?', art: 'pile', title: 'Every scribble holds a possibility.',
     text: 'Explore random scribbles, discover hidden characters and share your finds.' },
   { step: 'How does it work?', art: 'steps', title: 'Look again. What do you see?',
-    steps: ['Get a random scribble.', 'Spot a face or character.', 'Bring it to life with your creativity.'] },
+    steps: ['Get a random scribble.', 'Spot a face or character.', 'Bring it to life.'] },
   { step: 'Ready?', art: 'mystery', title: 'Let\'s find something unexpected.',
-    text: 'Let\'s start scribbling!' }
+    text: 'Your first scribble is waiting.' }
 ];
 
 function storageGet(key) {
@@ -2818,7 +2818,7 @@ function setupOnboarding() {
   const createdBefore = storageGet('createdScrawlface') === '1';
   if (createdBefore && state.versionSeen === 0) {
     setTimeout(() => showTip('help-key', { el: document.getElementById('help-btn') },
-      'New: a quick tour and tips on every control are here, any time.'), 800);
+      'New: Take a quick tour and discover tips for every control, whenever you need them.'), 800);
     return;
   }
   openIntro();
@@ -3108,8 +3108,10 @@ function setupCoach() {
 
 // Shows the bubble at `anchor`; resolves 'next' (its key), 'end' (End tour
 // or Esc) or 'dismissed' (put away, e.g. by working on the canvas)
-function showCoach({ anchor, text, count = '', next = 'Next', canEnd = false }) {
+function showCoach({ anchor, title = '', text, count = '', next = 'Next', canEnd = false }) {
   hideCoach('dismissed');
+  document.getElementById('coach-title').textContent = title;
+  document.getElementById('coach-title').hidden = !title;
   document.getElementById('coach-text').textContent = text;
   document.getElementById('coach-count').textContent = count;
   document.getElementById('coach-next').textContent = next;
@@ -3181,26 +3183,27 @@ async function exploreFeatures() {
   touring = true;
   const desktop = shownElement('.sidebar') !== null;
   const steps = (desktop ? [
-    ['#generate-btn', 'New scrawl draws a fresh random scribble. Loops, under it, sets how tangled the next one is.'],
-    ['.sidebar .tool-keys', 'Eyes moves and restyles the eyes. Brush, Fill and Eraser bring what you found to life.'],
-    ['.sidebar-section > .tool-options', 'The selected tool\'s options: eye styles and Mix, or brush sizes and colours.'],
-    ['.sidebar .history-keys', 'Undo and Redo any change. Clear wipes the paint, and can be undone too.'],
-    ['#scrawl-container', 'On the canvas: drag the eyes, draw with the Brush or tap to Fill. Rotate and Hide lines are under View.'],
-    ['.sidebar .save-row', 'Save keeps this scrawlface in My Scrawls. The ⋯ key downloads the picture.'],
-    ['.header-gallery-btn', 'My Scrawls: every scrawlface you\'ve saved, on this device.']
+    ['#generate-btn', 'New scrawl & Loops', 'Get a fresh random scribble with New scrawl. Use Loops to control how tangled the next one gets.'],
+    ['.sidebar .tool-keys', 'Your creative tools', 'Use Eyes to move and restyle the eyes. Brush, Fill and Eraser help bring your discoveries to life.'],
+    ['.sidebar-section > .tool-options', 'Tool options', 'Find the options for your selected tool here: eye styles and Mix, or brush sizes and colours.'],
+    ['.sidebar .history-keys', 'Undo, Redo & Clear', 'Changed your mind? Undo or Redo any change. Clear wipes the paint, and you can undo that too.'],
+    ['#scrawl-container', 'The canvas', 'Drag the eyes, draw with Brush or tap an area with Fill. Find Rotate and Hide lines under View.'],
+    ['.sidebar .save-row', 'Save & Download', 'Save your scrawlface to My Scrawls. Use ⋯ to download the image.'],
+    ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces, together in one place on this device.']
   ] : [
-    ['.tool-row .tool-keys', 'Eyes moves and restyles the eyes. Brush, Fill and Eraser bring what you found to life.'],
-    ['.options-strip', 'The selected tool\'s options: eye styles and Mix, or colours and sizes.'],
-    ['.history-pair', 'Undo and Redo any change.'],
-    ['#scrawl-container', 'Pinch with two fingers to zoom and turn the canvas. Touch and hold still to peek under the lines.'],
-    ['#toggle-mobile-menu', 'Swipe up for more: New scrawl, Loops, Hide lines, Clear, Save and Share.'],
-    ['.header-gallery-btn', 'My Scrawls: every scrawlface you\'ve saved, on this device.']
-  ]).map(([selector, text]) => ({ el: shownElement(selector), text })).filter(step => step.el);
+    ['.tool-row .tool-keys', 'Your creative tools', 'Use Eyes to move and restyle the eyes. Brush, Fill and Eraser help bring your discoveries to life.'],
+    ['.options-strip', 'Tool options', 'Find the options for your selected tool here: eye styles and Mix, or brush colours and sizes.'],
+    ['.history-pair', 'Undo & Redo', 'Changed your mind? Undo or Redo any change.'],
+    ['#scrawl-container', 'Explore the canvas', 'Pinch with two fingers to zoom and turn the canvas. Touch and hold to peek under the lines.'],
+    ['#toggle-mobile-menu', 'More tools', 'Swipe up to discover more: New scrawl, Loops, Hide lines, Clear, Save and Share.'],
+    ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces, together in one place on this device.']
+  ]).map(([selector, title, text]) => ({ el: shownElement(selector), title, text })).filter(step => step.el);
 
   for (let i = 0; i < steps.length; i++) {
     const last = i === steps.length - 1;
     const result = await showCoach({
       anchor: { el: steps[i].el, ring: true },
+      title: steps[i].title,
       text: steps[i].text,
       count: `${i + 1} of ${steps.length}`,
       next: last ? 'Done' : 'Next',
@@ -3272,7 +3275,7 @@ function revealFace() {
 // The first scrawl: point at an eye
 function tipDragEyes() {
   if (isBlankStart() || !moveEyesMode || eyePositions.length === 0) return;
-  showTip('drag-eyes', { rect: () => eyeScreenRect(0) }, 'Drag the eyes to where you see a face.');
+  showTip('drag-eyes', { rect: () => eyeScreenRect(0) }, 'Try another spot! Drag the eyes to where you see a face.');
 }
 
 // An eye's box on screen
@@ -3289,11 +3292,11 @@ function tipForTool(tool) {
   if (isBlankStart()) return;
   if (tool === 'brush' && isTouchScreen()) {
     showTip('gestures', { el: document.getElementById('scrawl-container') },
-      'Pinch with two fingers to zoom and turn the canvas. Touch and hold still to peek under the lines.');
+      'Pinch to zoom and turn the canvas. Touch and hold to peek under the lines.');
   }
   if (tool === 'fill') {
     showTip('fill', { el: shownElement('[data-tool="fill"]') },
-      'Tap inside an area closed in by lines to colour it. Tap outside the scribble to colour the background.');
+      'Tap an enclosed area to colour it. Tap outside the scribble to colour the background.');
   }
 }
 
@@ -3303,10 +3306,10 @@ function tipSave() {
   if (document.body.classList.contains('no-storage')) return;
   const saveKey = shownElement('.sidebar .gallery-save-btn');
   if (saveKey) {
-    showTip('save', { el: saveKey }, 'Like it? Save it to My Scrawls to keep it.');
+    showTip('save', { el: saveKey }, 'Like what you\'ve made? Save it to My Scrawls to keep it.');
   } else {
     showTip('save', { el: document.getElementById('toggle-mobile-menu') },
-      'Like it? Swipe up and Save it to My Scrawls to keep it.');
+      'Like what you\'ve made? Swipe up and save it to My Scrawls to keep it.');
   }
 }
 

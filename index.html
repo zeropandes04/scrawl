@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=64"></script>
+  <script src="scrawl.js?v=65"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1892,6 +1892,16 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.25);
     }
 
+    /* A tour step's name, over its text */
+    .coach-title {
+      margin: 0.5em 0 0;
+      font-weight: 600;
+    }
+
+    .coach-title + .coach-text {
+      margin-top: 2px;
+    }
+
     .coach-actions {
       display: flex;
       align-items: center;
@@ -2001,8 +2011,8 @@
 
     <!-- Help menu (opens under the help key) -->
     <div class="help-menu" id="help-menu" role="menu" aria-label="Help" hidden>
-      <button type="button" role="menuitem" id="help-tour"><b>Product tour</b><span>What Scrawlface is and how it works</span></button>
-      <button type="button" role="menuitem" id="help-explore"><b>Explore features</b><span>Tips on the controls, one at a time</span></button>
+      <button type="button" role="menuitem" id="help-tour"><b>Product tour</b><span>Meet Scrawlface and see how it works.</span></button>
+      <button type="button" role="menuitem" id="help-explore"><b>Explore features</b><span>Get to know the tools, one tip at a time.</span></button>
     </div>
 
     <main>
@@ -2182,6 +2192,7 @@
 
       <!-- One tooltip for the feature tour and the one-off tips -->
       <div class="coach" id="coach" role="dialog" aria-live="polite" aria-labelledby="coach-text" hidden>
+        <p class="coach-title" id="coach-title" hidden></p>
         <p class="coach-text" id="coach-text"></p>
         <div class="coach-actions">
           <span class="coach-count" id="coach-count"></span>
