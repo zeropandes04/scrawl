@@ -1747,9 +1747,10 @@
               <button type="button" class="tool-key" data-tool="eraser" title="Eraser (E)" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(40 12 12)"><rect x="7.5" y="3" width="9" height="18" rx="2"/><path d="M7.5 13.5h9"/></g></svg><span>Eraser</span></button>
             </div>
             <!-- Options for the selected tool; scrawl.js shows the groups whose
-                 data-for lists it -->
+                 data-for lists it. The markup starts as the Eyes tool (the
+                 default), so nothing switches when the script starts -->
             <div class="tool-options">
-              <div class="size-keys" data-for="brush eraser" role="group" aria-label="Size">
+              <div class="size-keys" data-for="brush eraser" role="group" aria-label="Size" hidden>
                 <button type="button" class="size-key" data-size="4" aria-label="Size 4" title="Size 4"><span class="dot" style="width: 4px; height: 4px;"></span></button>
                 <button type="button" class="size-key" data-size="8" aria-label="Size 8" title="Size 8"><span class="dot" style="width: 8px; height: 8px;"></span></button>
                 <button type="button" class="size-key" data-size="12" aria-label="Size 12" title="Size 12"><span class="dot" style="width: 12px; height: 12px;"></span></button>
@@ -1757,7 +1758,7 @@
                 <button type="button" class="size-key" data-size="24" aria-label="Size 24" title="Size 24"><span class="dot" style="width: 20px; height: 20px;"></span></button>
                 <button type="button" class="size-key selected" data-size="32" aria-label="Size 32" title="Size 32"><span class="dot" style="width: 24px; height: 24px;"></span></button>
               </div>
-              <div class="swatches" data-for="brush fill" role="group" aria-label="Colour">
+              <div class="swatches" data-for="brush fill" role="group" aria-label="Colour" hidden>
                 <button type="button" class="swatch selected" data-color="#000000" style="background: #000000;" title="Black" aria-label="Black"></button>
                 <button type="button" class="swatch" data-color="#FFFFFF" style="background: #FFFFFF;" title="White" aria-label="White"></button>
                 <button type="button" class="swatch" data-color="#CC0000" style="background: #CC0000;" title="Red" aria-label="Red"></button>
@@ -1933,9 +1934,10 @@
         </div>
 
         <!-- Options for the selected tool, one row; scrawl.js shows the row
-             named in data-strip -->
+             named in data-strip. The markup starts as the Eyes tool (the
+             default), so nothing switches when the script starts -->
         <div class="options-strip">
-          <div class="strip-row" data-strip="colours">
+          <div class="strip-row" data-strip="colours" hidden>
             <button type="button" class="strip-chip" id="size-chip" data-for="brush" title="Brush size" aria-label="Brush size">
               <span class="dot"></span>
             </button>
@@ -1971,7 +1973,7 @@
               <button type="button" class="size-key selected" data-size="32" aria-label="Size 32" title="Size 32"><span class="dot" style="width: 24px; height: 24px;"></span></button>
             </div>
           </div>
-          <div class="strip-row" data-strip="eyes" hidden>
+          <div class="strip-row" data-strip="eyes">
             <button type="button" class="strip-chip mix-eyes-btn" title="Give each eye a different random style">Mix</button>
             <div class="strip-scroll eye-set-grid" role="group" aria-label="Eye set">
               <button type="button" class="eye-set-btn" data-eye-set="classic" title="Classic eyes" aria-label="Classic eye set" aria-pressed="false"></button>
