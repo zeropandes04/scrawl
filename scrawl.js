@@ -2746,14 +2746,14 @@ const ONBOARDING_VERSION = 1;
 // lines. Three screens (what it is, what you can do, how it works), then
 // the first scribble, where you find the face yourself (see findingFace).
 const introScreens = [
-  { step: 'What is it?', art: 'reveal', title: 'Your imagination is everywhere.',
-    text: 'Discover the hidden faces, creatures and characters hiding in random shapes and scribbles.' },
-  { step: 'What can I do?', art: 'pile', title: 'See what others might miss.',
-    text: 'Explore random scribbles, find hidden characters and share the discoveries you make.' },
-  { step: 'How does it work?', art: 'steps', title: 'Look closer. Let your mind wander.',
-    steps: ['Get a random scribble.', 'Look for shapes, faces or characters.', 'Bring your discoveries to life.'] },
-  { step: 'Ready?', art: 'mystery', title: 'Ready to discover something?',
-    text: 'Generate your first scribble and see what your imagination finds.' }
+  { step: 'What is it?', art: 'reveal', title: 'There\'s more than meets the eye.',
+    text: 'Hidden in every scribble are faces, creatures and characters waiting to be discovered.' },
+  { step: 'What can I do?', art: 'pile', title: 'Every scribble hides a surprise.',
+    text: 'Explore random scribbles, discover hidden characters and share your finds.' },
+  { step: 'How does it work?', art: 'steps', title: 'Look again. What do you see?',
+    steps: ['Get a random scribble.', 'Spot a face or character.', 'Bring it to life with your creativity.'] },
+  { step: 'Ready?', art: 'mystery', title: 'Let\'s find something unexpected.',
+    text: 'Let\'s start scribbling!' }
 ];
 
 function storageGet(key) {
@@ -3213,12 +3213,12 @@ async function exploreFeatures() {
 
 // A one-off tip, shown once ever (then remembered), and not over the intro
 // or the tour. Any press on the canvas puts it away.
-function showTip(id, anchor, text) {
+function showTip(id, anchor, text, next = 'Got it') {
   if (isEmbedded() || touring || introOpen() || currentTip) return;
   if (onboardingState().tipsSeen.includes(id)) return;
   if (!anchor || (!anchor.el && !anchor.rect) || (anchor.el && anchor.el.getClientRects().length === 0)) return;
   markTipSeen(id);
-  showCoach({ anchor, text, next: 'Got it' });
+  showCoach({ anchor, text, next });
   currentTip = id;
 }
 
@@ -3239,7 +3239,7 @@ function tipFindFace() {
   if (!findingFace || isBlankStart() || touring || introOpen()) return;
   dismissTip();
   showCoach({ anchor: { el: document.getElementById('scrawl-container'), free: true },
-    text: 'What do you see? Tap where you spot a face.', next: 'Surprise me' })
+    text: 'Can you spot a face? Tap where you see one.', next: 'Surprise me!' })
     .then(result => { if (result === 'next') revealFace(); });
   currentTip = 'find-face';
 }
@@ -3257,7 +3257,7 @@ function placeEyesAt(x, y) {
   markChanged();
   markTipSeen('drag-eyes');
   setTimeout(() => showTip('found-face', { rect: () => eyeScreenRect(0) },
-    'There it is! Drag the eyes to fine-tune, then bring it to life with Fill and Brush.'), 250);
+    'Found one! Move the eyes to make it yours. Add details with Brush and Fill.', 'Let\'s go!'), 250);
 }
 
 // Not found (yet): the eyes go in their random spots

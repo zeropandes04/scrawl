@@ -88,7 +88,7 @@ async function run(label, contextOpts) {
     // The first scribble: no eyes until you tap where you see a face
     await t.page.waitForTimeout(400);
     const tip = await t.ev(() => ({ shown: !document.getElementById('coach').hidden, text: document.getElementById('coach-text').textContent, finding: findingFace }));
-    check('first scribble: eyes wait, a tip asks what you see', tip.shown && tip.finding && tip.text.includes('What do you see'), JSON.stringify(tip));
+    check('first scribble: eyes wait, a tip asks what you see', tip.shown && tip.finding && tip.text.includes('Can you spot a face'), JSON.stringify(tip));
     const c = await t.page.locator('#scrawl-container canvas').boundingBox();
     if (mobile) await t.page.tap('#scrawl-container canvas', { position: { x: c.width / 2, y: c.height / 2 } });
     else await t.page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
@@ -98,7 +98,7 @@ async function run(label, contextOpts) {
       tip: !document.getElementById('coach').hidden && document.getElementById('coach-text').textContent }));
     const mid = found.eyes.length === 2 && Math.abs((found.eyes[0][0] + found.eyes[1][0]) / 2 - 400) < 8;
     check('tapping puts the eyes where you tapped, then a tip to fine-tune', !found.finding && mid && found.unsaved && found.undo === 0 &&
-      String(found.tip).includes('There it is'), JSON.stringify(found));
+      String(found.tip).includes('Found one'), JSON.stringify(found));
     await t.load();
     check('after finishing, the intro stays away on reload', !(await introShown(t.page)));
     check('no page errors (first launch)', t.errors.length === 0, t.errors.join(' | '));
