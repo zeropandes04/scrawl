@@ -97,7 +97,7 @@ let intensity = 10;
 let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
 let brushSize = 32; // the biggest size key: bold strokes from the start
 let brushColor = '#000000';
-let eraserSize = 16;
+let eraserSize = 32; // the biggest size key too: quick clean-ups
 let brushSizesShown = false; // mobile strip: brush sizes instead of colours
 
 // Scrawl segments still to be drawn by the draw-in animation
