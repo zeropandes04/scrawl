@@ -581,8 +581,9 @@
       border-bottom: 1px solid var(--chassis-edge);
     }
 
-    /* Loops: an advanced setting, folded into one line ("Loops: 10 >")
-       that opens to the fader. A 32px line, so it's easy to tap. */
+    /* Loops: an advanced setting, folded into one line ("Loops for the
+       next scrawl: 10 >") that opens to the fader. The whole line is the
+       target: 32px with a mouse, 44px on touch screens (below). */
     .loops-setting summary {
       display: flex;
       align-items: center;
@@ -595,6 +596,13 @@
       list-style: none;
       -webkit-user-select: none;
       user-select: none;
+    }
+
+    /* On touch screens the line is a full 44px finger target */
+    @media (pointer: coarse) {
+      .loops-setting summary {
+        min-height: 44px;
+      }
     }
 
     .loops-setting summary::-webkit-details-marker {
@@ -1732,8 +1740,8 @@
               <div class="mobile-section">
                 <div class="mobile-section-label">Drawing</div>
                 <div class="tools-grid two-keys">
-                  <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet">Hide lines</button>
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
+                  <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet">Hide lines</button>
                 </div>
               </div>
 
