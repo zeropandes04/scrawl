@@ -66,6 +66,11 @@ async function run(label, contextOpts) {
     clearDis: document.getElementById('clear-drawings-btn').disabled }));
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
+  // The brush starts at its biggest size, and that's the selected key
+  const brushStart = await ev(() => ({ size: brushSize,
+    biggest: Math.max(...[...document.querySelectorAll('[data-size]')].map(b => +b.dataset.size)),
+    selected: [...document.querySelectorAll('.size-key.selected')].map(b => +b.dataset.size) }));
+  check('brush starts at the biggest size', brushStart.size === brushStart.biggest && brushStart.selected.every(n => n === brushStart.biggest), JSON.stringify(brushStart));
 
   // Idle, the frame loop is paused; New runs it for the draw-in, then it pauses again
   await page.waitForTimeout(100);
