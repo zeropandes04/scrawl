@@ -428,6 +428,49 @@ async function run(label, contextOpts) {
     clicked.marked.every(c => c === '#006635'), JSON.stringify(clicked));
   await ev(() => { window.scrawlface.setBrushSize(32); window.scrawlface.setBrushColor('#000000'); setTool('eyes'); });
 
+  // ---- Canvas-only mode (?embedded): what a native shell loads ----
+  {
+    // Its own context: a shell has its own storage (no draft from the pages above)
+    const emCtx = await browser.newContext(contextOpts);
+    const em = await emCtx.newPage();
+    const emErrors = [];
+    em.on('pageerror', e => emErrors.push(e.message));
+    em.on('dialog', d => d.accept());
+    await em.goto('file://' + path.join(repo, 'index.html') + '?embedded');
+    await em.waitForFunction(() => typeof drawingGraphics !== 'undefined');
+    const layout = await em.evaluate(() => {
+      const box = document.getElementById('scrawl-container').getBoundingClientRect();
+      const shown = ['header', '.sidebar', '.bottom-toolbar', '.blank-cta']
+        .filter(s => { const e = document.querySelector(s); return e && e.getClientRects().length > 0; });
+      return { fills: box.left === 0 && box.top === 0 && Math.round(box.width) === innerWidth && Math.round(box.height) === innerHeight,
+        shown, scroll: document.scrollingElement.scrollHeight - innerHeight };
+    });
+    check('embedded: only the canvas, filling the window', layout.fills && layout.shown.length === 0 && layout.scroll === 0, JSON.stringify(layout));
+
+    // The happy path through window.scrawlface, with a real pointer stroke
+    await em.evaluate(() => window.scrawlface.newScrawl());
+    await em.waitForFunction(() => scrawlQueue.length === 0 && eyePositions.length === 2);
+    await em.evaluate(() => window.scrawlface.setTool('brush'));
+    const cbox = await em.locator('#scrawl-container').boundingBox();
+    const at = (fx, fy) => [cbox.x + cbox.width * fx, cbox.y + cbox.height * fy];
+    await em.mouse.move(...at(0.3, 0.4)); await em.mouse.down();
+    for (let i = 1; i <= 10; i++) { await em.mouse.move(...at(0.3 + i * 0.03, 0.4 + i * 0.01)); await em.waitForTimeout(16); }
+    await em.mouse.up();
+    const flow = await em.evaluate(async () => {
+      const sf = window.scrawlface;
+      const tick = () => new Promise(r => setTimeout(r, 0));
+      const painted = sf.appState();
+      sf.undo(); await tick();
+      const undone = sf.appState();
+      sf.redo(); await tick();
+      const png = await sf.exportPNG();
+      return { painted: painted.hasDrawings && painted.canUndo, undone: !undone.hasDrawings && undone.canRedo, png: png && png.type };
+    });
+    check('embedded: new, brush stroke, undo, redo and export work', flow.painted && flow.undone && flow.png === 'image/png' && emErrors.length === 0,
+      JSON.stringify({ ...flow, emErrors }));
+    await emCtx.close();
+  }
+
   check('no page errors', errors.length === 0, errors.join(' | '));
   await page.screenshot({ path: path.join(shotsDir, `${label}.png`) });
   await browser.close();

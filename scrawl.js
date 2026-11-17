@@ -54,6 +54,13 @@ function loadWordmarkFont() {
 }
 loadWordmarkFont();
 
+// Canvas-only mode, for a native shell that draws its own controls: open
+// the page with ?embedded (or the shell adds the class itself). Set while
+// the <head> is parsed, so the web controls never show.
+if (new URLSearchParams(location.search).has('embedded')) {
+  document.documentElement.classList.add('embedded');
+}
+
 let canvas;
 const bgColor = [255, 255, 255];
 let strokeColor = [0, 0, 0];

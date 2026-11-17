@@ -1,6 +1,6 @@
 # Feature Implementation Plan: Native shell readiness
 
-**Overall Progress:** `80%` (Steps 1-4 done; Step 5 canvas-only mode next)
+**Overall Progress:** `100%` (all five steps done; the native shell itself is a separate, later project)
 
 ## TLDR
 The plan is to keep improving the web app, then wrap it in a native shell: SwiftUI (iOS) and Jetpack Compose (Android) controls around this canvas running in a web view. This plan audits the app against the four habits in CLAUDE.md ("Native shell readiness") and lists the changes that make the later wrapping a matter of wiring, not rework. Nothing here changes what users see in the browser.
@@ -83,10 +83,10 @@ The plan is to keep improving the web app, then wrap it in a native shell: Swift
   - [x] 🟩 Remove the unused `icons/` and its CLAUDE.md line
   - [x] 🟩 Check the page works fully offline (the smoke test can block all network)
 
-- [ ] 🟥 **Step 5: Canvas-only mode**
-  - [ ] 🟥 A body class (e.g. `embedded`, set by `?embedded` or by the shell) hides the header, sidebar, bottom bar and blank-start overlay, and lets `#scrawl-container` fill the window
-  - [ ] 🟥 Keyboard shortcuts and document-wide listeners stay harmless in that mode
-  - [ ] 🟥 Smoke test runs a pass in canvas-only mode, driving the app only through `window.scrawlface`
+- [x] 🟩 **Step 5: Canvas-only mode**
+  - [x] 🟩 An `embedded` class on `<html>` (set by `?embedded`, or by the shell) hides the header, sidebar, bottom bar and blank-start overlay, and lets `#scrawl-container` fill the window. Still web in that mode: the Save / Discard and Delete prompts (`confirmLeave`, `confirmDelete`) and My Scrawls; a shell replaces those through their functions
+  - [x] 🟩 Keyboard shortcuts and document-wide listeners stay harmless in that mode
+  - [x] 🟩 Smoke test runs a pass in canvas-only mode, driving the app only through `window.scrawlface`
 
 ## Risks
 - **Step 1–2 touch the same code as undo and the keys.** Small moves, but the tests should run after each step; no change to the undo stack itself.
