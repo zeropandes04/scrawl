@@ -88,6 +88,21 @@ async function run(label, contextOpts) {
   check('canvas area is 4:5 by default', Math.abs(areaRatio - 0.8) < 0.01, areaRatio.toFixed(3));
   check('canvas is a centred 4:5 box covering its area', Math.abs(fit.ratio - 0.8) < 0.01 && fit.coverW >= 0.999 && fit.coverH >= 0.999 &&
     fit.exact < 1.01 && fit.dx < 2 && fit.dy < 2, JSON.stringify(fit));
+  // Loops: folded away by default; opened, its fader sets the next scrawl's loops
+  const loopsId = mobile ? '#intensity-slider-mobile' : '#intensity-slider';
+  const folded = await ev(() => [...document.querySelectorAll('.loops-setting')].every(d => !d.open));
+  if (mobile) { await page.click('#toggle-mobile-menu'); await page.waitForTimeout(400); }
+  const summary = page.locator('.loops-setting summary').nth(mobile ? 1 : 0);
+  await summary.click();
+  await page.locator(loopsId).fill('4');
+  const loops = await ev(() => ({ intensity, lines: [...document.querySelectorAll('.loops-value')].map(e => e.textContent),
+    segments: (generateScrawlface(), scrawlQueue.length) }));
+  check('Loops folded by default; fader sets the next scrawl', folded && loops.intensity === 4 && loops.lines.every(t => t === '4') && loops.segments === 4, JSON.stringify(loops));
+  await page.locator(loopsId).fill('10');
+  await summary.click(); // fold it again
+  if (mobile) { await page.click('#toggle-mobile-menu'); await page.waitForTimeout(400); }
+  await page.waitForFunction(() => scrawlQueue.length === 0);
+
   check('undo disabled at start', (await state()).undoDis);
 
   // Drag eye 0

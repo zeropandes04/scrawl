@@ -209,8 +209,8 @@ function setup() {
   select("#redo-btn").mousePressed(redo);
   select("#redo-btn-mobile").mousePressed(redo);
 
-  // Intensity faders (sidebar and sheet) stay in sync. The value only
-  // applies at the next Generate.
+  // Loops faders (sidebar and sheet) stay in sync, with their folded
+  // "Loops: n" lines. The value only applies at the next Generate.
   ['intensity-slider', 'intensity-slider-mobile'].forEach(id => {
     const slider = document.getElementById(id);
     slider.addEventListener('input', () => {
@@ -219,6 +219,8 @@ function setup() {
         document.getElementById('intensity-slider' + suffix).value = intensity;
         document.getElementById('intensity-value' + suffix).textContent = intensity;
       });
+      // The folded "Loops: n" lines
+      document.querySelectorAll('.loops-value').forEach(el => { el.textContent = intensity; });
       tickLcd(id.replace('slider', 'value'));
     });
   });
