@@ -40,6 +40,15 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 - **Units vs pixels.** Logic works in units: the picture frame is 800 x 1000 units around the 800 x 800 scrawl square, and the paint layer is bigger so it covers the frame at any rotation. The canvas and layers have `res` (1.35) pixels per unit, so the picture is 1080 x 1350. Code that touches raw pixels (fill, undo rectangles, `getImageData`) works in layer pixels (`layerPixels`); keep pixel values whole numbers.
 - **Inline CSS in `index.html`.** All styles live in a single `<style>` block. Changes can have unexpected cascade effects — check mobile toolbar and desktop sidebar together.
 
+## Native shell readiness
+
+The plan is to keep improving the web app, then wrap it in a native shell for iOS and Android: native controls (SwiftUI / Jetpack Compose) around this canvas running in a web view. Keep changes compatible with that:
+
+- **Engine apart from controls.** Put behaviour in functions the controls call (`setTool`, `undo`, `redo`, `generateScrawlface`, `setEyeStyles`, `saveToGallery`, ...), not in handlers that only work by clicking a particular HTML key. A native toolbar will call the same functions through a bridge.
+- **Browser-only features are swappable.** Share, Download, vibration and the IndexedDB gallery each need a fallback or a single place to replace them with a native version.
+- **No new external dependencies.** p5.js and the wordmark fonts load from CDNs today; the app will bundle local copies to work offline, so don't add more remote assets.
+- **The canvas fits any container.** It covers and masks itself to whatever box it's given (`fitCanvasToContainer`); keep it free of assumptions about the page around it.
+
 ## Success looks like
 
 - A change ships without touching anything it didn't need to.
