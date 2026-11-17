@@ -66,6 +66,9 @@ async function run(label, contextOpts) {
     clearDis: document.getElementById('clear-drawings-btn').disabled }));
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
+  // Tool order, sidebar and phone row alike: the colour tools together, the eraser last
+  const toolOrder = await ev(() => [...document.querySelectorAll('.tool-keys')].map(g => [...g.querySelectorAll('[data-tool]')].map(b => b.dataset.tool).join(' ')));
+  check('tools ordered eyes, brush, fill, eraser', toolOrder.length === 2 && toolOrder.every(o => o === 'eyes brush fill eraser'), JSON.stringify(toolOrder));
   // The brush starts at its biggest size, and that's the selected key
   const brushStart = await ev(() => ({ size: brushSize,
     biggest: Math.max(...[...document.querySelectorAll('[data-size]')].map(b => +b.dataset.size)),
