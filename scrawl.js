@@ -2346,7 +2346,7 @@ function thumbImage(record) {
   return img;
 }
 
-// Redraws the gallery grid and the recents row on the blank start
+// Redraws the gallery grid and the pile of recents on the blank start
 async function renderGallery() {
   const records = await listGallery();
   thumbUrls.forEach(url => URL.revokeObjectURL(url));
@@ -2422,15 +2422,13 @@ async function renderGallery() {
   }
   updateGallerySelection();
 
+  // Blank start: the latest three as a pile of prints (newest last, on
+  // top) and the count; the pile opens My Scrawls (.gallery-open-btn)
   const recents = document.getElementById('recents');
-  document.getElementById('recents-list').replaceChildren(...records.slice(0, 4).map(record => {
-    const open = document.createElement('button');
-    open.type = 'button';
-    open.className = 'recent-tile';
-    open.append(thumbImage(record));
-    open.addEventListener('click', () => openFromGallery(record.id));
-    return open;
-  }));
+  document.getElementById('recents-list').replaceChildren(...records.slice(0, 3).reverse().map(thumbImage));
+  const count = records.length === 1 ? '1 scrawlface' : `${records.length} scrawlfaces`;
+  document.getElementById('recents-label').textContent = `My Scrawls · ${records.length}`;
+  recents.setAttribute('aria-label', `My Scrawls, ${count}`);
   recents.hidden = records.length === 0;
 }
 

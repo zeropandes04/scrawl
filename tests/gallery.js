@@ -150,6 +150,17 @@ async function run(label, contextOpts) {
   await load();
   check('broken draft: storage still works', !(await ev(() => document.body.classList.contains('no-storage'))));
   check('broken draft is dropped', !(await draft()));
+
+  // Blank start with saved scrawlfaces: a pile of up to three prints with the
+  // count, which opens My Scrawls
+  const pile = await ev(() => ({ blank: isBlankStart(), shown: !document.getElementById('recents').hidden,
+    prints: document.querySelectorAll('#recents-list img').length, label: document.getElementById('recents-label').textContent }));
+  const saved = await galleryCount();
+  await page.click('#recents');
+  const opened = await ev(() => document.getElementById('gallery-dialog').open);
+  await ev(() => document.getElementById('gallery-dialog').close());
+  check('blank start shows a pile of recents that opens My Scrawls', pile.blank && pile.shown && pile.prints === Math.min(3, saved) &&
+    pile.label === `My Scrawls · ${saved}` && opened, JSON.stringify({ ...pile, saved, opened }));
   await ev(() => dbRequest('gallery', 'readwrite', s => s.delete('broken')));
 
   // Saved before the paint layer grew: an 800x800 drawing opens centred on the scrawl
