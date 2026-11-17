@@ -89,6 +89,27 @@ async function run(label, contextOpts) {
   check('eye drag moves eye', Math.abs(e0b.x - e0.x - 40) < 3 && Math.abs(e0b.y - e0.y - 30) < 3, JSON.stringify(e0b));
   check('eye drag not in undo history', (await state()).h === 0);
 
+  // On a screen short enough to mask the picture, an eye can't be dragged
+  // under the mask: it stops where it's still wholly visible
+  if (mobile) {
+    const size = page.viewportSize();
+    await page.setViewportSize({ width: 320, height: 520 });
+    await page.waitForTimeout(300);
+    const masked = await ev(() => { const v = visibleCanvasRect(); return v.y0 > 1; });
+    const start = await ev(() => { const e = eyePositions[0]; const p = getRotatedPosition(e.x, e.y);
+      const c = canvas.elt.getBoundingClientRect(); const k = c.width / width; return { x: c.left + p.x * k, y: c.top + p.y * k }; });
+    await page.mouse.move(start.x, start.y); await page.mouse.down();
+    for (let i = 1; i <= 10; i++) { await page.mouse.move(start.x, start.y - 60 * i); await page.waitForTimeout(20); }
+    await page.mouse.up();
+    const seen = await ev(() => {
+      const e = eyePositions[0]; const p = getRotatedPosition(e.x, e.y); const v = visibleCanvasRect();
+      return { top: p.y - eyeRadius, visibleTop: v.y0 };
+    });
+    check('eye stops at the visible edge when the picture is masked', masked && seen.top >= seen.visibleTop - 0.5 && seen.top < seen.visibleTop + 5, JSON.stringify(seen));
+    await page.setViewportSize(size);
+    await page.waitForTimeout(300);
+  }
+
   // Brush stroke
   await tool('brush');
   await drag([150, 650], [350, 700]);

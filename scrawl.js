@@ -459,9 +459,15 @@ function draw() {
 
   if (draggedEyeIndex !== -1 && mouseIsPressed) {
     const transformed = getTransformedCoords(mouseX, mouseY);
-    // Keep the whole eye on the canvas so it can't be dragged out of reach
-    eyePositions[draggedEyeIndex].x = constrain(transformed.x + dragOffset.x, eyeRadius, canvasSize - eyeRadius);
-    eyePositions[draggedEyeIndex].y = constrain(transformed.y + dragOffset.y, eyeRadius, canvasSize - eyeRadius);
+    // Keep the whole eye in the scrawl square, and where it can be seen
+    // (and grabbed again), so it can't be dragged out of reach
+    eyePositions[draggedEyeIndex] = {
+      ...eyePositions[draggedEyeIndex],
+      ...keepInView({
+        x: constrain(transformed.x + dragOffset.x, eyeRadius, canvasSize - eyeRadius),
+        y: constrain(transformed.y + dragOffset.y, eyeRadius, canvasSize - eyeRadius)
+      })
+    };
     redrawCanvas();
     return;
   }
@@ -535,6 +541,32 @@ function dab(x, y, size) {
   drawingGraphics.ellipse(lx, ly, size, size);
   const r = size / 2 + 2; // + the anti-aliased edge
   strokeBounds = unionRect(strokeBounds, { x: lx - r, y: ly - r, w: 2 * r, h: 2 * r });
+}
+
+// The part of the canvas the window shows, in canvas units: its container
+// masks the picture's edges when the window isn't 4:5
+function visibleCanvasRect() {
+  const c = canvas.elt.getBoundingClientRect();
+  const b = document.getElementById('scrawl-container').getBoundingClientRect();
+  const k = width / c.width;
+  return {
+    x0: (Math.max(c.left, b.left) - c.left) * k,
+    x1: (Math.min(c.right, b.right) - c.left) * k,
+    y0: (Math.max(c.top, b.top) - c.top) * k,
+    y1: (Math.min(c.bottom, b.bottom) - c.top) * k
+  };
+}
+
+// Moves a position on the drawing just enough that an eye there is wholly
+// in view
+function keepInView(pos) {
+  const view = visibleCanvasRect();
+  const r = eyeRadius * viewZoom;
+  const screen = getRotatedPosition(pos.x, pos.y);
+  const sx = view.x1 - view.x0 > 2 * r ? constrain(screen.x, view.x0 + r, view.x1 - r) : (view.x0 + view.x1) / 2;
+  const sy = view.y1 - view.y0 > 2 * r ? constrain(screen.y, view.y0 + r, view.y1 - r) : (view.y0 + view.y1) / 2;
+  if (sx === screen.x && sy === screen.y) return pos;
+  return getTransformedCoords(sx, sy);
 }
 
 function updateCursor() {
