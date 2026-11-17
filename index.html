@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=55"></script>
+  <script src="scrawl.js?v=56"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1754,7 +1754,7 @@
             <h3>View</h3>
             <div class="tools-grid two-keys">
               <button type="button" id="rotate-btn" title="Rotate 90°">Rotate</button>
-              <button type="button" id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide lines</button>
+              <button type="button" id="toggle-eyes-btn" title="Hide or show the scrawl lines" disabled>Hide lines</button>
             </div>
           </div>
 
@@ -1765,10 +1765,10 @@
             <div class="save-row">
               <button type="button" class="gallery-save-btn needs-storage" title="Save to My Scrawls" disabled>Save</button>
               <div class="more-menu">
-                <button type="button" class="more-btn" id="save-more-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="save-more-list" aria-label="More options" title="More options"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.2" cy="12.4" r="1.9"/><circle cx="12" cy="11.8" r="2"/><circle cx="18.8" cy="12.3" r="1.8"/></svg></button>
+                <button type="button" class="more-btn" id="save-more-btn" disabled aria-haspopup="menu" aria-expanded="false" aria-controls="save-more-list" aria-label="More options" title="More options"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5.2" cy="12.4" r="1.9"/><circle cx="12" cy="11.8" r="2"/><circle cx="18.8" cy="12.3" r="1.8"/></svg></button>
                 <div class="more-menu-list" id="save-more-list" role="menu" hidden>
                   <!-- Share on touch screens, Download image elsewhere (setupToolbar) -->
-                  <button type="button" id="image-btn" class="image-btn" role="menuitem" hidden>Share</button>
+                  <button type="button" id="image-btn" class="image-btn" role="menuitem" hidden disabled>Share</button>
                 </div>
               </div>
             </div>
@@ -1856,7 +1856,7 @@
                 <div class="mobile-section-label">Drawing</div>
                 <div class="tools-grid two-keys">
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
-                  <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet">Hide lines</button>
+                  <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Hide lines</button>
                 </div>
               </div>
 
@@ -1865,7 +1865,7 @@
                 <!-- Save stays open, so its "Saved" shows -->
                 <div class="tools-grid two-keys">
                   <button type="button" class="mobile-control-btn gallery-save-btn needs-storage" disabled>Save</button>
-                  <button type="button" id="image-btn-mobile" class="mobile-control-btn image-btn closes-sheet" hidden>Share</button>
+                  <button type="button" id="image-btn-mobile" class="mobile-control-btn image-btn closes-sheet" hidden disabled>Share</button>
                 </div>
               </div>
             </div>

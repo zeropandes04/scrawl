@@ -36,6 +36,11 @@ async function run(label, contextOpts) {
   await page.goto('file://' + path.join(repo, 'index.html'));
   // The app opens on a blank start: create the first scrawl from its button
   await page.waitForFunction(() => typeof drawingGraphics !== 'undefined');
+  // Blank start: the keys that need a scrawlface are off (Hide lines, Save,
+  // Share / Download and the sidebar's ... menu)
+  const blankKeys = "['toggle-eyes-btn', 'toggle-eyes-btn-mobile', 'save-more-btn', 'image-btn', 'image-btn-mobile']" +
+    ".map(id => document.getElementById(id)).concat([...document.querySelectorAll('.gallery-save-btn')]).map(b => b.disabled)";
+  const offAtStart = await page.evaluate(blankKeys);
   await page.click('#blank-cta-btn');
   await page.waitForFunction(() => eyePositions.length === 2);
   await page.waitForFunction(() => scrawlQueue.length === 0);
@@ -66,6 +71,10 @@ async function run(label, contextOpts) {
     clearDis: document.getElementById('clear-drawings-btn').disabled }));
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
+  const onAfterNew = await page.evaluate(blankKeys);
+  // (Save stays off until there's a change to save)
+  check('blank start disables Hide lines, Save and Share; New enables Hide lines and Share',
+    offAtStart.every(Boolean) && onAfterNew.slice(0, 5).every(d => !d), JSON.stringify({ offAtStart, onAfterNew }));
   // Tool order, sidebar and phone row alike: the colour tools together, the eraser last
   const toolOrder = await ev(() => [...document.querySelectorAll('.tool-keys')].map(g => [...g.querySelectorAll('[data-tool]')].map(b => b.dataset.tool).join(' ')));
   check('tools ordered eyes, brush, fill, eraser', toolOrder.length === 2 && toolOrder.every(o => o === 'eyes brush fill eraser'), JSON.stringify(toolOrder));

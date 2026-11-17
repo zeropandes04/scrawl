@@ -289,9 +289,7 @@ function generateScrawlface() {
   // Clear undo/redo history
   clearHistory();
 
-  // Leave the blank start state (hides the create button, shows the
-  // on-canvas scrawl toggle)
-  document.body.classList.remove('is-blank');
+  leaveBlankStart();
   try { localStorage.setItem('createdScrawlface', '1'); } catch (e) {}
 
   // A new scrawlface: not in the gallery, nothing unsaved, no draft
@@ -2065,6 +2063,15 @@ function hasUnsavedChanges() {
   return editVersion !== savedVersion;
 }
 
+// Leaves the blank start (New, or opening a saved scrawlface): the create
+// button goes, and the keys that need a scrawlface on the canvas come on.
+// Save follows its own rule (updateGallerySaveButtons).
+function leaveBlankStart() {
+  document.body.classList.remove('is-blank');
+  setButtonsDisabled(['toggle-eyes-btn', 'toggle-eyes-btn-mobile',
+                      'save-more-btn', 'image-btn', 'image-btn-mobile'], false);
+}
+
 function isBlankStart() {
   return document.body.classList.contains('is-blank');
 }
@@ -2181,7 +2188,7 @@ async function restoreScrawlface(record) {
   hasDrawings = checkIfDrawingHasContent();
   hasDrawings ? enableClearButton() : disableClearButton();
 
-  document.body.classList.remove('is-blank');
+  leaveBlankStart();
   redrawCanvas();
 }
 
