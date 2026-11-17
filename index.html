@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=53"></script>
+  <script src="scrawl.js?v=54"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -233,24 +233,86 @@
     }
 
     /* ---- Gallery ----
-       Recents on the blank start, the Save / Discard dialog and the
+       The pile of recent scrawlfaces on the blank start, the Save / Discard dialog and the
        My Scrawls screen. Both dialogs are native <dialog>s in the top
        layer, so they don't affect the page layout. */
-    .recents {
+    /* Blank start: the latest saved scrawlfaces as a little pile of prints
+       (white borders, fanned), labelled with the count. One key: it opens
+       My Scrawls. Unstyled as a key, so it doesn't compete with Create. */
+    .recents-pile {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
-      margin-top: 12px;
+      gap: 14px;
+      margin-top: 18px;
+      padding: 8px 24px;
+      background: none;
+      box-shadow: none;
       pointer-events: auto;
     }
 
-    .recents-list {
-      display: flex;
-      gap: 8px;
+    .recents-pile:hover,
+    .recents-pile:active {
+      background: none;
+      box-shadow: none;
+      transform: none;
     }
 
-    .recent-tile,
+    .pile {
+      position: relative;
+      display: block;
+      width: 96px;
+      height: 96px;
+    }
+
+    /* The newest print is last in the pile, on top and straight; the ones
+       under it fan out to either side */
+    .pile img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: #ffffff;
+      border: 3px solid #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transition: transform 0.2s;
+    }
+
+    .pile img:nth-last-child(2) {
+      transform: translate(14px, 2px) rotate(7deg);
+    }
+
+    .pile img:nth-last-child(3) {
+      transform: translate(-14px, 4px) rotate(-9deg);
+    }
+
+    /* Pressing (or hovering with a mouse) spreads the pile a little */
+    .recents-pile:active .pile img:nth-last-child(2) {
+      transform: translate(20px, 2px) rotate(11deg);
+    }
+
+    .recents-pile:active .pile img:nth-last-child(3) {
+      transform: translate(-20px, 4px) rotate(-13deg);
+    }
+
+    @media (hover: hover) {
+      .recents-pile:hover .pile img:nth-last-child(2) {
+        transform: translate(20px, 2px) rotate(11deg);
+      }
+
+      .recents-pile:hover .pile img:nth-last-child(3) {
+        transform: translate(-20px, 4px) rotate(-13deg);
+      }
+    }
+
+    .pile-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
     .gallery-tile {
       display: block;
       padding: 0;
@@ -259,28 +321,11 @@
       box-shadow: inset 0 0 0 1px var(--chassis-edge), 0 2px 4px rgba(0,0,0,0.08);
     }
 
-    .recent-tile {
-      width: 56px;
-      height: 56px;
-      min-width: 0;
-    }
-
-    .recent-tile img,
     .gallery-tile img {
       display: block;
       width: 100%;
       height: 100%;
       object-fit: cover;
-    }
-
-    /* A text link rather than a key, so it doesn't compete with Create */
-    .recents-all {
-      padding: 6px 10px;
-      background: none;
-      box-shadow: none;
-      color: var(--muted);
-      font-size: 13px;
-      text-decoration: underline;
     }
 
     .app-dialog,
@@ -1608,11 +1653,12 @@
             <div class="blank-cta" id="blank-cta">
               <button type="button" id="blank-cta-btn" class="cta-button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>Create your first scrawlface</button>
               <p class="subtitle">Move the eyes, find the face, doodle on top</p>
-              <!-- Latest saved scrawlfaces (filled in by renderGallery) -->
-              <div class="recents needs-storage" id="recents" hidden>
-                <div class="recents-list" id="recents-list"></div>
-                <button type="button" class="recents-all gallery-open-btn">See all</button>
-              </div>
+              <!-- The latest saved scrawlfaces as a fanned pile of prints, with
+                   a count; opens My Scrawls (filled in by renderGallery) -->
+              <button type="button" class="recents-pile gallery-open-btn needs-storage" id="recents" hidden>
+                <span class="pile" id="recents-list" aria-hidden="true"></span>
+                <span class="pile-label" id="recents-label">My Scrawls</span>
+              </button>
             </div>
           </div>
         </div>
