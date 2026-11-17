@@ -51,7 +51,7 @@ const bgColor = [255, 255, 255];
 let strokeColor = [0, 0, 0];
 let rotation = 0;      // degrees; quarter turns from the Rotate button, any angle from a pinch
 let viewZoom = 1;      // 1 = whole canvas visible; pinch zooms in up to maxZoom
-let viewPan = { x: 0, y: 0 }; // canvas px the zoomed view is shifted by
+let viewPan = { x: 0, y: 0 }; // units the zoomed view is shifted by
 const maxZoom = 8;
 let pinch = null;      // two-finger gesture in progress: the view and fingers when it started
 let pressChangedDrawing = false; // the current press started a stroke or filled
@@ -125,7 +125,7 @@ const maxHistoryPixels = 16e6;
 let strokePoints = 0;
 let maxStrokePoints = 20; // Points to reach full size
 let currentBrushSize = 0;
-let strokeLength = 0; // Canvas px travelled in the current stroke
+let strokeLength = 0; // Units travelled on screen in the current stroke
 let strokeBounds = null; // layer area the current stroke has painted (see dab)
 const tapSlop = 10;   // Strokes shorter than this count as a tap
 
@@ -1470,10 +1470,6 @@ function fitCanvasToContainer() {
   const k = max(box.clientWidth / frameWidth, box.clientHeight / frameHeight);
   box.style.setProperty('--canvas-width', `${Math.ceil(frameWidth * k)}px`);
   box.style.setProperty('--canvas-height', `${Math.ceil(frameHeight * k)}px`);
-  if (drawMode || eraseMode) setBrushCursor();
-}
-
-function windowResized() {
   if (drawMode || eraseMode) setBrushCursor();
 }
 

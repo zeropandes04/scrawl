@@ -44,7 +44,7 @@ async function run(label, contextOpts) {
   const touch = mobile;
   const box = await page.locator('#scrawl-container canvas').boundingBox();
   const ev = (fn) => page.evaluate(fn);
-  // canvas px -> page px (no zoom/rotation at start)
+  // canvas units -> page px (no zoom/rotation at start)
   const toPage = async (x, y) => {
     const s = await ev(() => ({ w: width, h: height }));
     return { x: box.x + (x + (s.w - 800) / 2) * box.width / s.w, y: box.y + (y + (s.h - 800) / 2) * box.height / s.h };
