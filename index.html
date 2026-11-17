@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=62"></script>
+  <script src="scrawl.js?v=63"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1825,10 +1825,28 @@
 
     /* Three lines tall, so screens don't jump */
     .intro-text {
+      margin: 1em 0;
       min-height: 4.2em;
       font-size: 15px;
       line-height: 1.4;
       color: var(--muted);
+    }
+
+    /* 03 · How does it work: the three steps, the one illustrated in ink */
+    .intro-text ol {
+      display: inline-grid;
+      gap: 2px;
+      margin: 0;
+      padding-left: 1.4em;
+      text-align: left;
+    }
+
+    .intro-text li {
+      transition: color 0.2s;
+    }
+
+    .intro-text li.on {
+      color: var(--ink);
     }
 
     .intro-dots {
@@ -2154,7 +2172,7 @@
         <div class="intro-art" id="intro-art" aria-hidden="true"></div>
         <p class="intro-step" id="intro-step"></p>
         <h2 id="intro-title"></h2>
-        <p class="intro-text" id="intro-text"></p>
+        <div class="intro-text" id="intro-text"></div>
         <div class="intro-dots" id="intro-dots" aria-hidden="true"></div>
         <div class="intro-actions">
           <button type="button" id="intro-back">Back</button>

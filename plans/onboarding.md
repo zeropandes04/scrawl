@@ -67,3 +67,14 @@ Add onboarding as a learning resource, not just a first-launch carousel: a short
 1. **Existing users** (made a scrawlface before this shipped): no intro; a one-time tip points at the new ? key.
 2. **Illustrations**: live, drawn by the app's own engine.
 3. **Help key icon**: ?.
+
+## Revision 2: an invitation to discover, not a drawing tutorial
+Promise: *boost your imagination by discovering the unexpected in the ordinary.* The intro avoids presenting Scrawlface as a drawing app.
+- [x] 🟩 **Three screens + a first experience** (step labels `01 · what is it?` …):
+  1. "Your imagination is everywhere.": a scribble draws in, then eyes pop in: it was someone all along.
+  2. "See what others might miss.": the pile of three finished discoveries.
+  3. "Look closer. Let your mind wander.": the three steps as a list; the illustration loops through them (scribble → eyes → fill and mouth), a new scribble each round, and the step it's on is marked.
+  4. "Ready to discover something?": scribble after scribble draws in, no eyes. CTA **Start discovering** (Done when replayed over a scrawlface).
+- [x] 🟩 **Interactive first scribble** (`findingFace`): the scribble the intro creates comes without eyes, and a tip asks "What do you see? Tap where you spot a face." The tap puts the eyes there (a change for Save; not an undo step, like an eye drag), then "There it is!" points at them. **Surprise me**, choosing another tool, Save or Share puts the eyes in their random spots instead.
+- [x] 🟩 Tour copy: Brush, Fill and Eraser "bring what you found to life".
+- The reference images in the brief are not used: everything is drawn live by the app (nothing remote, no third-party art).

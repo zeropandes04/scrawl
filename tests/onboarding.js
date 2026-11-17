@@ -63,26 +63,63 @@ async function run(label, contextOpts) {
       if (i === 1) { // Back and forth
         await t.page.click('#intro-back');
         const back = await t.ev(() => document.getElementById('intro-step').textContent);
-        check('Back goes to the previous screen', back.startsWith('1 '), back);
+        check('Back goes to the previous screen', back.startsWith('01 '), back);
         await t.page.click('#intro-next');
+      }
+      if (i === 1) {
+        const art = await t.ev(() => ({ canvas: document.querySelector('#intro-art canvas').hidden, pile: document.querySelectorAll('#intro-art .pile img').length }));
+        check('screen 2 shows the pile of discoveries', art.canvas && art.pile === 3, JSON.stringify(art));
+      }
+      if (i === 2) {
+        await t.page.waitForTimeout(2200);
+        const list = await t.ev(() => ({ items: [...document.querySelectorAll('#intro-text li')].map(li => li.textContent),
+          on: [...document.querySelectorAll('#intro-text li')].findIndex(li => li.classList.contains('on')),
+          canvas: !document.querySelector('#intro-art canvas').hidden }));
+        check('screen 3 lists the three steps, the illustrated one marked', list.items.length === 3 && list.on === 1 && list.canvas, JSON.stringify(list));
       }
       if (i < 3) await t.page.click('#intro-next');
     }
-    check('four screens: Understand, Discover, Learn, Experience', screens.map(s => s[0].split(' · ')[1]).join() === 'Understand,Discover,Learn,Experience' &&
-      screens[3][1] === 'Create your first scrawlface', JSON.stringify(screens));
-    const art = await t.ev(() => ({ canvas: document.querySelector('#intro-art canvas').hidden, pile: document.querySelectorAll('#intro-art .pile img').length }));
-    check('last screen shows the pile of prints', art.canvas && art.pile === 3, JSON.stringify(art));
+    check('four screens: what, what can I do, how, ready', screens.map(s => s[0].split(' · ')[1]).join() === 'What is it?,What can I do?,How does it work?,Ready?' &&
+      screens[3][1] === 'Start discovering', JSON.stringify(screens));
     await t.page.click('#intro-next');
     await t.page.waitForFunction(() => !isBlankStart() && scrawlQueue.length === 0);
     const st = await state(t.page);
     check('finishing creates the first scrawlface and records completed', !(await introShown(t.page)) && st.completed === 1 && st.skipped === 0 && st.versionSeen === 1, JSON.stringify(st));
-    // the first scrawl's tip on the eyes
+    // The first scribble: no eyes until you tap where you see a face
     await t.page.waitForTimeout(400);
-    const tip = await t.ev(() => ({ shown: !document.getElementById('coach').hidden, text: document.getElementById('coach-text').textContent }));
-    check('first scrawl: tip to drag the eyes', tip.shown && tip.text.includes('Drag the eyes'), JSON.stringify(tip));
+    const tip = await t.ev(() => ({ shown: !document.getElementById('coach').hidden, text: document.getElementById('coach-text').textContent, finding: findingFace }));
+    check('first scribble: eyes wait, a tip asks what you see', tip.shown && tip.finding && tip.text.includes('What do you see'), JSON.stringify(tip));
+    const c = await t.page.locator('#scrawl-container canvas').boundingBox();
+    if (mobile) await t.page.tap('#scrawl-container canvas', { position: { x: c.width / 2, y: c.height / 2 } });
+    else await t.page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
+    await t.page.waitForTimeout(400);
+    const found = await t.ev(() => ({ finding: findingFace, eyes: eyePositions.map(e => [Math.round(e.x), Math.round(e.y)]),
+      unsaved: editVersion !== savedVersion, undo: historyStack.length,
+      tip: !document.getElementById('coach').hidden && document.getElementById('coach-text').textContent }));
+    const mid = found.eyes.length === 2 && Math.abs((found.eyes[0][0] + found.eyes[1][0]) / 2 - 400) < 8;
+    check('tapping puts the eyes where you tapped, then a tip to fine-tune', !found.finding && mid && found.unsaved && found.undo === 0 &&
+      String(found.tip).includes('There it is'), JSON.stringify(found));
     await t.load();
     check('after finishing, the intro stays away on reload', !(await introShown(t.page)));
     check('no page errors (first launch)', t.errors.length === 0, t.errors.join(' | '));
+    await t.ctx.close();
+  }
+
+  // -- The first scribble without tapping: Surprise me, or another tool --
+  for (const how of ['surprise', 'tool']) {
+    const t = await fresh(browser, contextOpts);
+    await t.load();
+    for (let i = 0; i < 4; i++) await t.page.click('#intro-next');
+    await t.page.waitForFunction(() => scrawlQueue.length === 0);
+    await t.page.waitForTimeout(400);
+    if (how === 'surprise') await t.page.click('#coach-next');
+    else await t.ev(() => window.scrawlface.setTool('brush'));
+    await t.page.waitForTimeout(400);
+    const r = await t.ev(() => ({ finding: findingFace, eyes: eyePositions.length, coach: !document.getElementById('coach').hidden,
+      text: document.getElementById('coach-text').textContent }));
+    const ok = !r.finding && r.eyes === 2 && (how === 'tool' || (r.coach && r.text.includes('Drag the eyes')));
+    check(how === 'surprise' ? 'Surprise me puts the eyes in, then the drag tip' : 'choosing another tool puts the eyes in', ok, JSON.stringify(r));
+    check(`no page errors (${how})`, t.errors.length === 0, t.errors.join(' | '));
     await t.ctx.close();
   }
 
@@ -133,7 +170,7 @@ async function run(label, contextOpts) {
     check('help key opens Product tour and Explore features', menu.join() === 'Product tour,Explore features', JSON.stringify(menu));
     await t.page.click('#help-tour');
     const replay = await t.ev(() => [document.getElementById('intro-dialog').open, document.getElementById('intro-step').textContent]);
-    check('Product tour replays the intro', replay[0] && replay[1].startsWith('1 '), JSON.stringify(replay));
+    check('Product tour replays the intro', replay[0] && replay[1].startsWith('01 '), JSON.stringify(replay));
     await t.page.click('#intro-skip');
     await t.page.click('#help-btn');
     await t.page.click('#help-explore');
