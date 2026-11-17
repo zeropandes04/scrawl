@@ -95,7 +95,7 @@ const scrawlStrokeWeight = 1;
 
 let intensity = 10;
 let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
-let brushSize = 8;
+let brushSize = 32; // the biggest size key: bold strokes from the start
 let brushColor = '#000000';
 let eraserSize = 16;
 let brushSizesShown = false; // mobile strip: brush sizes instead of colours
