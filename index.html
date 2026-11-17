@@ -860,6 +860,32 @@
       padding: 8px 6px;
     }
 
+    /* History: a compact Clear first (only as wide as its label), then Undo
+       and Redo sharing the rest */
+    .tools-grid.history-keys {
+      grid-template-columns: auto;
+      grid-auto-flow: column;
+      grid-auto-columns: 1fr;
+    }
+
+    .tools-grid.history-keys > :first-child {
+      padding: 8px 14px;
+    }
+
+    /* Undo / Redo: the arrow before the label */
+    .arrow-key {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .arrow-key svg {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+
     /* A key alone on its row spans it (e.g. Share under Save and My
        scrawlfaces) */
     .tools-grid.two-keys > :nth-child(odd):is(:last-child, :has(+ [hidden])) {
@@ -1499,10 +1525,10 @@
 
           <div class="sidebar-section">
             <h3>History</h3>
-            <div class="tools-grid">
-              <button type="button" id="undo-btn" title="Undo (⌘Z)" disabled>Undo</button>
-              <button type="button" id="redo-btn" title="Redo (⌘⇧Z)" disabled>Redo</button>
+            <div class="tools-grid history-keys">
               <button type="button" id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
+              <button type="button" id="undo-btn" class="arrow-key" title="Undo (⌘Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
+              <button type="button" id="redo-btn" class="arrow-key" title="Redo (⌘⇧Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Redo</button>
             </div>
           </div>
 
@@ -1606,9 +1632,9 @@
 
               <div class="mobile-section">
                 <div class="mobile-section-label">History</div>
-                <div class="tools-grid two-keys">
-                  <button type="button" id="redo-btn-mobile" class="mobile-control-btn" disabled>Redo</button>
+                <div class="tools-grid history-keys">
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
+                  <button type="button" id="redo-btn-mobile" class="mobile-control-btn arrow-key" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Redo</button>
                 </div>
               </div>
 
