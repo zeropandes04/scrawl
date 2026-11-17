@@ -2068,7 +2068,7 @@ function hasUnsavedChanges() {
 // Save follows its own rule (updateGallerySaveButtons).
 function leaveBlankStart() {
   document.body.classList.remove('is-blank');
-  setButtonsDisabled(['toggle-eyes-btn', 'toggle-eyes-btn-mobile',
+  setButtonsDisabled(['rotate-btn', 'toggle-eyes-btn', 'toggle-eyes-btn-mobile',
                       'save-more-btn', 'image-btn', 'image-btn-mobile'], false);
 }
 
