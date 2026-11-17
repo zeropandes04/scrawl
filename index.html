@@ -627,6 +627,11 @@
       margin: 4px 0 8px;
     }
 
+    /* In the sheet, a little room between New scrawl and the loops line */
+    .mobile-section .loops-setting {
+      margin-top: 6px;
+    }
+
     /* Info box: a tip next to a key, as tall as the key. Recessed into the
        panel (not raised like a key) so it doesn't read as a button. */
     .info-box {
@@ -1058,14 +1063,13 @@
       display: block;
     }
 
-    /* Full-width New scrawl key under the intensity fader in the sheet */
+    /* Full-width New scrawl key in the sheet, the loops folded below it */
     .new-scrawl-btn {
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
       width: 100%;
-      margin-top: 10px;
     }
 
     .mobile-control-btn {
@@ -1537,18 +1541,18 @@
         </div>
 
         <aside class="sidebar" aria-label="Tools">
-          <!-- Making a scrawl, set apart from the tools below: the number of
-               loops (an advanced setting, folded away), then New scrawl -->
+          <!-- Making a scrawl, set apart from the tools below: New scrawl,
+               then its advanced setting, the loops (folded away) -->
           <div class="sidebar-section scrawl-section">
             <h3>Scrawl</h3>
+            <button id="generate-btn" class="cta-button" title="Generate a new scrawl (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
             <details class="loops-setting">
-              <summary>Loops: <span class="loops-value">10</span></summary>
+              <summary>Loops for the next scrawl: <span class="loops-value">10</span></summary>
               <div class="fader-row">
                 <input type="range" id="intensity-slider" min="1" max="25" value="10" step="1" aria-label="Loops in the next scrawl">
                 <span class="lcd" id="intensity-value">10</span>
               </div>
             </details>
-            <button id="generate-btn" class="cta-button" title="Generate a new scrawl (N)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
           </div>
 
           <div class="sidebar-section">
@@ -1615,19 +1619,19 @@
           </div>
 
           <div class="sidebar-section">
-            <h3>View</h3>
-            <div class="tools-grid two-keys">
-              <button type="button" id="rotate-btn" title="Rotate 90°">Rotate</button>
-              <button type="button" id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide lines</button>
-            </div>
-          </div>
-
-          <div class="sidebar-section">
             <h3>History</h3>
             <div class="tools-grid history-keys">
               <button type="button" id="clear-drawings-btn" title="Clear drawings" disabled>Clear</button>
               <button type="button" id="undo-btn" class="arrow-key" title="Undo (⌘Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>Undo</button>
               <button type="button" id="redo-btn" class="arrow-key" title="Redo (⌘⇧Z)" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Redo</button>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <h3>View</h3>
+            <div class="tools-grid two-keys">
+              <button type="button" id="rotate-btn" title="Rotate 90°">Rotate</button>
+              <button type="button" id="toggle-eyes-btn" title="Hide or show the scrawl lines">Hide lines</button>
             </div>
           </div>
 
@@ -1710,17 +1714,17 @@
           <div class="sheet-inner">
             <div class="sheet-content">
               <div class="mobile-section">
-                <!-- Same as the sidebar: the loops (folded away) apply to the
-                     next scrawl, so New sits right under them -->
+                <!-- Same as the sidebar: New scrawl, then the loops for the
+                     next one (folded away) -->
                 <div class="mobile-section-label">Scrawl</div>
+                <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
                 <details class="loops-setting">
-                  <summary>Loops: <span class="loops-value">10</span></summary>
+                  <summary>Loops for the next scrawl: <span class="loops-value">10</span></summary>
                   <div class="fader-row">
                     <input type="range" id="intensity-slider-mobile" min="1" max="25" value="10" step="1" aria-label="Loops in the next scrawl">
                     <span class="lcd" id="intensity-value-mobile">10</span>
                   </div>
                 </details>
-                <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
               </div>
 
               <!-- Rotate is two fingers on the canvas here; Undo and Redo sit in
