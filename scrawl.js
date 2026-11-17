@@ -269,6 +269,9 @@ function setup() {
 
   // Save, the gallery, and last time's unsaved work (see the Gallery section)
   setupGallery();
+
+  // Help key, intro on first launch, tooltips (see the Onboarding section)
+  setupOnboarding();
 }
 
 // Replaces the scrawlface on the canvas with a new one. The keys go through
@@ -327,9 +330,15 @@ function generateScrawlface() {
   scrawlDrawInProgress = 0;
   loop(); // draw() animates the draw-in
   // Reduced motion: draw the whole scrawl straight away
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reducedMotion) {
     finishScrawlDrawIn();
   }
+
+  // First scrawl: once it has drawn in, a tip on the eyes
+  const drawInMs = reducedMotion ? 0 :
+    (scrawlDrawInBaseFrames + scrawlDrawInFramesPerSegment * scrawlQueue.length) / 60 * 1000;
+  setTimeout(tipDragEyes, drawInMs + 300);
 
   const eye1X = random(eyeMargin, canvasSize - eyeMargin - eyeSize - 60);
   const eye1Y = random(eyeMargin, canvasSize - eyeMargin - eyeSize);
@@ -643,6 +652,9 @@ function mousePressed(event) {
   // canvas (e.g. mobile toolbar buttons that overlap it when the menu is open),
   // even if their coordinates fall inside the canvas bounds.
   if (event && event.target !== canvas.elt) return;
+
+  // Working on the canvas puts any one-off tip away
+  dismissTip();
 
   // A second finger is a pinch, not another press
   if (pinch) return;
@@ -1481,6 +1493,7 @@ function setTool(tool) {
     cursor(bucketMode ? CROSS : ARROW);
   }
   updateToolButtons();
+  tipForTool(tool);
 }
 
 function currentTool() {
@@ -2261,6 +2274,7 @@ function markChanged() {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(saveDraft, 1000);
   if (!autoSaveTimer) autoSaveTimer = setTimeout(autoSave, autoSaveMs);
+  tipSave();
 }
 
 // Long sessions are saved to My Scrawls on their own: 5 minutes after the
@@ -2310,6 +2324,7 @@ function saveToGallery() {
 
 async function saveToGalleryNow() {
   if (isBlankStart()) return;
+  dismissTip('save');
   const version = editVersion;
   const token = scrawlfaceToken;
   const record = await captureScrawlface(true);
@@ -2699,6 +2714,489 @@ function setupGallery() {
     .catch(() => document.body.classList.add('no-storage'));
 }
 
+// ---- Onboarding: Understand -> Discover -> Learn -> Experience ----
+// An intro (four screens) on first launch, a help key to replay it or step
+// through tips on the controls, and one-off tips when a feature first
+// matters. See plans/onboarding.md. Progress is kept in localStorage:
+// onboarding_completed / onboarding_skipped hold the intro version
+// completed / skipped, onboarding_version_seen the highest version shown,
+// and tips_seen the one-off tips already shown. Raising ONBOARDING_VERSION
+// shows the intro once more to everyone. Nothing shows in canvas-only mode
+// (a native shell does its own onboarding, with the same state).
+const ONBOARDING_VERSION = 1;
+
+const introScreens = [
+  { step: 'Understand', art: 'scrawl', title: 'Find faces in scribbles',
+    text: 'Scrawlface draws a random scribble. Your brain does the rest: it can\'t help seeing faces in things.' },
+  { step: 'Discover', art: 'eyes', title: 'Place the eyes',
+    text: 'Drag the two eyes to where you see a face. Pick an eye style, or tap Mix for a surprise.' },
+  { step: 'Learn', art: 'paint', title: 'Doodle on top',
+    text: 'Brush, Fill and Eraser bring the face out. Made a mess? Undo anything.' },
+  { step: 'Experience', art: 'pile', title: 'Keep and share',
+    text: 'Save your scrawlfaces to My Scrawls, and share the ones you love.' }
+];
+
+function storageGet(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+
+function storageSet(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) {}
+}
+
+function isEmbedded() {
+  return document.documentElement.classList.contains('embedded');
+}
+
+function isTouchScreen() {
+  return window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
+function onboardingState() {
+  let tipsSeen = [];
+  try { tipsSeen = JSON.parse(storageGet('tips_seen')) || []; } catch (e) {}
+  return {
+    version: ONBOARDING_VERSION,
+    completed: parseInt(storageGet('onboarding_completed')) || 0,
+    skipped: parseInt(storageGet('onboarding_skipped')) || 0,
+    versionSeen: parseInt(storageGet('onboarding_version_seen')) || 0,
+    tipsSeen
+  };
+}
+
+// outcome: 'completed' or 'skipped'
+function markOnboarding(outcome) {
+  storageSet('onboarding_' + outcome, ONBOARDING_VERSION);
+  markIntroSeen();
+}
+
+function markIntroSeen() {
+  storageSet('onboarding_version_seen', Math.max(onboardingState().versionSeen, ONBOARDING_VERSION));
+}
+
+function markTipSeen(id) {
+  const seen = onboardingState().tipsSeen;
+  if (!seen.includes(id)) storageSet('tips_seen', JSON.stringify([...seen, id]));
+}
+
+// Clears all of it (as if the app had never been opened)
+function resetOnboarding() {
+  ['onboarding_completed', 'onboarding_skipped', 'onboarding_version_seen', 'tips_seen']
+    .forEach(key => { try { localStorage.removeItem(key); } catch (e) {} });
+}
+
+function setupOnboarding() {
+  if (isEmbedded()) return;
+  setupHelp();
+  setupIntro();
+  setupCoach();
+
+  // First launch of this version of the intro: show it. People who made a
+  // scrawlface before onboarding existed get a tip on the help key instead.
+  const state = onboardingState();
+  if (Math.max(state.completed, state.skipped) >= ONBOARDING_VERSION) return;
+  const createdBefore = storageGet('createdScrawlface') === '1';
+  if (createdBefore && state.versionSeen === 0) {
+    setTimeout(() => showTip('help-key', { el: document.getElementById('help-btn') },
+      'New: a quick tour and tips on every control are here, any time.'), 800);
+    return;
+  }
+  openIntro();
+}
+
+// -- Help key and menu --
+
+function setupHelp() {
+  const btn = document.getElementById('help-btn');
+  const menu = document.getElementById('help-menu');
+  btn.addEventListener('click', () => (menu.hidden ? openHelpMenu() : closeHelpMenu()));
+  document.getElementById('help-tour').addEventListener('click', () => {
+    closeHelpMenu();
+    openIntro();
+  });
+  document.getElementById('help-explore').addEventListener('click', () => {
+    closeHelpMenu();
+    exploreFeatures();
+  });
+  document.addEventListener('click', e => {
+    if (!menu.hidden && !e.target.closest('#help-menu, #help-btn')) closeHelpMenu();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !menu.hidden) {
+      closeHelpMenu();
+      btn.focus();
+    }
+  });
+  window.addEventListener('resize', () => { if (!menu.hidden) placeHelpMenu(); });
+}
+
+function openHelpMenu() {
+  dismissTip('help-key');
+  const menu = document.getElementById('help-menu');
+  menu.hidden = false;
+  placeHelpMenu();
+  document.getElementById('help-btn').setAttribute('aria-expanded', 'true');
+  menu.querySelector('button').focus();
+}
+
+function closeHelpMenu() {
+  document.getElementById('help-menu').hidden = true;
+  document.getElementById('help-btn').setAttribute('aria-expanded', 'false');
+}
+
+// Under the help key, right edges lined up
+function placeHelpMenu() {
+  const r = document.getElementById('help-btn').getBoundingClientRect();
+  const menu = document.getElementById('help-menu');
+  menu.style.top = `${r.bottom + 8}px`;
+  menu.style.right = `${Math.max(12, innerWidth - r.right)}px`;
+}
+
+// -- Intro --
+
+let introIndex = 0;
+let introStart = 0;      // when the screen on show started (ms)
+let introFrame = null;   // requestAnimationFrame id
+let introArt = null;     // p5 graphic the illustrations are drawn on (800 units)
+let introScene = null;   // the scribble, eyes and mouth the illustrations use
+let introPile = null;    // the last screen's pile of prints
+
+function setupIntro() {
+  const dialog = document.getElementById('intro-dialog');
+  document.getElementById('intro-next').addEventListener('click', () => {
+    if (introIndex < introScreens.length - 1) {
+      showIntroScreen(introIndex + 1);
+    } else {
+      finishIntro('completed');
+    }
+  });
+  document.getElementById('intro-back').addEventListener('click', () => {
+    if (introIndex > 0) showIntroScreen(introIndex - 1);
+  });
+  document.getElementById('intro-skip').addEventListener('click', () => finishIntro('skipped'));
+  // Esc skips
+  dialog.addEventListener('cancel', e => {
+    e.preventDefault();
+    finishIntro('skipped');
+  });
+  dialog.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' && introIndex < introScreens.length - 1) showIntroScreen(introIndex + 1);
+    if (e.key === 'ArrowLeft' && introIndex > 0) showIntroScreen(introIndex - 1);
+  });
+  const dots = document.getElementById('intro-dots');
+  dots.replaceChildren(...introScreens.map(() => document.createElement('span')));
+}
+
+function introOpen() {
+  return document.getElementById('intro-dialog').open;
+}
+
+function openIntro() {
+  if (isEmbedded() || introOpen()) return;
+  closeHelpMenu();
+  hideCoach('end');
+  introScene = makeIntroScene();
+  markIntroSeen();
+  showIntroScreen(0);
+  document.getElementById('intro-dialog').showModal();
+  introFrame = requestAnimationFrame(animateIntro);
+}
+
+function finishIntro(outcome) {
+  markOnboarding(outcome);
+  cancelAnimationFrame(introFrame);
+  document.getElementById('intro-dialog').close();
+  // The last key creates the first scrawlface
+  if (outcome === 'completed' && isBlankStart()) requestNewScrawl();
+}
+
+function showIntroScreen(i) {
+  introIndex = i;
+  introStart = performance.now();
+  const screen = introScreens[i];
+  const last = i === introScreens.length - 1;
+  document.getElementById('intro-step').textContent = `${i + 1} · ${screen.step}`;
+  document.getElementById('intro-title').textContent = screen.title;
+  document.getElementById('intro-text').textContent = screen.text;
+  document.querySelectorAll('#intro-dots span').forEach((dot, k) => dot.classList.toggle('on', k === i));
+  document.getElementById('intro-back').style.visibility = i === 0 ? 'hidden' : '';
+  document.getElementById('intro-next').textContent =
+    !last ? 'Next' : isBlankStart() ? 'Create your first scrawlface' : 'Start drawing';
+
+  // The pile of prints is a picture of its own; the others are drawn live
+  const pile = screen.art === 'pile';
+  if (pile && !introPile) introPile = makeIntroPile();
+  introArt.elt.hidden = pile;
+  if (introPile) introPile.hidden = !pile;
+}
+
+// The illustrations' material: one scribble, where the eyes go, a mouth
+function makeIntroScene() {
+  if (!introArt) {
+    introArt = createGraphics(canvasSize, canvasSize);
+    introArt.pixelDensity(0.6);
+    introArt.elt.style.display = '';
+    document.getElementById('intro-art').append(introArt.elt);
+  }
+  const segments = scrawlSegments(9);
+  fitScrawlToCanvas(segments);
+  return {
+    segments,
+    eyes: [{ x: 335, y: 340, scale: 1 }, { x: 470, y: 330, scale: 0.9 }],
+    mouth: [330, 520, 380, 585, 445, 585, 495, 515]
+  };
+}
+
+// Draws illustration `art` at t seconds into its screen
+function drawIntroArt(g, art, t, scene, look = {}) {
+  const ease = x => 1 - Math.pow(1 - constrain(x, 0, 1), 3);
+  g.clear();
+  g.background(255);
+  g.push();
+  if (art === 'paint' || look.background) {
+    // Fill: the background fades in (lime), behind everything
+    g.noStroke();
+    const c = color(look.background || '#66BD0F');
+    c.setAlpha(255 * (look.background ? 1 : ease(t / 0.6)));
+    g.fill(c);
+    g.rect(0, 0, canvasSize, canvasSize);
+  }
+  if (art === 'paint') {
+    // Brush: a mouth draws itself in
+    const p = constrain((t - 0.7) / 0.8, 0, 1);
+    const [x1, y1, cx1, cy1, cx2, cy2, x2, y2] = scene.mouth;
+    g.noFill();
+    g.stroke('#CC0000');
+    g.strokeWeight(22);
+    g.strokeCap(ROUND);
+    g.beginShape();
+    for (let k = 0; k <= 30 * p; k++) {
+      const u = k / 30;
+      g.vertex(bezierPoint(x1, cx1, cx2, x2, u), bezierPoint(y1, cy1, cy2, y2, u));
+    }
+    g.endShape();
+  }
+  // The scribble: draws itself in on the first screen
+  const n = art === 'scrawl' ? Math.ceil(scene.segments.length * constrain(t / 1.6, 0, 1)) : scene.segments.length;
+  g.noFill();
+  g.stroke(0);
+  g.strokeWeight(2.5);
+  scene.segments.slice(0, n).forEach(seg => g.bezier(...seg));
+  g.pop();
+  // The eyes: pop in on the second screen, then try on a few styles
+  if (art !== 'scrawl') {
+    const styles = ['classic', 'lashes', 'cat', 'sleepy', 'frog', 'glam'];
+    const style = look.eyes || (art === 'eyes' ? styles[Math.floor(Math.max(0, t - 1.2) / 1.3) % styles.length] : 'classic');
+    scene.eyes.forEach((eye, k) => {
+      const pop = art === 'eyes' ? ease((t - 0.2 - k * 0.15) / 0.35) : 1;
+      if (pop > 0.01) drawEye(g, eye.x, eye.y, eye.scale * pop, style, k);
+    });
+  }
+}
+
+function animateIntro() {
+  if (!introOpen()) return;
+  const art = introScreens[introIndex].art;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const t = reduced ? 99 : (performance.now() - introStart) / 1000;
+  if (art !== 'pile') drawIntroArt(introArt, art, t, introScene);
+  introFrame = requestAnimationFrame(animateIntro);
+}
+
+// Three finished scrawlfaces, as a fanned pile of prints
+function makeIntroPile() {
+  const looks = [
+    { background: '#26ACD9', eyes: 'frog' },
+    { background: '#F2A6ED', eyes: 'lashes' },
+    { background: '#FFA64D', eyes: 'cat' }
+  ];
+  const pile = document.createElement('span');
+  pile.className = 'pile';
+  looks.forEach(look => {
+    drawIntroArt(introArt, 'pile', 99, makeIntroScene(), look);
+    const img = document.createElement('img');
+    img.src = introArt.elt.toDataURL('image/png');
+    img.alt = '';
+    pile.append(img);
+  });
+  document.getElementById('intro-art').append(pile);
+  return pile;
+}
+
+// -- Tooltips: the feature tour and the one-off tips share one bubble --
+
+let coachResolve = null;  // ends the step or tip on show
+let coachAnchor = null;   // { el } or { rect: () => DOMRect }, plus ring
+let currentTip = null;    // id of the one-off tip on show
+let touring = false;
+
+function setupCoach() {
+  document.getElementById('coach-next').addEventListener('click', () => hideCoach('next'));
+  document.getElementById('coach-skip').addEventListener('click', () => hideCoach('end'));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !document.getElementById('coach').hidden) hideCoach('end');
+  });
+  window.addEventListener('resize', placeCoach);
+}
+
+// Shows the bubble at `anchor`; resolves 'next' (its key), 'end' (End tour
+// or Esc) or 'dismissed' (put away, e.g. by working on the canvas)
+function showCoach({ anchor, text, count = '', next = 'Next', canEnd = false }) {
+  hideCoach('dismissed');
+  document.getElementById('coach-text').textContent = text;
+  document.getElementById('coach-count').textContent = count;
+  document.getElementById('coach-next').textContent = next;
+  document.getElementById('coach-skip').hidden = !canEnd;
+  document.getElementById('coach').hidden = false;
+  coachAnchor = anchor;
+  if (anchor.ring && anchor.el) anchor.el.classList.add('coach-target');
+  placeCoach();
+  return new Promise(resolve => { coachResolve = resolve; });
+}
+
+function hideCoach(result) {
+  const coach = document.getElementById('coach');
+  if (coach.hidden) return;
+  coach.hidden = true;
+  if (coachAnchor && coachAnchor.el) coachAnchor.el.classList.remove('coach-target');
+  coachAnchor = null;
+  currentTip = null;
+  const resolve = coachResolve;
+  coachResolve = null;
+  if (resolve) resolve(result);
+}
+
+// Below what it points at, or above if there's no room; over the middle of
+// something big (the canvas). The arrow points at the anchor's centre.
+function placeCoach() {
+  const coach = document.getElementById('coach');
+  if (coach.hidden || !coachAnchor) return;
+  const r = coachAnchor.el ? coachAnchor.el.getBoundingClientRect() : coachAnchor.rect();
+  const w = coach.offsetWidth;
+  const h = coach.offsetHeight;
+  const gap = 12;
+  const margin = 12;
+  let side;
+  let top;
+  if (r.height > innerHeight * 0.4) {
+    side = 'inside';
+    top = r.top + (r.height - h) / 2;
+  } else if (r.bottom + gap + h + margin <= innerHeight) {
+    side = 'below';
+    top = r.bottom + gap;
+  } else {
+    side = 'above';
+    top = r.top - gap - h;
+  }
+  top = constrain(top, margin, innerHeight - h - margin);
+  const centre = r.left + r.width / 2;
+  const left = constrain(centre - w / 2, margin, innerWidth - w - margin);
+  coach.dataset.side = side;
+  coach.style.top = `${top}px`;
+  coach.style.left = `${left}px`;
+  document.getElementById('coach-arrow').style.left = `${constrain(centre - left - 6, 14, w - 26)}px`;
+}
+
+// The first element matching `selector` that's on screen
+function shownElement(selector) {
+  return [...document.querySelectorAll(selector)].find(el => el.getClientRects().length > 0) || null;
+}
+
+// Explore features: a tip on each control in turn (sidebar or phone bar)
+async function exploreFeatures() {
+  if (isEmbedded() || touring) return;
+  closeHelpMenu();
+  dismissTip();
+  touring = true;
+  const desktop = shownElement('.sidebar') !== null;
+  const steps = (desktop ? [
+    ['#generate-btn', 'New scrawl draws a fresh random scribble. Loops, under it, sets how tangled the next one is.'],
+    ['.sidebar .tool-keys', 'Eyes moves and restyles the eyes. Brush, Fill and Eraser paint on top of the scribble.'],
+    ['.sidebar-section > .tool-options', 'The selected tool\'s options: eye styles and Mix, or brush sizes and colours.'],
+    ['.sidebar .history-keys', 'Undo and Redo any change. Clear wipes the paint, and can be undone too.'],
+    ['#scrawl-container', 'On the canvas: drag the eyes, draw with the Brush or tap to Fill. Rotate and Hide lines are under View.'],
+    ['.sidebar .save-row', 'Save keeps this scrawlface in My Scrawls. The ⋯ key downloads the picture.'],
+    ['.header-gallery-btn', 'My Scrawls: every scrawlface you\'ve saved, on this device.']
+  ] : [
+    ['.tool-row .tool-keys', 'Eyes moves and restyles the eyes. Brush, Fill and Eraser paint on top of the scribble.'],
+    ['.options-strip', 'The selected tool\'s options: eye styles and Mix, or colours and sizes.'],
+    ['.history-pair', 'Undo and Redo any change.'],
+    ['#scrawl-container', 'Pinch with two fingers to zoom and turn the canvas. Touch and hold still to peek under the lines.'],
+    ['#toggle-mobile-menu', 'Swipe up for more: New scrawl, Loops, Hide lines, Clear, Save and Share.'],
+    ['.header-gallery-btn', 'My Scrawls: every scrawlface you\'ve saved, on this device.']
+  ]).map(([selector, text]) => ({ el: shownElement(selector), text })).filter(step => step.el);
+
+  for (let i = 0; i < steps.length; i++) {
+    const last = i === steps.length - 1;
+    const result = await showCoach({
+      anchor: { el: steps[i].el, ring: true },
+      text: steps[i].text,
+      count: `${i + 1} of ${steps.length}`,
+      next: last ? 'Done' : 'Next',
+      canEnd: !last
+    });
+    if (result !== 'next') break;
+  }
+  touring = false;
+}
+
+// A one-off tip, shown once ever (then remembered), and not over the intro
+// or the tour. Any press on the canvas puts it away.
+function showTip(id, anchor, text) {
+  if (isEmbedded() || touring || introOpen() || currentTip) return;
+  if (onboardingState().tipsSeen.includes(id)) return;
+  if (!anchor || (!anchor.el && !anchor.rect) || (anchor.el && anchor.el.getClientRects().length === 0)) return;
+  markTipSeen(id);
+  showCoach({ anchor, text, next: 'Got it' });
+  currentTip = id;
+}
+
+// Puts the tip on show away (only tip `id`, if given)
+function dismissTip(id) {
+  if (currentTip && (!id || currentTip === id)) hideCoach('dismissed');
+}
+
+// The first scrawl: point at an eye
+function tipDragEyes() {
+  if (isBlankStart() || !moveEyesMode || eyePositions.length === 0) return;
+  showTip('drag-eyes', { rect: () => eyeScreenRect(0) }, 'Drag the eyes to where you see a face.');
+}
+
+// An eye's box on screen
+function eyeScreenRect(i) {
+  const c = canvas.elt.getBoundingClientRect();
+  const k = c.width / width;
+  const p = getRotatedPosition(eyePositions[i].x, eyePositions[i].y);
+  const r = eyeRadius * viewZoom * k;
+  return new DOMRect(c.left + p.x * k - r, c.top + p.y * k - r, 2 * r, 2 * r);
+}
+
+// First time on a tool that has a trick to it
+function tipForTool(tool) {
+  if (isBlankStart()) return;
+  if (tool === 'brush' && isTouchScreen()) {
+    showTip('gestures', { el: document.getElementById('scrawl-container') },
+      'Pinch with two fingers to zoom and turn the canvas. Touch and hold still to peek under the lines.');
+  }
+  if (tool === 'fill') {
+    showTip('fill', { el: shownElement('[data-tool="fill"]') },
+      'Tap inside an area closed in by lines to colour it. Tap outside the scribble to colour the background.');
+  }
+}
+
+// After a handful of changes to a scrawlface that was never saved
+function tipSave() {
+  if (galleryId !== null || editVersion - savedVersion < 6) return;
+  if (document.body.classList.contains('no-storage')) return;
+  const saveKey = shownElement('.sidebar .gallery-save-btn');
+  if (saveKey) {
+    showTip('save', { el: saveKey }, 'Like it? Save it to My Scrawls to keep it.');
+  } else {
+    showTip('save', { el: document.getElementById('toggle-mobile-menu') },
+      'Like it? Swipe up and Save it to My Scrawls to keep it.');
+  }
+}
+
 // ---- For a native shell: the app's state and the functions to drive it ----
 // A shell draws its own controls and talks to the page through
 // window.scrawlface (see plans/native-shell-readiness.md). The web keys use
@@ -2755,5 +3253,6 @@ window.scrawlface = {
   undo, redo, clear: clearDrawings,
   rotate: rotateCanvas, toggleLines: toggleEyes,
   save: saveToGallery, listGallery, openFromGallery,
-  exportPNG
+  exportPNG,
+  onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding
 };
