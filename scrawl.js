@@ -195,15 +195,15 @@ function setup() {
 
   // Desktop and mobile keys that do the same thing
   select("#generate-btn").mousePressed(requestNewScrawl);
-  select("#generate-btn-mobile").mousePressed(requestNewScrawl);
   select("#generate-btn-sheet").mousePressed(requestNewScrawl);
   select("#rotate-btn").mousePressed(rotateCanvas);
-  select("#rotate-btn-mobile-controls").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
   select("#blank-cta-btn").mousePressed(requestNewScrawl);
   select("#clear-drawings-btn").mousePressed(clearDrawings);
-  select("#clear-drawings-btn-mobile").mousePressed(clearDrawings);
+  // On click, not press: Clear disables itself, and a disabled key gets no
+  // click, so the sheet (which closes on its keys' clicks) would stay open
+  document.getElementById('clear-drawings-btn-mobile').addEventListener('click', clearDrawings);
   select("#undo-btn").mousePressed(undo);
   select("#undo-btn-mobile").mousePressed(undo);
   select("#redo-btn").mousePressed(redo);

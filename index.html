@@ -10,7 +10,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=47"></script>
+  <script src="scrawl.js?v=48"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1072,16 +1072,35 @@
       box-shadow: inset 0 0 0 1px rgba(0,0,0,0.2);
     }
 
-    /* Tool row: New | Eyes Brush Eraser Fill | Undo */
+    /* Tool row: Eyes Brush Eraser Fill | Undo Redo, a thin divider
+       between the tools and the history pair. (New scrawl is in the sheet.) */
     .tool-row {
+      --row-gap: 12px;
       display: grid;
-      grid-template-columns: 1fr 4fr 1fr;
-      gap: 12px;
+      grid-template-columns: 4fr 2fr;
+      gap: var(--row-gap);
       padding-top: 4px;
     }
 
     .tool-row .tool-keys {
       gap: 6px;
+    }
+
+    .history-pair {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .history-pair::before {
+      content: '';
+      position: absolute;
+      left: calc(var(--row-gap) / -2);
+      top: 12%;
+      bottom: 12%;
+      width: 1px;
+      background: var(--chassis-edge);
     }
 
     .control-group {
@@ -1316,7 +1335,7 @@
       }
 
       .tool-row {
-        gap: 6px;
+        --row-gap: 6px;
       }
     }
 
@@ -1631,19 +1650,13 @@
                 <button type="button" id="generate-btn-sheet" class="cta-button mobile-control-btn new-scrawl-btn closes-sheet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl</button>
               </div>
 
+              <!-- Rotate is two fingers on the canvas here; Undo and Redo sit in
+                   the tool row -->
               <div class="mobile-section">
-                <div class="mobile-section-label">View</div>
+                <div class="mobile-section-label">Drawing</div>
                 <div class="tools-grid two-keys">
-                  <button type="button" id="rotate-btn-mobile-controls" class="mobile-control-btn closes-sheet">Rotate</button>
                   <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet">Hide lines</button>
-                </div>
-              </div>
-
-              <div class="mobile-section">
-                <div class="mobile-section-label">History</div>
-                <div class="tools-grid history-keys">
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
-                  <button type="button" id="redo-btn-mobile" class="mobile-control-btn arrow-key" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>Redo</button>
                 </div>
               </div>
 
@@ -1719,14 +1732,16 @@
 
         <!-- Tool row: always visible, in thumb reach -->
         <div class="tool-row">
-          <button type="button" id="generate-btn-mobile" class="tool-key cta-button" title="New scrawl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg><span>New</span></button>
           <div class="tool-keys" role="group" aria-label="Tool">
             <button type="button" class="tool-key active" data-tool="eyes" title="Eyes: move and restyle the eyes" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="12" r="4.6"/><circle cx="17.2" cy="12.6" r="4"/><circle cx="8.2" cy="12.6" r="1.7" fill="currentColor" stroke="none"/><circle cx="18.2" cy="13.2" r="1.5" fill="currentColor" stroke="none"/></svg><span>Eyes</span></button>
             <button type="button" class="tool-key" data-tool="brush" title="Brush" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17c2-7 4-9 6-9s.5 7 3 7 3-10 5.5-10 1.5 5 3.5 6"/></svg><span>Brush</span></button>
             <button type="button" class="tool-key" data-tool="eraser" title="Eraser" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><g transform="rotate(40 12 12)"><rect x="7.5" y="3" width="9" height="18" rx="2"/><path d="M7.5 13.5h9"/></g></svg><span>Eraser</span></button>
             <button type="button" class="tool-key" data-tool="fill" title="Fill" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 10c0-3.5 3-6 7.5-6s8 2.5 8 6.5-3.5 9.5-8.5 9.5-7-5.5-7-10z" fill="currentColor" fill-opacity=".28"/></svg><span>Fill</span></button>
           </div>
-          <button type="button" id="undo-btn-mobile" class="tool-key" title="Undo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Undo</span></button>
+          <div class="history-pair" role="group" aria-label="History">
+            <button type="button" id="undo-btn-mobile" class="tool-key" title="Undo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg><span>Undo</span></button>
+            <button type="button" id="redo-btn-mobile" class="tool-key" title="Redo" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg><span>Redo</span></button>
+          </div>
         </div>
       </div>
     </main>
