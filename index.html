@@ -871,6 +871,65 @@
       gap: 10px;
     }
 
+    /* ---- Hierarchy: tools first, their options a level below ----
+       The selected tool is an ink key (clearly "on", with its LED). Its
+       options sit in a recessed tray under the tools (sidebar) or above
+       them (phone strip), on flatter keys; the selected option has an ink
+       ring. Dark always means "selected". */
+    .tool-keys .tool-key.active,
+    .tool-keys .tool-key.active:hover {
+      background: var(--ink);
+      color: #ffffff;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 0 0 var(--key-edge);
+    }
+
+    /* The tray. In the sidebar it reaches into the side padding, so the
+       keys in it keep their full width (44px on touch screens) */
+    .sidebar-section > .tool-options,
+    .options-strip {
+      border-radius: 12px;
+      background: rgba(0,0,0,0.055);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.14), inset 0 0 0 1px rgba(0,0,0,0.04);
+    }
+
+    .sidebar-section > .tool-options {
+      gap: 8px;
+      margin: 0 -12px;
+      padding: 8px 12px;
+    }
+
+    /* Size keys in the sidebar are square, like the colour and eye keys
+       (44px on touch screens, from the rule further down) */
+    .sidebar .size-key {
+      min-height: 0;
+      aspect-ratio: 1 / 1;
+    }
+
+    .options-strip {
+      margin: 0 -8px 4px;
+      padding: 0 4px;
+    }
+
+    /* Flatter keys in the tray: raised by 1px instead of 2px */
+    .sidebar-section > .tool-options button:not(:disabled),
+    .options-strip button:not(:disabled) {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 0 var(--key-edge);
+    }
+
+    .sidebar-section > .tool-options .swatch,
+    .options-strip .swatch {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.3);
+    }
+
+    .sidebar-section > .tool-options .swatch.selected,
+    .options-strip .swatch.selected,
+    .sidebar-section > .tool-options .size-key.selected,
+    .options-strip .size-key.selected,
+    .sidebar-section > .tool-options .eye-set-grid button.active,
+    .options-strip .eye-set-grid button.active {
+      box-shadow: 0 0 0 2px var(--ink);
+    }
+
     /* Size keys: a dot drawn at the stroke size, in the brush colour */
     .size-keys {
       display: grid;
@@ -1550,7 +1609,7 @@
          net rather than the norm */
       .sidebar {
         padding: 12px 20px;
-        gap: 12px;
+        gap: 10px;
         overflow-y: auto;
       }
 
