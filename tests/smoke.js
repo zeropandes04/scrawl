@@ -135,12 +135,14 @@ async function run(label, contextOpts) {
   const before = await ev(() => { drawingGraphics.loadPixels(); return drawingGraphics.pixels.reduce((a, v, i) => i % 4 === 3 ? a + (v > 0) : a, 0); });
   const pt = await ev(() => {
     // find a pixel not on scrawl or drawing (both layers transparent there)
-    baseScrawlGraphics.loadPixels(); drawingGraphics.loadPixels();
+    // (positions in units; the layers have res pixels per unit, and the paint
+    // layer is bigger than the scrawl square, which sits in its middle)
+    // Each layer is read once, then looked up by pixel
+    const read = g => ({ w: g.elt.width, data: g.drawingContext.getImageData(0, 0, g.elt.width, g.elt.height).data });
+    const scrawl = read(baseScrawlGraphics), paint = read(drawingGraphics);
+    const alpha = (l, x, y) => l.data[(Math.floor(y * res) * l.w + Math.floor(x * res)) * 4 + 3];
     for (let y = 20; y < 780; y += 7) for (let x = 20; x < 780; x += 7) {
-      // The paint layer is bigger than the scrawl square, which sits in its middle
-      const i = (y * 800 + x) * 4;
-      const j = ((y + layerOffset) * layerSize + x + layerOffset) * 4;
-      if (baseScrawlGraphics.pixels[i + 3] === 0 && drawingGraphics.pixels[j + 3] === 0) return [x, y];
+      if (alpha(scrawl, x, y) === 0 && alpha(paint, x + layerOffset, y + layerOffset) === 0) return [x, y];
     }
   });
   const fp = await toPage(...pt);
@@ -227,11 +229,12 @@ async function run(label, contextOpts) {
   // Export is the 4:5 frame regardless of zoom
   await ev('viewZoom = 3; viewPan = {x: 100, y: 50}');
   const dims = await ev(() => { const im = exportImage(); return [im.width, im.height, viewZoom]; });
-  check('export is 800x1000 and keeps the zoom', dims[0] === 800 && dims[1] === 1000 && dims[2] === 3, JSON.stringify(dims));
+  check('export is 1080x1350 and keeps the zoom', dims[0] === 1080 && dims[1] === 1350 && dims[2] === 3, JSON.stringify(dims));
 
   // ---- Painting past the scrawl square ----
   await ev('viewZoom = 1; viewPan = {x: 0, y: 0}; rotation = 0; redrawCanvas()');
-  const alphaAt = (x, y) => ev(`drawingGraphics.drawingContext.getImageData(${x} + layerOffset, ${y} + layerOffset, 1, 1).data[3]`);
+  // Paint at a position in units (relative to the scrawl square)
+  const alphaAt = (x, y) => ev(`drawingGraphics.drawingContext.getImageData(Math.floor((${x} + layerOffset) * res), Math.floor((${y} + layerOffset) * res), 1, 1).data[3]`);
   const historyPixels = () => ev(() => historyStack.reduce((a, m) => a + m.w * m.h, 0));
 
   // A stroke above the square, in the frame's extra room (100 units; the
@@ -241,7 +244,7 @@ async function run(label, contextOpts) {
   await drag(outside[0], outside[1]);
   const mid = [(outside[0][0] + outside[1][0]) / 2, (outside[0][1] + outside[1][1]) / 2];
   check('stroke paints past the scrawl square', await alphaAt(...mid) > 0);
-  check('stroke memento covers only the stroke', (await historyPixels()) < 60000, `${await historyPixels()} px`);
+  check('stroke memento covers only the stroke', (await historyPixels()) < 110000, `${await historyPixels()} px`);
   await ev('undo()');
   check('undo removes the stroke outside the square', await alphaAt(...mid) === 0);
   await ev('redo()');
@@ -276,18 +279,18 @@ async function run(label, contextOpts) {
     const im = exportImage();
     const ctx = im.getContext('2d');
     const at = (x, y) => [...ctx.getImageData(x, y, 1, 1).data].slice(0, 3);
-    return { size: [im.width, im.height], top: at(400, 50), corners: [at(2, 2), at(797, 2), at(2, 997), at(797, 997)] };
+    return { size: [im.width, im.height], top: at(540, 67), corners: [at(2, 2), at(1077, 2), at(2, 1347), at(1077, 1347)] };
   });
   let ex = await exportOf();
-  check('export of square-only art is 800x1000', ex.size[0] === 800 && ex.size[1] === 1000, JSON.stringify(ex.size));
+  check('export of square-only art is 1080x1350', ex.size[0] === 1080 && ex.size[1] === 1350, JSON.stringify(ex.size));
   await ev(() => { drawingGraphics.fill('#CC0000'); drawingGraphics.noStroke(); drawingGraphics.ellipse(layerOffset + 400, layerOffset - 50, 40, 40); });
   ex = await exportOf();
-  check('paint above the square is in the picture', ex.size[1] === 1000 && ex.top[0] > 150 && ex.top[1] < 60, JSON.stringify(ex));
+  check('paint above the square is in the picture', ex.size[1] === 1350 && ex.top[0] > 150 && ex.top[1] < 60, JSON.stringify(ex));
   // Turned and the background filled: no empty corners in the picture
   await ev(`drawingGraphics.clear(); rotation = 28; floodFill(${pt[0]}, ${pt[1]}, '#66BD0F')`);
   ex = await exportOf();
   const green = c => c[0] < 130 && c[1] > 150 && c[2] < 60;
-  check('turned + background fill: corners painted, same size', ex.size[0] === 800 && ex.size[1] === 1000 && ex.corners.every(green), JSON.stringify(ex));
+  check('turned + background fill: corners painted, same size', ex.size[0] === 1080 && ex.size[1] === 1350 && ex.corners.every(green), JSON.stringify(ex));
   await ev('rotation = 0; redrawCanvas()');
 
   check('no page errors', errors.length === 0, errors.join(' | '));

@@ -172,10 +172,38 @@ async function run(label, contextOpts) {
   }
   await openingOld;
   const oldPaint = await ev(() => [
-    drawingGraphics.drawingContext.getImageData(layerOffset + 15, layerOffset + 15, 1, 1).data[3],
+    // layer pixels: res per unit
+    drawingGraphics.drawingContext.getImageData(Math.floor((layerOffset + 15) * res), Math.floor((layerOffset + 15) * res), 1, 1).data[3],
     drawingGraphics.drawingContext.getImageData(15, 15, 1, 1).data[3]
   ]);
   check('old 800x800 drawing opens centred', oldPaint[0] === 255 && oldPaint[1] === 0, JSON.stringify(oldPaint));
+
+  // Saved with a one-pixel-per-unit 1282-wide layer (before res): centred and scaled up
+  page.once('dialog', d => d.accept());
+  await ev(async () => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 1282;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#CC0000';
+    ctx.fillRect(0, 0, 20, 20); // the layer's top-left corner
+    const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+    const s800 = document.createElement('canvas'); s800.width = s800.height = 800;
+    const scrawl = await new Promise(r => s800.toBlob(r, 'image/png'));
+    await dbRequest('gallery', 'readwrite', s => s.put({ id: 'old1282', scrawl, drawing: blob, eyes: eyePositions, eyeStyles,
+      showScrawl: true, rotation: 0, updatedAt: 1, thumb: blob }));
+  });
+  const opening1282 = ev(`openFromGallery('old1282')`);
+  if (await page.waitForSelector('#leave-dialog[open]', { timeout: 1000 }).catch(() => null)) {
+    await page.click('#leave-dialog button[value="discard"]');
+  }
+  await opening1282;
+  const paint1282 = await ev(() => {
+    const at = (u) => drawingGraphics.drawingContext.getImageData(Math.floor(u * res), Math.floor(u * res), 1, 1).data[3];
+    const corner = (layerSize - 1282) / 2; // where that layer's corner lands, in units
+    return [at(corner + 10), at(corner - 5), at(corner + 25)];
+  });
+  check('old 1282 layer opens centred and scaled', paint1282[0] === 255 && paint1282[1] === 0 && paint1282[2] === 0, JSON.stringify(paint1282));
+  await ev(() => dbRequest('gallery', 'readwrite', s => s.delete('old1282')));
   await ev(() => dbRequest('gallery', 'readwrite', s => s.delete('old')));
 
   // Delete

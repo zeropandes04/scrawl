@@ -75,13 +75,20 @@ const canvasSize = 800;
 // give is always exactly this frame, at zoom 1, in the current rotation.
 const frameWidth = canvasSize;
 const frameHeight = canvasSize * 5 / 4;
-// The paint layer covers the frame at any rotation (its side is the frame's
-// diagonal, rounded up to keep layerOffset whole). The scrawl is a
-// canvasSize square in its middle. Positions on the drawing
-// (getTransformedCoords) are relative to the scrawl square, so the layer
-// starts at -layerOffset.
-const layerSize = 2 * Math.ceil(Math.hypot(frameWidth, frameHeight) / 2);
-const layerOffset = (layerSize - canvasSize) / 2;
+// Sizes and positions are in units (the frame is 800 x 1000 units), but
+// the picture and its layers have `res` pixels per unit: 1080 x 1350, the
+// size of an Instagram portrait post, and sharp on phone screens.
+const res = 1080 / canvasSize;
+// The paint layer covers the frame at any rotation (its side is at least
+// the frame's diagonal). The scrawl is a canvasSize square in its middle.
+// Positions on the drawing (getTransformedCoords) are relative to the
+// scrawl square, so the layer starts at -layerOffset. layerOffset is a
+// multiple of 20, so it's a whole number of pixels too (res = 27/20).
+const layerOffset = 20 * Math.ceil((Math.hypot(frameWidth, frameHeight) - canvasSize) / 40);
+const layerSize = canvasSize + 2 * layerOffset;
+// The layer's width in pixels. Rounded: 1320 * 1.35 isn't exact in floating
+// point, and the fill's pixel arithmetic needs a whole number.
+const layerPixels = Math.round(layerSize * res);
 const eyeMargin = 200;
 const eyeSize = 70;
 const scrawlStrokeWeight = 1;
@@ -107,8 +114,9 @@ let scrawlDrawInProgress = 0;  // fraction of a segment carried to the next fram
 // layer a change touched, as it was before (see saveState).
 let historyStack = [];
 let redoStack = [];
-// A whole-layer copy is ~10MB, so the history is limited by area as well as
-// by count: at most 16M pixels (~64MB), and never fewer than the last step.
+// A whole-layer copy (a background fill) is ~3.2M pixels, ~13MB, so the
+// history is limited by area as well as by count: at most 16M pixels
+// (~64MB, about five whole-layer steps), and never fewer than the last step.
 // Undo and redo swap mementos of the same size, so the total stays put.
 const maxHistorySize = 25;
 const maxHistoryPixels = 16e6;
@@ -122,9 +130,10 @@ let strokeBounds = null; // layer area the current stroke has painted (see dab)
 const tapSlop = 10;   // Strokes shorter than this count as a tap
 
 function setup() {
-  // CRITICAL: Disable pixel density to prevent coordinate mismatch
-  // On retina displays, p5.js doubles canvas resolution but we need 1:1 mapping
-  pixelDensity(1);
+  // A fixed resolution (see res) rather than the screen's, so the picture,
+  // the layers and the saved image all match; mouse and touch positions
+  // stay in units (p5 scales them)
+  pixelDensity(res);
 
   // Exactly the picture frame; CSS scales it to fit (fitCanvasToContainer)
   canvas = createCanvas(frameWidth, frameHeight);
@@ -171,10 +180,11 @@ function setup() {
   canvasElement.addEventListener('touchend', onTouchEnd, { passive: false });
   canvasElement.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
+  // Drawn on in units; their pixels (getImageData, undo, fill) are at res
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
-  baseScrawlGraphics.drawingContext.willReadFrequently = true;
+  baseScrawlGraphics.pixelDensity(res);
   drawingGraphics = createGraphics(layerSize, layerSize);
-  drawingGraphics.drawingContext.willReadFrequently = true;
+  drawingGraphics.pixelDensity(res);
   drawingGraphics.clear();
   background(bgColor);
 
@@ -544,8 +554,9 @@ function dab(x, y, size) {
   const lx = x + layerOffset;
   const ly = y + layerOffset;
   drawingGraphics.ellipse(lx, ly, size, size);
-  const r = size / 2 + 2; // + the anti-aliased edge
-  strokeBounds = unionRect(strokeBounds, { x: lx - r, y: ly - r, w: 2 * r, h: 2 * r });
+  // In layer pixels, + the anti-aliased edge
+  const r = size / 2 * res + 2;
+  strokeBounds = unionRect(strokeBounds, { x: lx * res - r, y: ly * res - r, w: 2 * r, h: 2 * r });
 }
 
 // The part of the canvas the window shows, in canvas units: its container
@@ -1340,7 +1351,7 @@ function exportImage() {
   finishScrawlDrawIn();
 
   const g = createGraphics(frameWidth, frameHeight);
-  g.pixelDensity(1);
+  g.pixelDensity(res);
   g.background(bgColor);
   const cx = frameWidth / 2;
   const cy = frameHeight / 2;
@@ -1366,8 +1377,8 @@ function exportImage() {
 
   // A plain canvas to hand on; the p5 graphic is removed from the page
   const out = document.createElement('canvas');
-  out.width = frameWidth;
-  out.height = frameHeight;
+  out.width = g.elt.width;
+  out.height = g.elt.height;
   out.getContext('2d').drawImage(g.elt, 0, 0);
   g.remove();
   return out;
@@ -1502,8 +1513,6 @@ function disableClearButton() {
 // The fill works on the unrotated, unzoomed layers, so the view doesn't matter.
 // It spreads over the whole paint layer, past the scrawl square too.
 function floodFill(startX, startY, fillColor) {
-  startX = Math.floor(startX);
-  startY = Math.floor(startY);
 
   finishScrawlDrawIn();
 
@@ -1516,14 +1525,15 @@ function floodFill(startX, startY, fillColor) {
   // transparent apart from its lines; alpha above 21 matches the old
   // "darker than near-white" test on the faint anti-aliased edges.
   const onScrawl = startX >= 0 && startX < canvasSize && startY >= 0 && startY < canvasSize;
-  if (showScrawl && onScrawl && baseScrawlGraphics.drawingContext.getImageData(startX, startY, 1, 1).data[3] > 21) {
+  if (showScrawl && onScrawl &&
+      baseScrawlGraphics.drawingContext.getImageData(Math.floor(startX * res), Math.floor(startY * res), 1, 1).data[3] > 21) {
     return;
   }
 
-  // From here on, positions are on the paint layer
-  const N = layerSize;
-  const sx = startX + layerOffset;
-  const sy = startY + layerOffset;
+  // From here on, positions are pixels on the paint layer
+  const N = layerPixels;
+  const sx = Math.floor((startX + layerOffset) * res);
+  const sy = Math.floor((startY + layerOffset) * res);
   if (sx < 0 || sx >= N || sy < 0 || sy >= N) return;
 
   // Build a temporary canvas of everything that bounds a fill, stacked as
@@ -1537,7 +1547,9 @@ function floodFill(startX, startY, fillColor) {
   tempCtx.fillRect(0, 0, N, N);
   tempCtx.drawImage(drawingGraphics.canvas, 0, 0);
   if (showScrawl) {
-    tempCtx.drawImage(baseScrawlGraphics.canvas, layerOffset, layerOffset);
+    // (rounded: a fractional offset would blur the lines)
+    const offset = Math.round(layerOffset * res);
+    tempCtx.drawImage(baseScrawlGraphics.canvas, offset, offset);
   }
 
   const data = tempCtx.getImageData(0, 0, N, N).data;
@@ -1684,16 +1696,17 @@ function getComplementaryColor(color) {
 // layer (img is a canvas). Undo puts it back and keeps what it replaces as
 // the redo memento, so only the changed area is ever copied.
 
-// The smallest rectangle (on the paint layer, whole pixels) covering a and
-// b, trimmed to the layer. Either may be null; null if nothing is left.
+// The smallest rectangle (in pixels on the paint layer, whole pixels)
+// covering a and b, trimmed to the layer. Either may be null; null if
+// nothing is left. Undo mementos and their rectangles are all in pixels.
 function unionRect(a, b) {
   if (!a) a = b;
   if (!b) b = a;
   if (!a) return null;
   const x0 = Math.max(0, Math.floor(Math.min(a.x, b.x)));
   const y0 = Math.max(0, Math.floor(Math.min(a.y, b.y)));
-  const x1 = Math.min(layerSize, Math.ceil(Math.max(a.x + a.w, b.x + b.w)));
-  const y1 = Math.min(layerSize, Math.ceil(Math.max(a.y + a.h, b.y + b.h)));
+  const x1 = Math.min(layerPixels, Math.ceil(Math.max(a.x + a.w, b.x + b.w)));
+  const y1 = Math.min(layerPixels, Math.ceil(Math.max(a.y + a.h, b.y + b.h)));
   if (x1 <= x0 || y1 <= y0) return null;
   return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
 }
@@ -1742,10 +1755,10 @@ let strokeBackup = null;
 function beginStroke() {
   if (!strokeBackup) {
     strokeBackup = document.createElement('canvas');
-    strokeBackup.width = strokeBackup.height = layerSize;
+    strokeBackup.width = strokeBackup.height = layerPixels;
   }
   const ctx = strokeBackup.getContext('2d', { willReadFrequently: true });
-  ctx.clearRect(0, 0, layerSize, layerSize);
+  ctx.clearRect(0, 0, layerPixels, layerPixels);
   ctx.drawImage(drawingGraphics.elt, 0, 0);
   strokeBounds = null;
 }
@@ -1805,8 +1818,8 @@ function redo() {
 // layer back at once is slow on a phone
 function checkIfDrawingHasContent() {
   const band = 100;
-  for (let y = 0; y < layerSize; y += band) {
-    const alpha = drawingGraphics.drawingContext.getImageData(0, y, layerSize, Math.min(band, layerSize - y)).data;
+  for (let y = 0; y < layerPixels; y += band) {
+    const alpha = drawingGraphics.drawingContext.getImageData(0, y, layerPixels, Math.min(band, layerPixels - y)).data;
     for (let i = 3; i < alpha.length; i += 4) {
       if (alpha[i] > 0) return true;
     }
@@ -1814,9 +1827,9 @@ function checkIfDrawingHasContent() {
   return false;
 }
 
-// The part of the paint layer that has paint on it, or null
+// The part of the paint layer that has paint on it (pixels), or null
 function drawingBounds() {
-  const n = layerSize;
+  const n = layerPixels;
   const alpha = drawingGraphics.drawingContext.getImageData(0, 0, n, n).data;
   let minX = n, minY = n, maxX = -1, maxY = -1;
   for (let y = 0; y < n; y++) {
@@ -2117,13 +2130,25 @@ async function captureScrawlface(withThumb) {
     thumb.width = thumb.height = 320; // sharp on a 2x phone screen
     const ctx = thumb.getContext('2d');
     ctx.imageSmoothingQuality = 'high'; // keeps the 1px lines from breaking up
-    ctx.drawImage(image, 0, (frameHeight - frameWidth) / 2, frameWidth, frameWidth, 0, 0, 320, 320);
+    ctx.drawImage(image, 0, (image.height - image.width) / 2, image.width, image.width, 0, 0, 320, 320);
     record.thumb = canvasToBlob(thumb, 'image/jpeg');
   }
   for (const key of ['scrawl', 'drawing', 'thumb']) {
     if (record[key]) record[key] = await record[key];
   }
   return record;
+}
+
+// Draws a saved layer image onto a layer `size` units wide, centred.
+// Scrawlfaces saved before the layers had res pixels per unit have one
+// pixel per unit (and, older still, a canvasSize drawing): those are
+// scaled up; newer ones come back pixel for pixel.
+function drawSavedLayer(g, img, size) {
+  const k = img.width > size ? res : 1; // pixels per unit in the image
+  const w = img.width / k;
+  const h = img.height / k;
+  // The layer's context draws in units (p5 scales it by res)
+  g.drawingContext.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
 }
 
 // Puts a saved scrawlface (or the draft) on the canvas, as if just opened:
@@ -2137,11 +2162,9 @@ async function restoreScrawlface(record) {
   scrawlQueue = [];
   baseScrawlGraphics.clear();
   scrawlVersion++;
-  baseScrawlGraphics.drawingContext.drawImage(scrawl, 0, 0);
+  drawSavedLayer(baseScrawlGraphics, scrawl, canvasSize);
   drawingGraphics.clear();
-  // Centred: scrawlfaces saved before the paint layer grew past the scrawl
-  // square have a canvasSize drawing
-  drawingGraphics.drawingContext.drawImage(drawing, (layerSize - drawing.width) / 2, (layerSize - drawing.height) / 2);
+  drawSavedLayer(drawingGraphics, drawing, layerSize);
 
   eyePositions = record.eyes.map(pos => ({ ...pos }));
   setEyeStyles(record.eyeStyles);
