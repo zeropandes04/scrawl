@@ -1,6 +1,6 @@
 # Feature Implementation Plan: Native shell readiness
 
-**Overall Progress:** `0%` (audit done, nothing implemented)
+**Overall Progress:** `60%` (Steps 1-3 done; Step 4 bundling and Step 5 canvas-only mode later)
 
 ## TLDR
 The plan is to keep improving the web app, then wrap it in a native shell: SwiftUI (iOS) and Jetpack Compose (Android) controls around this canvas running in a web view. This plan audits the app against the four habits in CLAUDE.md ("Native shell readiness") and lists the changes that make the later wrapping a matter of wiring, not rework. Nothing here changes what users see in the browser.
@@ -61,21 +61,21 @@ The plan is to keep improving the web app, then wrap it in a native shell: Swift
 
 ## Tasks
 
-- [ ] 🟥 **Step 1: Engine functions for the inline logic**
-  - [ ] 🟥 `setBrushSize(n)` / `setEraserSize(n)`, `setBrushColor(hex)`, `setLoops(n)`: move the handler bodies into them; the handlers call them
-  - [ ] 🟥 `pickEyeSet(name)` / `mixEyes()` include `markChanged()`
-  - [ ] 🟥 Behaviour and markup unchanged; existing tests must pass as they are
+- [x] 🟩 **Step 1: Engine functions for the inline logic**
+  - [x] 🟩 `setBrushSize(n)` / `setEraserSize(n)`, `setBrushColor(hex)`, `setLoops(n)`: move the handler bodies into them; the handlers call them
+  - [x] 🟩 `pickEyeSet(name)` / `mixEyes()` include `markChanged()` (`setEyeStyles` alone stays change-free: opening a saved scrawlface uses it)
+  - [x] 🟩 Behaviour and markup unchanged; existing tests must pass as they are
 
-- [ ] 🟥 **Step 2: State out, for any toolbar**
-  - [ ] 🟥 `appState()`: tool, sizes, colour, loops, eye styles, lines shown, can undo / redo, has drawings, blank start, unsaved changes, saved
-  - [ ] 🟥 `stateChanged()`: called from the existing `update*` functions (one line each); for the web it does nothing, and a shell can listen to it
-  - [ ] 🟥 `window.scrawlface = { ...the engine functions, appState, onStateChange }`: the single surface the shell uses
+- [x] 🟩 **Step 2: State out, for any toolbar**
+  - [x] 🟩 `appState()`: tool, sizes, colour, loops, eye styles, lines shown, can undo / redo, has drawings, blank start, unsaved changes, saved
+  - [x] 🟩 `stateChanged()`: called from the existing `update*` functions (one line each); a burst of changes is reported once, and with no listener it does nothing
+  - [x] 🟩 `window.scrawlface = { ...the engine functions, appState, onStateChange }`: the single surface the shell uses
 
-- [ ] 🟥 **Step 3: One swap point per browser-only feature**
-  - [ ] 🟥 `exportPNG()` → `Promise<Blob>`: the one picture source; `shareImage` / `downloadImage` use it
-  - [ ] 🟥 `haptic(kind)`: replaces the three `navigator.vibrate` calls
-  - [ ] 🟥 `showError(message)` for the `alert()`s; the Save/Discard and Delete prompts each already sit in one function (`confirmLeave`, `confirmDelete`): leave those as the swap points
-  - [ ] 🟥 Storage stays IndexedDB through `dbRequest` (already one place)
+- [x] 🟩 **Step 3: One swap point per browser-only feature**
+  - [x] 🟩 `exportPNG()` → `Promise<Blob>`: the one picture source; `shareImage` / `downloadImage` use it
+  - [x] 🟩 `haptic(kind)`: replaces the three `navigator.vibrate` calls
+  - [x] 🟩 `showError(message)` for the `alert()`s; the Save/Discard and Delete prompts each already sit in one function (`confirmLeave`, `confirmDelete`): leave those as the swap points
+  - [x] 🟩 Storage stays IndexedDB through `dbRequest` (already one place)
 
 - [ ] 🟥 **Step 4: Bundle the remote assets** *(needs your approval: adds ~800KB)*
   - [ ] 🟥 `vendor/p5.min.js` (1.4.0) instead of the CDN

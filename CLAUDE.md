@@ -44,8 +44,8 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 
 The plan is to keep improving the web app, then wrap it in a native shell for iOS and Android: native controls (SwiftUI / Jetpack Compose) around this canvas running in a web view. Keep changes compatible with that:
 
-- **Engine apart from controls.** Put behaviour in functions the controls call (`setTool`, `undo`, `redo`, `generateScrawlface`, `setEyeStyles`, `saveToGallery`, ...), not in handlers that only work by clicking a particular HTML key. A native toolbar will call the same functions through a bridge.
-- **Browser-only features are swappable.** Share, Download, vibration and the IndexedDB gallery each need a fallback or a single place to replace them with a native version.
+- **Engine apart from controls.** Put behaviour in functions the controls call (`setTool`, `undo`, `redo`, `generateScrawlface`, `setEyeStyles`, `saveToGallery`, ...), not in handlers that only work by clicking a particular HTML key. A native toolbar calls the same functions through `window.scrawlface` (end of `scrawl.js`), which also gives `appState()` and `onStateChange()`; when adding a feature, add it there too.
+- **Browser-only features are swappable.** Each goes through one function a shell can replace: `exportPNG` (the picture for Share / Download), `haptic`, `showError`, `confirmLeave` / `confirmDelete`, and `dbRequest` (IndexedDB). Don't call `navigator.vibrate`, `alert` and the like directly.
 - **No new external dependencies.** p5.js and the wordmark fonts load from CDNs today; the app will bundle local copies to work offline, so don't add more remote assets.
 - **The canvas fits any container.** It covers and masks itself to whatever box it's given (`fitCanvasToContainer`); keep it free of assumptions about the page around it.
 
