@@ -7,7 +7,6 @@ const path = require('path');
 const fs = require('fs');
 
 const repo = path.resolve(__dirname, '..');
-const p5src = process.env.P5_PATH ? fs.readFileSync(process.env.P5_PATH) : null;
 
 let failures = 0;
 function check(name, ok, extra = '') {
@@ -23,8 +22,6 @@ async function run(label, contextOpts) {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
-  if (p5src) await page.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
-  await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
   // IndexedDB needs a real origin, not file://
   await page.route('http://scrawl.test/**', r => {
     const file = path.join(repo, new URL(r.request().url()).pathname);

@@ -8,13 +8,12 @@
 // Run from the repo root:
 //   NODE_PATH=~/.scrawl-test/node_modules node tests/smoke.js
 //
-// Optional: P5_PATH=/path/to/p5.min.js serves p5 from disk instead of the CDN.
+// The app bundles everything (p5.js, fonts), so the tests need no network.
 const { chromium, devices } = require('playwright');
 const path = require('path');
 const fs = require('fs');
 
 const repo = path.resolve(__dirname, '..');
-const p5src = process.env.P5_PATH ? fs.readFileSync(process.env.P5_PATH) : null;
 const shotsDir = fs.mkdtempSync(path.join(require('os').tmpdir(), 'scrawl-smoke-'));
 
 let failures = 0;
@@ -31,17 +30,23 @@ async function run(label, contextOpts) {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('dialog', d => d.accept());
-  if (p5src) await page.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
-  await page.route('https://fonts.googleapis.com/**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+  // Serves the repo at a made-up http origin (file:// requests can't be
+  // intercepted); `block` lists paths to refuse
+  const serveRepo = (p, block = []) => p.route('http://scrawl.test/**', r => {
+    const rel = new URL(r.request().url()).pathname;
+    const file = path.join(repo, rel);
+    if (block.some(b => rel.endsWith(b)) || !fs.existsSync(file)) return r.abort();
+    const type = { '.html': 'text/html', '.js': 'application/javascript', '.woff2': 'font/woff2' }[path.extname(file)];
+    r.fulfill({ body: fs.readFileSync(file), contentType: type });
+  });
+
   // Before setup() runs, the page already shows the default tool's options
-  // (Eyes), so nothing switches when the script starts. The font stylesheet
-  // is held back: it delays the load event, which is when p5 runs setup().
+  // (Eyes), so nothing switches when the script starts. p5 is refused here,
+  // so setup() never runs and the page stays as its markup.
   {
     const early = await ctx.newPage();
-    if (p5src) await early.route('**/p5.min.js', r => r.fulfill({ body: p5src, contentType: 'application/javascript' }));
-    await early.route('https://fonts.googleapis.com/**', async r => { await new Promise(res => setTimeout(res, 2000)); r.fulfill({ body: '', contentType: 'text/css' }); });
-    early.goto('file://' + path.join(repo, 'index.html')).catch(() => {});
-    await early.waitForSelector('.tool-keys', { state: 'attached' });
+    await serveRepo(early, ['vendor/p5.min.js']);
+    await early.goto('http://scrawl.test/index.html');
     await early.waitForTimeout(300);
     const seen = await early.evaluate(() => {
       const shown = el => !!el && el.getClientRects().length > 0;
@@ -53,6 +58,26 @@ async function run(label, contextOpts) {
     });
     check('before the script starts, only the Eyes options show', !seen.setupRan && seen.eyes && !seen.sizes && !seen.colours, JSON.stringify(seen));
     await early.close();
+  }
+
+  // Offline: every request outside the repo is refused, and the app still
+  // starts, draws and shows its wordmark in one of the bundled fonts
+  {
+    const off = await ctx.newPage();
+    const remote = [];
+    await off.route(/^https?:\/\/(?!scrawl\.test\/)/, r => { remote.push(r.request().url()); r.abort(); });
+    await serveRepo(off);
+    await off.goto('http://scrawl.test/index.html');
+    await off.waitForFunction(() => typeof drawingGraphics !== 'undefined');
+    await off.click('#blank-cta-btn');
+    await off.waitForFunction(() => scrawlQueue.length === 0 && eyePositions.length === 2);
+    const font = await off.evaluate(async () => {
+      await document.fonts.ready;
+      const family = getComputedStyle(document.documentElement).getPropertyValue('--wordmark-font').split(',')[0].trim();
+      return { family, loaded: document.fonts.check(`32px ${family}`, 'Scrawlface') && [...document.fonts].some(f => f.status === 'loaded') };
+    });
+    check('works offline: no remote requests, app runs, wordmark font loaded', remote.length === 0 && font.loaded, JSON.stringify({ remote, font }));
+    await off.close();
   }
   await page.goto('file://' + path.join(repo, 'index.html'));
   // The app opens on a blank start: create the first scrawl from its button
@@ -402,6 +427,49 @@ async function run(label, contextOpts) {
   check('size and colour keys still work by click', clicked.color === '#006635' && clicked.size === 12 &&
     clicked.marked.every(c => c === '#006635'), JSON.stringify(clicked));
   await ev(() => { window.scrawlface.setBrushSize(32); window.scrawlface.setBrushColor('#000000'); setTool('eyes'); });
+
+  // ---- Canvas-only mode (?embedded): what a native shell loads ----
+  {
+    // Its own context: a shell has its own storage (no draft from the pages above)
+    const emCtx = await browser.newContext(contextOpts);
+    const em = await emCtx.newPage();
+    const emErrors = [];
+    em.on('pageerror', e => emErrors.push(e.message));
+    em.on('dialog', d => d.accept());
+    await em.goto('file://' + path.join(repo, 'index.html') + '?embedded');
+    await em.waitForFunction(() => typeof drawingGraphics !== 'undefined');
+    const layout = await em.evaluate(() => {
+      const box = document.getElementById('scrawl-container').getBoundingClientRect();
+      const shown = ['header', '.sidebar', '.bottom-toolbar', '.blank-cta']
+        .filter(s => { const e = document.querySelector(s); return e && e.getClientRects().length > 0; });
+      return { fills: box.left === 0 && box.top === 0 && Math.round(box.width) === innerWidth && Math.round(box.height) === innerHeight,
+        shown, scroll: document.scrollingElement.scrollHeight - innerHeight };
+    });
+    check('embedded: only the canvas, filling the window', layout.fills && layout.shown.length === 0 && layout.scroll === 0, JSON.stringify(layout));
+
+    // The happy path through window.scrawlface, with a real pointer stroke
+    await em.evaluate(() => window.scrawlface.newScrawl());
+    await em.waitForFunction(() => scrawlQueue.length === 0 && eyePositions.length === 2);
+    await em.evaluate(() => window.scrawlface.setTool('brush'));
+    const cbox = await em.locator('#scrawl-container').boundingBox();
+    const at = (fx, fy) => [cbox.x + cbox.width * fx, cbox.y + cbox.height * fy];
+    await em.mouse.move(...at(0.3, 0.4)); await em.mouse.down();
+    for (let i = 1; i <= 10; i++) { await em.mouse.move(...at(0.3 + i * 0.03, 0.4 + i * 0.01)); await em.waitForTimeout(16); }
+    await em.mouse.up();
+    const flow = await em.evaluate(async () => {
+      const sf = window.scrawlface;
+      const tick = () => new Promise(r => setTimeout(r, 0));
+      const painted = sf.appState();
+      sf.undo(); await tick();
+      const undone = sf.appState();
+      sf.redo(); await tick();
+      const png = await sf.exportPNG();
+      return { painted: painted.hasDrawings && painted.canUndo, undone: !undone.hasDrawings && undone.canRedo, png: png && png.type };
+    });
+    check('embedded: new, brush stroke, undo, redo and export work', flow.painted && flow.undone && flow.png === 'image/png' && emErrors.length === 0,
+      JSON.stringify({ ...flow, emErrors }));
+    await emCtx.close();
+  }
 
   check('no page errors', errors.length === 0, errors.join(' | '));
   await page.screenshot({ path: path.join(shotsDir, `${label}.png`) });

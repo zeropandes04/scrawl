@@ -6,14 +6,15 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 
 ## Stack
 
-- Frontend: Vanilla HTML/CSS/JS + p5.js (CDN, v1.4.0)
+- Frontend: Vanilla HTML/CSS/JS + p5.js (v1.4.0, bundled in `vendor/`)
 - Hosting: static site — no build step, no package manager, no framework
 
 ## Architecture
 
 - `index.html` — markup + all CSS (inline `<style>`), desktop sidebar + mobile bottom toolbar
 - `scrawl.js` — all app logic: canvas setup, scrawl generation (bezier curves), brush/eraser/bucket tools, eye placement & dragging, undo/redo (memento pattern), mobile toolbar wiring
-- `icons/` — toolbar PNG icons (eraser, eye, paint-rollers, paintbrush)
+- `vendor/` — p5.js and its licence
+- `fonts/` — the wordmark fonts (letter subsets) and their licences, see `fonts/README.md`
 
 ## Hard rules
 
@@ -46,7 +47,8 @@ The plan is to keep improving the web app, then wrap it in a native shell for iO
 
 - **Engine apart from controls.** Put behaviour in functions the controls call (`setTool`, `undo`, `redo`, `generateScrawlface`, `setEyeStyles`, `saveToGallery`, ...), not in handlers that only work by clicking a particular HTML key. A native toolbar calls the same functions through `window.scrawlface` (end of `scrawl.js`), which also gives `appState()` and `onStateChange()`; when adding a feature, add it there too.
 - **Browser-only features are swappable.** Each goes through one function a shell can replace: `exportPNG` (the picture for Share / Download), `haptic`, `showError`, `confirmLeave` / `confirmDelete`, and `dbRequest` (IndexedDB). Don't call `navigator.vibrate`, `alert` and the like directly.
-- **No new external dependencies.** p5.js and the wordmark fonts load from CDNs today; the app will bundle local copies to work offline, so don't add more remote assets.
+- **Nothing remote.** p5.js and the wordmark fonts are bundled (`vendor/`, `fonts/`) and the app works offline; keep it that way: no CDN scripts, web fonts or other remote assets.
+- **Canvas-only mode.** `index.html?embedded` (or an `embedded` class on `<html>`) hides the web controls and lets the canvas fill the window: that's what a shell loads. New UI should hide in that mode too.
 - **The canvas fits any container.** It covers and masks itself to whatever box it's given (`fitCanvasToContainer`); keep it free of assumptions about the page around it.
 
 ## Success looks like

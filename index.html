@@ -6,11 +6,12 @@
        iPhone home indicator (env(safe-area-inset-bottom)) -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Scrawlface - Generate Pareidolia Art</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.min.js"></script>
+  <!-- p5.js 1.4.0, bundled so the app works offline (licence: vendor/p5.license.txt) -->
+  <script src="vendor/p5.min.js"></script>
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=59"></script>
+  <script src="scrawl.js?v=61"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1682,6 +1683,37 @@
       .canvas-section {
         margin-bottom: calc(166px + env(safe-area-inset-bottom));
       }
+    }
+
+    /* ---- Canvas-only mode (html.embedded, see scrawl.js) ----
+       For a native shell with its own controls: only the canvas shows, and
+       it fills the window. The page's own controls are hidden, not
+       removed, so the app works the same through window.scrawlface. */
+    .embedded header,
+    .embedded footer,
+    .embedded .sidebar,
+    .embedded .bottom-toolbar,
+    .embedded .sheet-scrim,
+    .embedded .blank-cta {
+      display: none !important;
+    }
+
+    .embedded body {
+      background: #ffffff;
+    }
+
+    /* main's size containment (desktop layout) would trap the fixed box */
+    .embedded main {
+      container-type: normal;
+    }
+
+    .embedded #scrawl-container {
+      position: fixed;
+      inset: 0;
+      width: auto;
+      height: auto;
+      min-height: 0;
+      aspect-ratio: auto;
     }
 
     /* Respect the OS "reduce motion" setting: no transitions or animations

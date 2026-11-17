@@ -1,6 +1,6 @@
 # Feature Implementation Plan: Native shell readiness
 
-**Overall Progress:** `60%` (Steps 1-3 done; Step 4 bundling and Step 5 canvas-only mode later)
+**Overall Progress:** `100%` (all five steps done; the native shell itself is a separate, later project)
 
 ## TLDR
 The plan is to keep improving the web app, then wrap it in a native shell: SwiftUI (iOS) and Jetpack Compose (Android) controls around this canvas running in a web view. This plan audits the app against the four habits in CLAUDE.md ("Native shell readiness") and lists the changes that make the later wrapping a matter of wiring, not rework. Nothing here changes what users see in the browser.
@@ -77,16 +77,16 @@ The plan is to keep improving the web app, then wrap it in a native shell: Swift
   - [x] 🟩 `showError(message)` for the `alert()`s; the Save/Discard and Delete prompts each already sit in one function (`confirmLeave`, `confirmDelete`): leave those as the swap points
   - [x] 🟩 Storage stays IndexedDB through `dbRequest` (already one place)
 
-- [ ] 🟥 **Step 4: Bundle the remote assets** *(needs your approval: adds ~800KB)*
-  - [ ] 🟥 `vendor/p5.min.js` (1.4.0) instead of the CDN
-  - [ ] 🟥 `fonts/` with the 14 wordmark subsets + licences; `loadWordmarkFont` uses `@font-face` on local files
-  - [ ] 🟥 Remove the unused `icons/` and its CLAUDE.md line
-  - [ ] 🟥 Check the page works fully offline (the smoke test can block all network)
+- [x] 🟩 **Step 4: Bundle the remote assets** *(approved; adds ~1MB: p5 800KB, fonts 37KB + licences)*
+  - [x] 🟩 `vendor/p5.min.js` (1.4.0) instead of the CDN
+  - [x] 🟩 `fonts/` with the 14 wordmark subsets + licences; `loadWordmarkFont` uses `@font-face` on local files (see `fonts/README.md`, incl. the Reserved Font Name note)
+  - [x] 🟩 Remove the unused `icons/` and its CLAUDE.md line
+  - [x] 🟩 Check the page works fully offline (the smoke test can block all network)
 
-- [ ] 🟥 **Step 5: Canvas-only mode**
-  - [ ] 🟥 A body class (e.g. `embedded`, set by `?embedded` or by the shell) hides the header, sidebar, bottom bar and blank-start overlay, and lets `#scrawl-container` fill the window
-  - [ ] 🟥 Keyboard shortcuts and document-wide listeners stay harmless in that mode
-  - [ ] 🟥 Smoke test runs a pass in canvas-only mode, driving the app only through `window.scrawlface`
+- [x] 🟩 **Step 5: Canvas-only mode**
+  - [x] 🟩 An `embedded` class on `<html>` (set by `?embedded`, or by the shell) hides the header, sidebar, bottom bar and blank-start overlay, and lets `#scrawl-container` fill the window. Still web in that mode: the Save / Discard and Delete prompts (`confirmLeave`, `confirmDelete`) and My Scrawls; a shell replaces those through their functions
+  - [x] 🟩 Keyboard shortcuts and document-wide listeners stay harmless in that mode
+  - [x] 🟩 Smoke test runs a pass in canvas-only mode, driving the app only through `window.scrawlface`
 
 ## Risks
 - **Step 1–2 touch the same code as undo and the keys.** Small moves, but the tests should run after each step; no change to the undo stack itself.
