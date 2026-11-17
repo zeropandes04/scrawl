@@ -74,6 +74,10 @@ async function run(label, contextOpts) {
     biggest: Math.max(...[...document.querySelectorAll('[data-size]')].map(b => +b.dataset.size)),
     selected: [...document.querySelectorAll('.size-key.selected')].map(b => +b.dataset.size) }));
   check('brush starts at the biggest size', brushStart.size === brushStart.biggest && brushStart.selected.every(n => n === brushStart.biggest), JSON.stringify(brushStart));
+  // ...and so does the eraser (its key is the one marked when it's picked)
+  const eraserStart = await ev(() => { setTool('eraser'); const r = { size: eraserSize,
+    selected: [...document.querySelectorAll('.size-key.selected')].map(b => +b.dataset.size) }; setTool('eyes'); return r; });
+  check('eraser starts at the biggest size', eraserStart.size === brushStart.biggest && eraserStart.selected.every(n => n === brushStart.biggest), JSON.stringify(eraserStart));
 
   // Idle, the frame loop is paused; New runs it for the draw-in, then it pauses again
   await page.waitForTimeout(100);
