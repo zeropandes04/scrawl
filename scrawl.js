@@ -227,12 +227,12 @@ function setup() {
   new ResizeObserver(fitCanvasToContainer).observe(document.getElementById('scrawl-container'));
 
   // Desktop and mobile keys that do the same thing
-  select("#generate-btn").mousePressed(requestNewScrawl);
-  select("#generate-btn-sheet").mousePressed(requestNewScrawl);
+  select("#generate-btn").mousePressed(() => requestNewScrawl('new_button'));
+  select("#generate-btn-sheet").mousePressed(() => requestNewScrawl('new_button'));
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
-  select("#blank-cta-btn").mousePressed(requestNewScrawl);
+  select("#blank-cta-btn").mousePressed(() => requestNewScrawl('blank_start'));
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   // On click, not press: Clear disables itself, and a disabled key gets no
   // click, so the sheet (which closes on its keys' clicks) would stay open
@@ -288,14 +288,18 @@ function setup() {
   // Save, the gallery, and last time's unsaved work (see the Gallery section)
   setupGallery();
 
+  trackAppOpened();
+
   // Help key, intro on first launch, tooltips (see the Onboarding section)
   setupOnboarding();
 }
 
 // Replaces the scrawlface on the canvas with a new one. The keys go through
-// requestNewScrawl, which first offers to save unsaved changes.
-function generateScrawlface() {
+// requestNewScrawl, which first offers to save unsaved changes. source says
+// where it came from, for the scribble_generated event.
+function generateScrawlface(source = 'other') {
   canvasPressed = false;
+  startScrawlfaceStats(true);
 
   drawingGraphics.clear();
   hasDrawings = false;
@@ -371,6 +375,7 @@ function generateScrawlface() {
   ];
 
   redrawCanvas();
+  track('scribble_generated', { source, loops: intensity });
 }
 
 // One continuous line, like a pen that never leaves the paper: each
@@ -768,6 +773,7 @@ function startPinch(touches) {
     zoom: viewZoom,
     rotation: rotation
   };
+  track('canvas_zoomed');
 }
 
 function movePinch(touches) {
@@ -851,6 +857,7 @@ function startLinesPeek() {
   peekingLines = true;
   haptic('hold');
   redrawCanvas();
+  track('lines_peeked');
 }
 
 function endLinesPeek() {
@@ -898,6 +905,9 @@ function mouseReleased() {
   }
   if (isDrawing && pressChangedDrawing) commitStroke();
 
+  if (pressChangedDrawing) usedTool(bucketMode ? 'fill' : eraseMode ? 'eraser' : 'brush');
+  else if (eyeMoved) usedTool('eyes');
+
   isDrawing = false;
   pressChangedDrawing = false;
   if (changed) markChanged();
@@ -925,7 +935,7 @@ function keyPressed() {
   if (cmd || keyIsDown(ALT)) return;
   const tool = { b: 'brush', e: 'eraser', f: 'fill', v: 'eyes' }[key.toLowerCase()];
   if (tool) setTool(tool);
-  if (key.toLowerCase() === 'n') requestNewScrawl();
+  if (key.toLowerCase() === 'n') requestNewScrawl('key_n');
 }
 
 // Screen (canvas element) position -> position on the drawing
@@ -1366,6 +1376,7 @@ function mixEyes() {
   } while (pair[0] === eyeStyles[0] && pair[1] === eyeStyles[1]);
   setEyeStyles(pair);
   markChanged();
+  track('eye_style_changed', { style: 'mix' });
 }
 
 // The user picks one of the eye sets (eyeSets) for both eyes. A change to
@@ -1374,6 +1385,7 @@ function mixEyes() {
 function pickEyeSet(name) {
   setEyeStyles(eyeSets[name]);
   markChanged();
+  track('eye_style_changed', { style: name });
 }
 
 function setEyeStyles(styles) {
@@ -1397,6 +1409,7 @@ function rotateCanvas() {
   rotation = (rotation + 90) % 360;
   redrawCanvas();
   markChanged();
+  track('canvas_rotated', { rotation });
 }
 
 // The picture Share and Download give: the frame (frameWidth x
@@ -1456,6 +1469,7 @@ function downloadImage() {
     link.download = 'scrawlface.png';
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    track('scrawlface_downloaded', { from: 'canvas' });
   });
 }
 
@@ -1464,8 +1478,10 @@ function shareImage() {
   exportPNG().then(blob => {
     if (!blob) return;
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
-    // Rejects when the share sheet is dismissed - nothing to do then
-    navigator.share({ files: [file] }).catch(() => {});
+    // Rejects when the share sheet is dismissed
+    navigator.share({ files: [file] })
+      .then(() => track('scrawlface_shared', { from: 'canvas' }))
+      .catch(() => track('share_cancelled', { from: 'canvas' }));
   });
 }
 
@@ -1484,11 +1500,18 @@ function showError(message) {
   alert(message);
 }
 
+// showError, plus an error event; where: save, open or export
+function reportError(where, message) {
+  track('error', { where });
+  showError(message);
+}
+
 function toggleEyes() {
   showScrawl = !showScrawl;
   updateScrawlToggleButtons();
   redrawCanvas();
   markChanged();
+  track('lines_hidden', { hidden: !showScrawl });
 }
 
 // The buttons name what pressing them will do, rather than lighting up when
@@ -1567,6 +1590,7 @@ function clearDrawings() {
 
   redrawCanvas();
   markChanged();
+  track('clear_used');
 }
 
 // Enables or disables the buttons with the given ids (sidebar and mobile twins)
@@ -1885,11 +1909,15 @@ function swapState(from, to) {
 // Not mid-stroke: the stroke isn't a step yet, and its "before" copy
 // would no longer match the layer
 function undo() {
-  if (historyStack.length > 0 && !isDrawing) swapState(historyStack, redoStack);
+  if (historyStack.length === 0 || isDrawing) return;
+  swapState(historyStack, redoStack);
+  track('undo_used');
 }
 
 function redo() {
-  if (redoStack.length > 0 && !isDrawing) swapState(redoStack, historyStack);
+  if (redoStack.length === 0 || isDrawing) return;
+  swapState(redoStack, historyStack);
+  track('redo_used');
 }
 
 // Read in bands, stopping at the first paint found: reading the whole
@@ -2305,7 +2333,7 @@ function markChanged() {
 function autoSave() {
   autoSaveTimer = null;
   if (isBlankStart() || !hasUnsavedChanges()) return;
-  saveToGallery().catch(() => {}); // the draft still has the work
+  saveToGallery('auto').catch(() => {}); // the draft still has the work
 }
 
 // Called when the scrawlface was saved or replaced: the 5 minutes start
@@ -2338,22 +2366,34 @@ function forgetDraft() {
 // Save during an autosave) would both see galleryId unset and make two
 // entries. The second one then updates the entry the first one made.
 let saveQueue = Promise.resolve();
-function saveToGallery() {
-  const next = saveQueue.then(saveToGalleryNow);
+// trigger: what asked for the save (button, auto, leave_prompt, my_scrawls),
+// for the scrawlface_saved event
+function saveToGallery(trigger = 'button') {
+  const next = saveQueue.then(() => saveToGalleryNow(trigger));
   saveQueue = next.catch(() => {}); // a failed save doesn't block later ones
   return next;
 }
 
-async function saveToGalleryNow() {
+async function saveToGalleryNow(trigger = 'button') {
   if (isBlankStart()) return;
   dismissTip('save');
   const version = editVersion;
   const token = scrawlfaceToken;
   const record = await captureScrawlface(true);
   if (token !== scrawlfaceToken) return;
+  const firstSave = !galleryId;
   record.id = galleryId || Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   await dbRequest('gallery', 'readwrite', store => store.put(record));
   galleryId = record.id;
+  track('scrawlface_saved', {
+    trigger,
+    first_save: firstSave,
+    seconds_since_generated: scrawlfaceStats.generatedAt === null ? null
+      : Math.round((performance.now() - scrawlfaceStats.generatedAt) / 1000),
+    tools_used: [...scrawlfaceStats.tools],
+    strokes: scrawlfaceStats.strokes,
+    fills: scrawlfaceStats.fills
+  });
   savedVersion = version;
   if (!hasUnsavedChanges()) forgetDraft();
   restartAutoSave();
@@ -2385,20 +2425,23 @@ function confirmLeave() {
   if (isBlankStart() || !hasUnsavedChanges()) return Promise.resolve(true);
   // No storage, so nothing to save to
   if (document.body.classList.contains('no-storage')) {
-    return Promise.resolve(confirm('Start a new scribble? Your drawing will be lost.'));
+    const go = confirm('Start a new scribble? Your drawing will be lost.');
+    track('leave_prompt_answered', { answer: go ? 'discard' : 'cancel' });
+    return Promise.resolve(go);
   }
   const dialog = document.getElementById('leave-dialog');
   dialog.returnValue = '';
   dialog.showModal();
   return new Promise(resolve => {
     dialog.addEventListener('close', async () => {
+      track('leave_prompt_answered', { answer: dialog.returnValue || 'cancel' });
       if (dialog.returnValue === 'save') {
         // If saving fails, stay: going ahead would lose the work
         try {
-          await saveToGallery();
+          await saveToGallery('leave_prompt');
           resolve(true);
         } catch (e) {
-          showError('Sorry, this scrawlface couldn\'t be saved.');
+          reportError('save', 'Sorry, this scrawlface couldn\'t be saved.');
           resolve(false);
         }
       } else {
@@ -2408,9 +2451,10 @@ function confirmLeave() {
   });
 }
 
-// New scrawl from the keys and the N shortcut: asks first if needed
-async function requestNewScrawl() {
-  if (await confirmLeave()) generateScrawlface();
+// New scribble from the keys and the N shortcut: asks first if needed.
+// source: where it was asked for (see generateScrawlface).
+async function requestNewScrawl(source = 'other') {
+  if (await confirmLeave()) generateScrawlface(source);
 }
 
 async function openFromGallery(id) {
@@ -2422,11 +2466,13 @@ async function openFromGallery(id) {
   try {
     await restoreScrawlface(record);
   } catch (e) {
-    showError('Sorry, this scrawlface couldn\'t be opened.');
+    reportError('open', 'Sorry, this scrawlface couldn\'t be opened.');
     return;
   }
   scrawlfaceToken++;
   forgetDraft();
+  startScrawlfaceStats(false);
+  track('scrawlface_reopened');
   galleryId = record.id;
   savedVersion = editVersion;
   restartAutoSave();
@@ -2550,7 +2596,7 @@ function newScrawlTile() {
     '<path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scribble';
   tile.addEventListener('click', () => {
     document.getElementById('gallery-dialog').close();
-    requestNewScrawl();
+    requestNewScrawl('my_scrawls');
   });
   item.append(tile);
   return item;
@@ -2559,6 +2605,7 @@ function newScrawlTile() {
 function openGallery() {
   renderGallery();
   document.getElementById('gallery-dialog').showModal();
+  listGallery().then(records => track('my_scrawls_opened', { count: records.length })).catch(() => {});
 }
 
 // Picks or unpicks one gallery tile. The first pick starts select mode;
@@ -2661,6 +2708,7 @@ async function deleteSelected() {
     ids.forEach(id => { req = store.delete(id); });
     return req;
   });
+  track('scrawlface_deleted', { count: ids.length });
   // The open scrawlface was one of them: a later Save makes a new entry
   if (ids.includes(galleryId)) {
     galleryId = null;
@@ -2672,7 +2720,7 @@ async function deleteSelected() {
 
 function setupGallery() {
   document.querySelectorAll('.gallery-save-btn').forEach(btn => btn.addEventListener('click', () => {
-    saveToGallery().catch(() => showError('Sorry, this scrawlface couldn\'t be saved.'));
+    saveToGallery('button').catch(() => reportError('save', 'Sorry, this scrawlface couldn\'t be saved.'));
   }));
   document.querySelectorAll('.gallery-open-btn').forEach(btn => btn.addEventListener('click', openGallery));
   document.getElementById('gallery-close').addEventListener('click', () => {
@@ -2684,12 +2732,12 @@ function setupGallery() {
   document.getElementById('gallery-empty-btn').addEventListener('click', () => {
     if (isBlankStart()) {
       document.getElementById('gallery-dialog').close();
-      requestNewScrawl();
+      requestNewScrawl('my_scrawls');
       return;
     }
-    saveToGallery()
+    saveToGallery('my_scrawls')
       .then(renderGallery)
-      .catch(() => showError('Sorry, this scrawlface couldn\'t be saved.'));
+      .catch(() => reportError('save', 'Sorry, this scrawlface couldn\'t be saved.'));
   });
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode
@@ -2722,6 +2770,8 @@ function setupGallery() {
       if (draft && isBlankStart()) {
         try {
           await restoreScrawlface(draft);
+          startScrawlfaceStats(false);
+          track('draft_restored');
           galleryId = draft.galleryId;
           editVersion = savedVersion + 1;
           restartAutoSave();
@@ -2737,7 +2787,7 @@ function setupGallery() {
 }
 
 // ---- Onboarding: Understand -> Discover -> Learn -> Experience ----
-// An intro (four screens) on first launch, a help key to replay it or step
+// An intro (three screens) on first launch, a help key to replay it or step
 // through tips on the controls, and one-off tips when a feature first
 // matters. See plans/onboarding.md. Progress is kept in localStorage:
 // onboarding_completed / onboarding_skipped hold the intro version
@@ -2824,7 +2874,7 @@ function setupOnboarding() {
       'New: Take a quick tour or explore tool tips whenever you need them.'), 800);
     return;
   }
-  openIntro();
+  openIntro('first_launch');
 }
 
 // -- Help key and menu --
@@ -2835,7 +2885,7 @@ function setupHelp() {
   btn.addEventListener('click', () => (menu.hidden ? openHelpMenu() : closeHelpMenu()));
   document.getElementById('help-tour').addEventListener('click', () => {
     closeHelpMenu();
-    openIntro();
+    openIntro('help_menu');
   });
   document.getElementById('help-explore').addEventListener('click', () => {
     closeHelpMenu();
@@ -3018,8 +3068,10 @@ function introOpen() {
   return document.getElementById('intro-dialog').open;
 }
 
-function openIntro() {
+// source: first_launch, help_menu, or other (a shell)
+function openIntro(source = 'other') {
   if (isEmbedded() || introOpen()) return;
+  track('onboarding_started', { source });
   closeHelpMenu();
   hideCoach('end');
   introScene = makeIntroScene();
@@ -3031,10 +3083,11 @@ function openIntro() {
 
 function finishIntro(outcome) {
   markOnboarding(outcome);
+  track('onboarding_' + outcome, outcome === 'skipped' ? { at_step: introIndex + 1 } : {});
   cancelAnimationFrame(introFrame);
   document.getElementById('intro-dialog').close();
   // The last key creates the first scribble
-  if (outcome === 'completed' && isBlankStart()) requestNewScrawl();
+  if (outcome === 'completed' && isBlankStart()) requestNewScrawl('tour');
 }
 
 function showIntroScreen(i) {
@@ -3199,6 +3252,9 @@ function hideCoach(result) {
   coach.hidden = true;
   document.getElementById('coach-box').hidden = true;
   coachAnchor = null;
+  if (currentTip) {
+    track('tip_closed', { tip_id: currentTip, via: { next: 'button', end: 'escape' }[result] || 'dismissed' });
+  }
   currentTip = null;
   const resolve = coachResolve;
   coachResolve = null;
@@ -3281,6 +3337,7 @@ async function exploreFeatures() {
   ]).map(([selectors, title, text]) => ({ els: [].concat(selectors).map(shownElement).filter(Boolean), title, text }))
     .filter(step => step.els.length);
 
+  track('explore_features_started');
   for (let i = 0; i < steps.length; i++) {
     const last = i === steps.length - 1;
     const result = await showCoach({
@@ -3291,7 +3348,11 @@ async function exploreFeatures() {
       next: last ? 'Done' : 'Next',
       canEnd: !last
     });
-    if (result !== 'next') break;
+    if (result !== 'next') {
+      track('explore_features_ended', { at_step: i + 1 });
+      break;
+    }
+    if (last) track('explore_features_completed');
   }
   touring = false;
 }
@@ -3305,6 +3366,7 @@ function showTip(id, anchor, text, next = 'Got it') {
   markTipSeen(id);
   showCoach({ anchor, text, next });
   currentTip = id;
+  track('tip_shown', { tip_id: id });
 }
 
 // Puts the tip on show away (only tip `id`, if given)
@@ -3359,6 +3421,69 @@ function tipSave() {
     showTip('save', { el: document.getElementById('toggle-mobile-menu') },
       'Like what you\'ve made? Swipe up and save it to My Scrawls to keep it.');
   }
+}
+
+// ---- Analytics events ----
+// What people do, as named events with a few properties (see
+// plans/analytics.md). Nothing leaves the device from the web page: events go
+// to listeners (a native shell forwards them to its analytics through
+// window.scrawlface.onEvent) and the last few are kept for checking.
+// Never put the drawing, image data or personal details in an event.
+
+const eventListeners = [];
+const recentEvents = [];
+const appVersion = (document.querySelector('script[src*="scrawl.js"]')?.src.match(/[?&]v=(\d+)/) || [])[1] || null;
+
+function track(name, props = {}) {
+  const event = {
+    name,
+    props: {
+      ...props,
+      platform: isEmbedded() ? 'shell' : 'web',
+      app_version: appVersion,
+      onboarding_version: ONBOARDING_VERSION
+    },
+    time: Date.now()
+  };
+  recentEvents.push(event);
+  if (recentEvents.length > 50) recentEvents.shift();
+  eventListeners.forEach(fn => {
+    try { fn(event); } catch (e) {}
+  });
+}
+
+// Returns a function that stops listening
+function onEvent(fn) {
+  eventListeners.push(fn);
+  return () => {
+    const i = eventListeners.indexOf(fn);
+    if (i !== -1) eventListeners.splice(i, 1);
+  };
+}
+
+// The scrawlface on the canvas: what's been used on it, for tool_used (the
+// first use of each tool) and scrawlface_saved. fresh: a new scribble (so
+// the time since it was made counts); otherwise one reopened or restored.
+let scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: null };
+
+function startScrawlfaceStats(fresh) {
+  scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: fresh ? performance.now() : null };
+}
+
+function usedTool(tool) {
+  if (tool === 'brush' || tool === 'eraser') scrawlfaceStats.strokes++;
+  if (tool === 'fill') scrawlfaceStats.fills++;
+  if (scrawlfaceStats.tools.has(tool)) return;
+  scrawlfaceStats.tools.add(tool);
+  track('tool_used', { tool });
+}
+
+// The app was opened: first time on this device, or after how many days
+function trackAppOpened() {
+  const last = parseInt(storageGet('last_opened')) || 0;
+  const now = Date.now();
+  storageSet('last_opened', now);
+  track('app_opened', { first_open: !last, days_since_last: last ? Math.floor((now - last) / 86400000) : null });
 }
 
 // ---- For a native shell: the app's state and the functions to drive it ----
@@ -3418,5 +3543,6 @@ window.scrawlface = {
   rotate: rotateCanvas, toggleLines: toggleEyes,
   save: saveToGallery, listGallery, openFromGallery,
   exportPNG,
-  onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding
+  onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding,
+  onEvent, recentEvents: () => [...recentEvents]
 };
