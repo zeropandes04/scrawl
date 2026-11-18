@@ -204,6 +204,20 @@ async function run(label, contextOpts) {
     await t.ctx.close();
   }
 
+  // -- Already at work on the canvas: the drag-eyes tip doesn't turn up late --
+  {
+    const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1' });
+    await t.load();
+    await t.page.click('#blank-cta-btn');
+    const box = await t.page.locator('#scrawl-container canvas').boundingBox();
+    await t.page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.85);
+    await t.page.waitForFunction(() => scrawlQueue.length === 0);
+    await t.page.waitForTimeout(1200);
+    const r = await t.ev(() => ({ coach: !document.getElementById('coach').hidden, seen: onboardingState().tipsSeen }));
+    check('pressed the canvas during the draw-in: no drag-eyes tip after', !r.coach && !r.seen.includes('drag-eyes'), JSON.stringify(r));
+    await t.ctx.close();
+  }
+
   // -- One-off tips: shown once, put away by working on the canvas --
   {
     const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1' });
