@@ -128,16 +128,31 @@ async function run(label, contextOpts) {
     const t = await fresh(browser, contextOpts);
     await t.load();
     const cdp = await t.ctx.newCDPSession(t.page);
-    const swipe = async (x1, x2, y = 300) => {
+    // pause: ms between moves (a slow drag rather than a flick)
+    const swipe = async (x1, x2, y = 300, pause = 0) => {
       const steps = 8;
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x1, y }] });
       for (let k = 1; k <= steps; k++) {
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x1 + (x2 - x1) * k / steps, y }] });
+        if (pause) await t.page.waitForTimeout(pause);
       }
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-      await t.page.waitForTimeout(100);
+      await t.page.waitForTimeout(450); // the slide
     };
     const step = () => t.ev(() => document.getElementById('intro-step').textContent.slice(0, 2));
+    // Mid-drag, the screen follows the finger; let go after a slow, short
+    // drag and it goes back into place
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 300, y: 300 }] });
+    for (const x of [290, 280, 270, 260, 250, 240]) {
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: 300 }] });
+      await t.page.waitForTimeout(60);
+    }
+    const follow = await t.ev(() => new DOMMatrix(getComputedStyle(document.getElementById('intro-slide')).transform).m41);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await t.page.waitForTimeout(450);
+    const back = [await step(), await t.ev(() => getComputedStyle(document.getElementById('intro-slide')).transform)];
+    check('the screen follows the finger; a slow short drag springs back', follow < -40 && back[0] === '01' && back[1] === 'none',
+      JSON.stringify({ follow, back }));
     await swipe(300, 80);
     const a = await step();
     await swipe(80, 300);
@@ -255,8 +270,15 @@ async function run(label, contextOpts) {
     // the tip follows the draw-in on a timer: wait for it rather than guess
     const tipUp = await t.page.waitForFunction(() => !document.getElementById('coach').hidden, null, { timeout: 5000 }).then(() => true, () => false);
     check('drag-eyes tip shows', tipUp);
-    const box = await t.page.locator('#scrawl-container canvas').boundingBox();
-    await t.page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.85);
+    // Press the canvas somewhere the bubble isn't (it sits by a random eye)
+    const spot = await t.ev(() => {
+      const c = document.getElementById('scrawl-container').getBoundingClientRect();
+      const b = document.getElementById('coach').getBoundingClientRect();
+      return [[0.2, 0.85], [0.8, 0.85], [0.2, 0.15], [0.8, 0.15]]
+        .map(([u, v]) => ({ x: c.left + c.width * u, y: c.top + c.height * v }))
+        .find(p => p.x < b.left - 8 || p.x > b.right + 8 || p.y < b.top - 8 || p.y > b.bottom + 8);
+    });
+    await t.page.mouse.click(spot.x, spot.y);
     check('a press on the canvas puts the tip away', !(await coachShown(t.page)));
     await t.ev(() => { hasDrawings = false; generateScrawlface(); });
     await t.page.waitForFunction(() => scrawlQueue.length === 0);
