@@ -228,8 +228,8 @@ async function run(label, contextOpts) {
       await t.page.click('#coach-next');
     }
     const total = steps.length;
-    const titles = mobile ? 'Your creative tools,Explore the canvas,More tools,My Scrawls'
-      : 'New scrawl & Loops,Your creative tools,Undo, Redo & Clear,The canvas,My Scrawls';
+    const titles = mobile ? 'Your creative tools,The canvas,More tools,My Scrawls'
+      : 'New scrawl and Loops,Your creative tools,Undo, Redo & Clear,The canvas,My Scrawls';
     check('Explore features: its steps, each outlined by a rounded box on screen', steps.map(s => s.title).join() === titles && steps.every(s => s.outline),
       JSON.stringify(steps.map(s => [s.title, s.outline])));
     check('Explore features steps through every control, then ends', total === (mobile ? 4 : 5) && steps.every((s, i) => s.count === `${i + 1} of ${total}`) &&
