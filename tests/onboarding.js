@@ -210,8 +210,9 @@ async function run(label, contextOpts) {
     await t.load();
     await t.page.click('#blank-cta-btn');
     await t.page.waitForFunction(() => scrawlQueue.length === 0);
-    await t.page.waitForTimeout(500);
-    check('drag-eyes tip shows', await coachShown(t.page));
+    // the tip follows the draw-in on a timer: wait for it rather than guess
+    const tipUp = await t.page.waitForFunction(() => !document.getElementById('coach').hidden, null, { timeout: 5000 }).then(() => true, () => false);
+    check('drag-eyes tip shows', tipUp);
     const box = await t.page.locator('#scrawl-container canvas').boundingBox();
     await t.page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.85);
     check('a press on the canvas puts the tip away', !(await coachShown(t.page)));
