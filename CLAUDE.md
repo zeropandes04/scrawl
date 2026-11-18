@@ -16,6 +16,12 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 - `vendor/` — p5.js and its licence
 - `fonts/` — the wordmark fonts (letter subsets) and their licences, see `fonts/README.md`
 
+## Words in the UI
+
+- **Scribble**: the random line drawing (New scribble, Loops for the next scribble).
+- **Scrawlface**: the finished piece (scribble + eyes + paint), and the app's name. **My Scrawls** is where saved scrawlfaces live.
+- "Scrawl" is only part of those names in the UI. The code still says scrawl for the drawing (`generateScrawlface`, `scrawlQueue`, ...); don't rename code for this.
+
 ## Hard rules
 
 - No build step, no package manager, no framework — ever.

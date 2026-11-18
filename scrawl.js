@@ -2385,7 +2385,7 @@ function confirmLeave() {
   if (isBlankStart() || !hasUnsavedChanges()) return Promise.resolve(true);
   // No storage, so nothing to save to
   if (document.body.classList.contains('no-storage')) {
-    return Promise.resolve(confirm('Start a new scrawl? Your drawing will be lost.'));
+    return Promise.resolve(confirm('Start a new scribble? Your drawing will be lost.'));
   }
   const dialog = document.getElementById('leave-dialog');
   dialog.returnValue = '';
@@ -2537,7 +2537,7 @@ async function renderGallery() {
   recents.hidden = records.length === 0;
 }
 
-// The gallery's "New scrawl" tile: back to the canvas with a new scrawl,
+// The gallery's "New scribble" tile: back to the canvas with a new scribble,
 // asking to save unsaved changes first (requestNewScrawl)
 function newScrawlTile() {
   const item = document.createElement('li');
@@ -2547,7 +2547,7 @@ function newScrawlTile() {
   // The same scrawl icon as the New scrawl keys
   tile.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scrawl';
+    '<path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scribble';
   tile.addEventListener('click', () => {
     document.getElementById('gallery-dialog').close();
     requestNewScrawl();
@@ -3268,7 +3268,7 @@ async function exploreFeatures() {
   // [what it points at, title, text]; the tools step covers the tool keys
   // and the selected tool's options together (on phones, Undo and Redo too)
   const steps = (desktop ? [
-    ['#generate-btn', 'New scrawl and Loops', 'Get a fresh scribble. Use Loops to make it more or less tangled.'],
+    ['#generate-btn', 'New scribble and Loops', 'Get a fresh scribble. Use Loops to make it more or less tangled.'],
     [['.sidebar .tool-keys', '.sidebar-section > .tool-options'], 'Your creative tools', 'Add eyes and colour to bring your discoveries to life.'],
     ['.sidebar .history-keys', 'Undo, Redo & Clear', 'Undo or redo changes. Clear removes all paint from the canvas.'],
     ['#scrawl-container', 'The canvas', 'Move the eyes, draw with Brush or tap to Fill. Find Rotate and Hide lines under View.'],
@@ -3276,7 +3276,7 @@ async function exploreFeatures() {
   ] : [
     [['.options-strip', '.tool-row'], 'Your creative tools', 'Add eyes and colour to bring your discoveries to life.'],
     ['#scrawl-container', 'The canvas', 'Pinch to zoom and rotate. Touch and hold to peek under the lines.'],
-    ['#toggle-mobile-menu', 'More tools', 'Swipe up for New scrawl, Loops, Hide lines, Clear, Save and Share.'],
+    ['#toggle-mobile-menu', 'More tools', 'Swipe up for New scribble, Loops, Hide lines, Clear, Save and Share.'],
     ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
   ]).map(([selectors, title, text]) => ({ els: [].concat(selectors).map(shownElement).filter(Boolean), title, text }))
     .filter(step => step.els.length);
