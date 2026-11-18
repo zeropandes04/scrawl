@@ -79,60 +79,18 @@ async function run(label, contextOpts) {
     await t.page.waitForFunction(() => !isBlankStart() && scrawlQueue.length === 0);
     const st = await state(t.page);
     check('finishing creates the first scrawlface and records completed', !(await introShown(t.page)) && st.completed === 1 && st.skipped === 0 && st.versionSeen === 1, JSON.stringify(st));
-    // The first scribble: no eyes until you tap where you see a face
-    await t.page.waitForTimeout(400);
-    const tip = await t.ev(() => ({ shown: !document.getElementById('coach').hidden, text: document.getElementById('coach-text').textContent, finding: findingFace }));
-    check('first scribble: eyes wait, a tip asks what you see', tip.shown && tip.finding && tip.text.includes('Can you spot a face'), JSON.stringify(tip));
-    const c = await t.page.locator('#scrawl-container canvas').boundingBox();
-    if (mobile) await t.page.tap('#scrawl-container canvas', { position: { x: c.width / 2, y: c.height / 2 } });
-    else await t.page.mouse.click(c.x + c.width / 2, c.y + c.height / 2);
-    await t.page.waitForTimeout(400);
-    const found = await t.ev(() => ({ finding: findingFace, eyes: eyePositions.map(e => [Math.round(e.x), Math.round(e.y)]),
-      unsaved: editVersion !== savedVersion, undo: historyStack.length,
-      tip: !document.getElementById('coach').hidden && document.getElementById('coach-text').textContent,
+    // The first scrawl: eyes in, one tooltip on them; Let's go! closes it
+    const tipUp = await t.page.waitForFunction(() => !document.getElementById('coach').hidden, null, { timeout: 5000 }).then(() => true, () => false);
+    const tip = await t.ev(() => ({ eyes: eyePositions.length, text: document.getElementById('coach-text').textContent,
       key: document.getElementById('coach-next').textContent }));
-    const mid = found.eyes.length === 2 && Math.abs((found.eyes[0][0] + found.eyes[1][0]) / 2 - 400) < 8;
-    check('tapping puts the eyes where you tapped, then a tip to fine-tune', !found.finding && mid && found.unsaved && found.undo === 0 &&
-      String(found.tip).includes('Found one') && found.key === 'Got it', JSON.stringify(found));
+    check('first scrawl: eyes in, and the one tooltip', tipUp && tip.eyes === 2 &&
+      tip.text === 'There\'s more than meets the eye. Move the eyes and rotate the canvas. Can you spot a face? Add colour to make it yours.' &&
+      tip.key === 'Let\'s go!', JSON.stringify(tip));
+    await t.page.click('#coach-next');
+    check('Let\'s go! closes it', !(await coachShown(t.page)));
     await t.load();
     check('after finishing, the intro stays away on reload', !(await introShown(t.page)));
     check('no page errors (first launch)', t.errors.length === 0, t.errors.join(' | '));
-    await t.ctx.close();
-  }
-
-  // -- The first scribble without tapping: Show me, or another tool --
-  for (const how of ['show', 'tool']) {
-    const t = await fresh(browser, contextOpts);
-    await t.load();
-    for (let i = 0; i < 3; i++) await t.page.click('#intro-next');
-    await t.page.waitForFunction(() => scrawlQueue.length === 0);
-    await t.page.waitForTimeout(400);
-    const coach = () => t.ev(() => ({ finding: findingFace, eyes: eyePositions.length, shown: !document.getElementById('coach').hidden,
-      text: document.getElementById('coach-text').textContent, next: document.getElementById('coach-next').textContent, token: scrawlfaceToken }));
-    if (how === 'show') {
-      const first = await coach();
-      check('first scribble tip: Show me', first.shown && first.next === 'Show me', JSON.stringify(first));
-      await t.page.click('#coach-next');
-      const another = await coach();
-      check('Show me: the eyes go in, and a tooltip on them, Let\'s go!', another.shown && !another.finding && another.eyes === 2 &&
-        another.text === 'There\'s more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill.' && another.next === 'Let\'s go!',
-        JSON.stringify(another));
-      await t.page.click('#coach-next');
-      await t.page.waitForTimeout(300);
-      const closed = await coach();
-      check('Let\'s go! closes it, same scribble, eyes kept', !closed.shown && closed.token === another.token && !closed.finding && closed.eyes === 2,
-        JSON.stringify(closed));
-      // ...and a press outside the bubble closes it too
-      await t.ev(() => tipShownFace());
-      await t.page.click('h1');
-      check('a press outside the bubble closes the tooltip', !(await coachShown(t.page)));
-    } else {
-      await t.ev(() => window.scrawlface.setTool('brush'));
-      await t.page.waitForTimeout(400);
-      const r = await coach();
-      check('choosing another tool puts the eyes in', !r.finding && r.eyes === 2, JSON.stringify(r));
-    }
-    check(`no page errors (${how})`, t.errors.length === 0, t.errors.join(' | '));
     await t.ctx.close();
   }
 
