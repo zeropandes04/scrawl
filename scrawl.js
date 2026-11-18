@@ -63,8 +63,13 @@ function fitHeader() {
   header.classList.remove('header-compact');
   if (header.scrollWidth > header.clientWidth) header.classList.add('header-compact');
 }
-document.addEventListener('DOMContentLoaded', fitHeader);
-document.fonts.ready.then(fitHeader);
+// The wordmark's typeface can arrive after the page is ready, so check
+// again whenever the wordmark changes size (and on resize)
+document.addEventListener('DOMContentLoaded', () => {
+  fitHeader();
+  const wordmark = document.querySelector('header h1');
+  if (wordmark && window.ResizeObserver) new ResizeObserver(fitHeader).observe(wordmark);
+});
 window.addEventListener('resize', fitHeader);
 
 // Canvas-only mode, for a native shell that draws its own controls: open
