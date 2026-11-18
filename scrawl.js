@@ -2754,7 +2754,7 @@ const introScreens = [
   { step: 'Look closer', art: 'reveal', title: 'Train your imagination.',
     text: 'Find faces, creatures and characters hiding in every scribble.', next: 'Let\'s look' },
   { step: 'Make it yours', art: 'steps', title: 'Every scribble holds a possibility.',
-    text: 'Spot a face, bring it to life, and add your own details.', next: 'Show me' },
+    text: 'Explore the canvas, spot a face, and add your own details.', next: 'Show me' },
   { step: 'Find something unexpected', art: 'mystery', title: 'Your first scribble is waiting.',
     text: 'Look closely. What do you see?', next: 'Surprise me!' }
 ];
