@@ -3332,7 +3332,7 @@ async function exploreFeatures() {
     ['#scrawl-container', 'The canvas', 'Move the eyes, draw with Brush or tap to Fill. Find Rotate and Hide lines under View.'],
     ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
   ] : [
-    [['.options-strip', '.tool-row'], 'Your creative tools', 'Move and style the eyes. Bring your discoveries to life with Brush, Fill and Eraser. Undo or redo any change.'],
+    [['.options-strip', '.tool-row'], 'Your creative tools', 'Bring your discoveries to life by adding eyes and colour. Undo or redo any change.'],
     ['#scrawl-container', 'Explore the canvas', 'Pinch to zoom and rotate. Touch and hold to peek under the lines.'],
     ['#toggle-mobile-menu', 'More tools', 'Swipe up for New scrawl, Loops, Hide lines, Clear, Save and Share.'],
     ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
