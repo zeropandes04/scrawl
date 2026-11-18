@@ -114,7 +114,8 @@ async function run(label, contextOpts) {
       check('first scribble tip: Show me', first.shown && first.next === 'Show me', JSON.stringify(first));
       await t.page.click('#coach-next');
       const another = await coach();
-      check('Show me: try another scribble, Let\'s go!', another.shown && another.finding && another.text.includes('Try another scribble') && another.next === 'Let\'s go!',
+      check('Show me: the eyes appear, then try another scribble, Let\'s go!', another.shown && !another.finding && another.eyes === 2 &&
+        another.text.includes('Try another scribble') && another.next === 'Let\'s go!',
         JSON.stringify(another));
       await t.page.click('#coach-next');
       await t.page.waitForFunction(token => scrawlfaceToken !== token && scrawlQueue.length === 0, another.token);

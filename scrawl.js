@@ -3323,9 +3323,9 @@ function dismissTip(id) {
 
 // -- The first scribble: find the face --
 // After the intro, the first scribble comes without eyes: you tap where you
-// see a face, and the eyes appear there. Show me offers another scribble
-// instead; choosing another tool, saving or sharing puts the eyes in their
-// usual random spots.
+// see a face, and the eyes appear there. Show me puts them in their usual
+// random spots and offers another scribble; so does choosing another tool,
+// saving or sharing (without the offer).
 
 let findFaceNext = false;  // the next scribble is the intro's first one
 let findingFace = false;   // its eyes are waiting to be placed
@@ -3336,17 +3336,22 @@ function tipFindFace() {
   dismissTip();
   showCoach({ anchor: { el: document.getElementById('scrawl-container'), free: true },
     text: 'Can you spot a face? Tap where you see one.', next: 'Show me' })
-    .then(result => { if (result === 'next') tipTryAnother(); });
+    .then(result => {
+      if (result !== 'next') return;
+      // Show me: the eyes appear (in their random spots), and since this
+      // scribble didn't show them a face, another one is offered
+      revealFace(false);
+      tipTryAnother();
+    });
   currentTip = 'find-face';
 }
 
-// No face yet: offer another scribble (the eyes wait on that one too)
+// After Show me: offer another scribble (its eyes wait to be found too)
 function tipTryAnother() {
-  if (!findingFace) return;
   showCoach({ anchor: { el: document.getElementById('scrawl-container'), free: true },
     text: 'There\'s more than meets the eye. Try another scribble.', next: 'Let\'s go!' })
     .then(result => {
-      if (result !== 'next' || !findingFace) return;
+      if (result !== 'next') return;
       findFaceNext = true;
       requestNewScrawl();
     });
@@ -3369,14 +3374,14 @@ function placeEyesAt(x, y) {
     'Found one! Move the eyes to make it yours. Add details with Brush and Fill.'), 250);
 }
 
-// Not found (yet): the eyes go in their random spots
-function revealFace() {
+// Not found (yet): the eyes go in their random spots. dragTip: follow up
+// with the tip on dragging them (not after Show me, which has its own).
+function revealFace(dragTip = true) {
   if (!findingFace) return;
   findingFace = false;
   dismissTip('find-face');
-  dismissTip('try-another');
   redrawCanvas();
-  setTimeout(tipDragEyes, 250);
+  if (dragTip) setTimeout(tipDragEyes, 250);
 }
 
 // The first scrawl: point at an eye
