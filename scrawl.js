@@ -3238,16 +3238,9 @@ function showCoach({ anchor, title = '', text, count = '', next = 'Next', canEnd
   document.getElementById('coach-skip').hidden = !canEnd;
   document.getElementById('coach').hidden = false;
   coachAnchor = anchor;
-  coachRings(anchor).forEach(el => el.classList.add('coach-target'));
   document.getElementById('coach-box').hidden = !anchor.box;
   placeCoach();
   return new Promise(resolve => { coachResolve = resolve; });
-}
-
-// What a tour step rings: its control (several controls get one box
-// around them all instead, see placeCoach)
-function coachRings(anchor) {
-  return anchor.ring && anchor.el ? [anchor.el] : [];
 }
 
 // The box around several elements on screen
@@ -3262,7 +3255,6 @@ function hideCoach(result) {
   const coach = document.getElementById('coach');
   if (coach.hidden) return;
   coach.hidden = true;
-  if (coachAnchor) coachRings(coachAnchor).forEach(el => el.classList.remove('coach-target'));
   document.getElementById('coach-box').hidden = true;
   coachAnchor = null;
   currentTip = null;
@@ -3278,12 +3270,17 @@ function placeCoach() {
   if (coach.hidden || !coachAnchor) return;
   const r = coachAnchor.el ? coachAnchor.el.getBoundingClientRect() : coachAnchor.rect();
   if (coachAnchor.box) {
-    // One outline around them all, as far out as a single control's ring
+    // The tour step's outline: a rounded box just outside what it points
+    // at, kept on screen (the canvas can be as wide as the window)
     const box = document.getElementById('coach-box').style;
-    box.left = `${r.left - 6}px`;
-    box.top = `${r.top - 6}px`;
-    box.width = `${r.width + 12}px`;
-    box.height = `${r.height + 12}px`;
+    const x0 = Math.max(r.left - 6, 2);
+    const y0 = Math.max(r.top - 6, 2);
+    const x1 = Math.min(r.right + 6, innerWidth - 2);
+    const y1 = Math.min(r.bottom + 6, innerHeight - 2);
+    box.left = `${x0}px`;
+    box.top = `${y0}px`;
+    box.width = `${x1 - x0}px`;
+    box.height = `${y1 - y0}px`;
   }
   const w = coach.offsetWidth;
   const h = coach.offsetHeight;
@@ -3345,8 +3342,7 @@ async function exploreFeatures() {
   for (let i = 0; i < steps.length; i++) {
     const last = i === steps.length - 1;
     const result = await showCoach({
-      anchor: steps[i].els.length === 1 ? { el: steps[i].els[0], ring: true }
-        : { rect: () => boxAround(steps[i].els), box: true },
+      anchor: { rect: () => boxAround(steps[i].els), box: true },
       title: steps[i].title,
       text: steps[i].text,
       count: `${i + 1} of ${steps.length}`,

@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=72"></script>
+  <script src="scrawl.js?v=73"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -2009,14 +2009,9 @@
       display: none;
     }
 
-    /* What the tour step points at */
-    .coach-target {
-      outline: 3px solid var(--primary) !important;
-      outline-offset: 3px;
-    }
-
-    /* ...or, for several controls together, one box around them all
-       (placed by script, just under the bubble) */
+    /* What a tour step points at: a rounded box around it, or around
+       several controls together (placed by script, just under the bubble,
+       so nothing on the page can cut it off) */
     .coach-box {
       position: fixed;
       z-index: 1090;
