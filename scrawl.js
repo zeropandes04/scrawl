@@ -2920,6 +2920,22 @@ function setupIntro() {
     if (e.key === 'ArrowRight' && introIndex < introScreens.length - 1) showIntroScreen(introIndex + 1);
     if (e.key === 'ArrowLeft' && introIndex > 0) showIntroScreen(introIndex - 1);
   });
+  // Swipe: left for the next screen, right for the one before. A swipe on
+  // the last screen doesn't finish it (only its key does).
+  let swipeStart = null;
+  dialog.addEventListener('pointerdown', e => {
+    if (e.pointerType !== 'mouse') swipeStart = { x: e.clientX, y: e.clientY };
+  });
+  dialog.addEventListener('pointercancel', () => { swipeStart = null; });
+  dialog.addEventListener('pointerup', e => {
+    if (!swipeStart) return;
+    const dx = e.clientX - swipeStart.x;
+    const dy = e.clientY - swipeStart.y;
+    swipeStart = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && introIndex < introScreens.length - 1) showIntroScreen(introIndex + 1);
+    if (dx > 0 && introIndex > 0) showIntroScreen(introIndex - 1);
+  });
   const dots = document.getElementById('intro-dots');
   dots.replaceChildren(...introScreens.map(() => document.createElement('span')));
 }
