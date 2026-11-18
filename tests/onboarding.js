@@ -220,20 +220,21 @@ async function run(label, contextOpts) {
     const steps = [];
     for (let i = 0; i < 12 && await coachShown(t.page); i++) {
       steps.push(await t.ev(() => ({ count: document.getElementById('coach-count').textContent, next: document.getElementById('coach-next').textContent,
-        ring: document.querySelectorAll('.coach-target').length, end: !document.getElementById('coach-skip').hidden,
-        title: document.getElementById('coach-title').textContent, box: !document.getElementById('coach-box').hidden })));
+        end: !document.getElementById('coach-skip').hidden,
+        // the outline: shown, rounded, and wholly on screen
+        outline: (() => { const b = document.getElementById('coach-box'); const r = b.getBoundingClientRect();
+          return !b.hidden && parseFloat(getComputedStyle(b).borderTopLeftRadius) > 0 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; })(),
+        title: document.getElementById('coach-title').textContent })));
       await t.page.click('#coach-next');
     }
     const total = steps.length;
     const titles = mobile ? 'Your creative tools,Explore the canvas,More tools,My Scrawls'
       : 'New scrawl & Loops,Your creative tools,Undo, Redo & Clear,The canvas,My Scrawls';
-    const tools = steps.find(s => s.title === 'Your creative tools');
-    check('Explore features: its steps; the tools step in one box, the others ringed', steps.map(s => s.title).join() === titles &&
-      steps.every(s => s === tools ? s.box && s.ring === 0 : !s.box && s.ring === 1),
-      JSON.stringify(steps.map(s => [s.title, s.ring, s.box])));
+    check('Explore features: its steps, each outlined by a rounded box on screen', steps.map(s => s.title).join() === titles && steps.every(s => s.outline),
+      JSON.stringify(steps.map(s => [s.title, s.outline])));
     check('Explore features steps through every control, then ends', total === (mobile ? 4 : 5) && steps.every((s, i) => s.count === `${i + 1} of ${total}`) &&
       steps[total - 1].next === 'Done' && !steps[total - 1].end && !(await coachShown(t.page)) &&
-      await t.ev(() => document.querySelectorAll('.coach-target').length === 0 && document.getElementById('coach-box').hidden),
+      await t.ev(() => document.getElementById('coach-box').hidden),
       JSON.stringify(steps.map(s => s.count + ' ' + s.next)));
     // End tour part way
     await t.page.click('#help-btn');
