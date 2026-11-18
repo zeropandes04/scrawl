@@ -2902,13 +2902,13 @@ function setupIntro() {
   const dialog = document.getElementById('intro-dialog');
   document.getElementById('intro-next').addEventListener('click', () => {
     if (introIndex < introScreens.length - 1) {
-      showIntroScreen(introIndex + 1);
+      slideIntro(introIndex + 1);
     } else {
       finishIntro('completed');
     }
   });
   document.getElementById('intro-back').addEventListener('click', () => {
-    if (introIndex > 0) showIntroScreen(introIndex - 1);
+    if (introIndex > 0) slideIntro(introIndex - 1);
   });
   document.getElementById('intro-skip').addEventListener('click', () => finishIntro('skipped'));
   // Esc skips
@@ -2917,27 +2917,115 @@ function setupIntro() {
     finishIntro('skipped');
   });
   dialog.addEventListener('keydown', e => {
-    if (e.key === 'ArrowRight' && introIndex < introScreens.length - 1) showIntroScreen(introIndex + 1);
-    if (e.key === 'ArrowLeft' && introIndex > 0) showIntroScreen(introIndex - 1);
+    if (e.key === 'ArrowRight' && introIndex < introScreens.length - 1) slideIntro(introIndex + 1);
+    if (e.key === 'ArrowLeft' && introIndex > 0) slideIntro(introIndex - 1);
   });
-  // Swipe: left for the next screen, right for the one before. A swipe on
-  // the last screen doesn't finish it (only its key does).
-  let swipeStart = null;
-  dialog.addEventListener('pointerdown', e => {
-    if (e.pointerType !== 'mouse') swipeStart = { x: e.clientX, y: e.clientY };
-  });
-  dialog.addEventListener('pointercancel', () => { swipeStart = null; });
-  dialog.addEventListener('pointerup', e => {
-    if (!swipeStart) return;
-    const dx = e.clientX - swipeStart.x;
-    const dy = e.clientY - swipeStart.y;
-    swipeStart = null;
-    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-    if (dx < 0 && introIndex < introScreens.length - 1) showIntroScreen(introIndex + 1);
-    if (dx > 0 && introIndex > 0) showIntroScreen(introIndex - 1);
-  });
+  setupIntroSwipe(dialog);
   const dots = document.getElementById('intro-dots');
   dots.replaceChildren(...introScreens.map(() => document.createElement('span')));
+}
+
+// Swipe like a carousel: the screen follows the finger, then slides on to
+// the next one (or back into place). Left for the next screen, right for
+// the one before; past the first or last it only gives a little. A swipe
+// on the last screen doesn't finish the intro (only its key does).
+function setupIntroSwipe(dialog) {
+  const slide = document.getElementById('intro-slide');
+  let start = null;    // { x, y, t } of the touch
+  let dragging = false;
+  let last = null;     // recent { x, t }, for the flick speed
+  let dx = 0;
+
+  const offset = () => {
+    // Nothing that way: resist, like a rubber band
+    const blocked = (dx < 0 && introIndex === introScreens.length - 1) || (dx > 0 && introIndex === 0);
+    return blocked ? dx * 0.25 : dx;
+  };
+
+  dialog.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'mouse' || introSliding) return;
+    start = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+    last = { x: e.clientX, t: e.timeStamp };
+    dragging = false;
+    dx = 0;
+  });
+  dialog.addEventListener('pointermove', e => {
+    if (!start) return;
+    dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    if (!dragging) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (Math.abs(dx) < Math.abs(dy)) { start = null; return; } // a scroll
+      dragging = true;
+      dialog.setPointerCapture(e.pointerId);
+      slide.getAnimations().forEach(a => a.cancel());
+    }
+    const o = offset();
+    slide.style.transform = `translateX(${o}px)`;
+    slide.style.opacity = 1 - Math.min(Math.abs(o) / slide.offsetWidth, 1) * 0.5;
+    if (e.timeStamp - last.t > 30) last = { x: e.clientX, t: e.timeStamp, prev: last };
+  });
+  const end = e => {
+    if (!start) return;
+    const wasDragging = dragging;
+    start = null;
+    dragging = false;
+    if (!wasDragging) return;
+    // A quick flick counts even if it's short
+    const ref = last.prev || last;
+    const speed = (e.clientX - ref.x) / Math.max(e.timeStamp - ref.t, 1); // px per ms
+    const far = Math.abs(dx) > slide.offsetWidth * 0.25;
+    const flick = Math.abs(speed) > 0.4 && Math.sign(speed) === Math.sign(dx);
+    const target = introIndex + (dx < 0 ? 1 : -1);
+    const go = e.type === 'pointerup' && (far || flick) && target >= 0 && target < introScreens.length;
+    if (go) {
+      slideIntro(target, offset());
+    } else {
+      // Back into place
+      const from = slide.style.transform;
+      const fromOpacity = slide.style.opacity;
+      slide.style.transform = '';
+      slide.style.opacity = '';
+      slide.animate([{ transform: from, opacity: fromOpacity }, { transform: 'none', opacity: 1 }],
+        { duration: 220, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
+    }
+  };
+  dialog.addEventListener('pointerup', end);
+  dialog.addEventListener('pointercancel', end);
+}
+
+let introSliding = false;
+
+// Moves to screen i with a slide: the one on show leaves the way it's going
+// (from `from` px, where a swipe left it), the next comes in from the other
+// side. From a key, the screen changes straight away and the new one slides in.
+async function slideIntro(i, from = null) {
+  const slide = document.getElementById('intro-slide');
+  const dir = i > introIndex ? 1 : -1; // 1: forwards, content moves left
+  const w = slide.offsetWidth;
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  slide.getAnimations().forEach(a => a.cancel());
+  slide.style.transform = '';
+  slide.style.opacity = '';
+  if (reduced) {
+    showIntroScreen(i);
+    return;
+  }
+  if (from !== null) {
+    // Finish the swipe: off the side, quickly
+    introSliding = true;
+    const startOpacity = 1 - Math.min(Math.abs(from) / w, 1) * 0.5;
+    await slide.animate([{ transform: `translateX(${from}px)`, opacity: startOpacity },
+      { transform: `translateX(${-dir * w}px)`, opacity: 0 }],
+      { duration: 140, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+    introSliding = false;
+    if (!introOpen()) return;
+  }
+  showIntroScreen(i);
+  slide.getAnimations().forEach(a => a.cancel());
+  slide.animate([{ transform: `translateX(${dir * w * 0.6}px)`, opacity: 0 },
+    { transform: 'none', opacity: 1 }],
+    { duration: 260, easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)' });
 }
 
 function introOpen() {

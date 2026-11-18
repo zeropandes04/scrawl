@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=69"></script>
+  <script src="scrawl.js?v=70"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1791,9 +1791,24 @@
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
     }
 
-    /* Horizontal swipes are the intro's (next / back), not the page's */
+    /* Horizontal swipes are the intro's (next / back), not the page's;
+       the screen sliding off the side doesn't make it scroll */
     .intro-dialog {
       touch-action: pan-y;
+      overflow-x: hidden;
+    }
+
+    .intro-slide {
+      will-change: transform;
+    }
+
+    /* On phones the dialog is a column: so is the slide, so the spacing
+       stays exactly as it was without it */
+    @media (max-width: 768px) {
+      .intro-slide {
+        display: flex;
+        flex-direction: column;
+      }
     }
 
     .intro-dialog::backdrop {
@@ -2223,10 +2238,13 @@
            Experience), filled in and animated by scrawl.js -->
       <dialog id="intro-dialog" class="intro-dialog" aria-labelledby="intro-title">
         <button type="button" class="intro-skip" id="intro-skip">Skip</button>
-        <div class="intro-art" id="intro-art" aria-hidden="true"></div>
-        <p class="intro-step" id="intro-step"></p>
-        <h2 id="intro-title"></h2>
-        <div class="intro-text" id="intro-text"></div>
+        <!-- The part that slides between screens -->
+        <div class="intro-slide" id="intro-slide">
+          <div class="intro-art" id="intro-art" aria-hidden="true"></div>
+          <p class="intro-step" id="intro-step"></p>
+          <h2 id="intro-title"></h2>
+          <div class="intro-text" id="intro-text"></div>
+        </div>
         <div class="intro-dots" id="intro-dots" aria-hidden="true"></div>
         <div class="intro-actions">
           <button type="button" id="intro-back">Back</button>
