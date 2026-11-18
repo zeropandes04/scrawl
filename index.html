@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=68"></script>
+  <script src="scrawl.js?v=69"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1789,6 +1789,11 @@
       color: var(--ink);
       text-align: center;
       box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    /* Horizontal swipes are the intro's (next / back), not the page's */
+    .intro-dialog {
+      touch-action: pan-y;
     }
 
     .intro-dialog::backdrop {

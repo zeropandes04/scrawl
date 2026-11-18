@@ -123,6 +123,34 @@ async function run(label, contextOpts) {
     await t.ctx.close();
   }
 
+  // -- Phones: swipe between screens --
+  if (mobile) {
+    const t = await fresh(browser, contextOpts);
+    await t.load();
+    const cdp = await t.ctx.newCDPSession(t.page);
+    const swipe = async (x1, x2, y = 300) => {
+      const steps = 8;
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: x1, y }] });
+      for (let k = 1; k <= steps; k++) {
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x1 + (x2 - x1) * k / steps, y }] });
+      }
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await t.page.waitForTimeout(100);
+    };
+    const step = () => t.ev(() => document.getElementById('intro-step').textContent.slice(0, 2));
+    await swipe(300, 80);
+    const a = await step();
+    await swipe(80, 300);
+    const b = await step();
+    for (let i = 0; i < 4; i++) await swipe(300, 80);
+    const c = [await step(), await introShown(t.page)];
+    await swipe(200, 180);
+    const d = await step();
+    check('swipe left / right moves between screens; not past the last, short drags ignored', a === '02' && b === '01' && c[0] === '04' && c[1] && d === '04',
+      JSON.stringify([a, b, c, d]));
+    await t.ctx.close();
+  }
+
   // -- Skip, and Esc, both stop it --
   {
     const t = await fresh(browser, contextOpts);
