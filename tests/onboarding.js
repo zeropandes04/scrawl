@@ -114,14 +114,18 @@ async function run(label, contextOpts) {
       check('first scribble tip: Show me', first.shown && first.next === 'Show me', JSON.stringify(first));
       await t.page.click('#coach-next');
       const another = await coach();
-      check('Show me: the eyes appear, then try another scribble, Let\'s go!', another.shown && !another.finding && another.eyes === 2 &&
-        another.text.includes('Try another scribble') && another.next === 'Let\'s go!',
+      check('Show me: the eyes go in, and a tooltip on them, Let\'s go!', another.shown && !another.finding && another.eyes === 2 &&
+        another.text === 'There\'s more than meets the eye. Move the eyes to make it yours.' && another.next === 'Let\'s go!',
         JSON.stringify(another));
       await t.page.click('#coach-next');
-      await t.page.waitForFunction(token => scrawlfaceToken !== token && scrawlQueue.length === 0, another.token);
-      await t.page.waitForTimeout(400);
-      const next = await coach();
-      check('Let\'s go! brings a new scribble, eyes waiting again', next.finding && next.shown && next.text.includes('Can you spot a face'), JSON.stringify(next));
+      await t.page.waitForTimeout(300);
+      const closed = await coach();
+      check('Let\'s go! closes it, same scribble, eyes kept', !closed.shown && closed.token === another.token && !closed.finding && closed.eyes === 2,
+        JSON.stringify(closed));
+      // ...and a press outside the bubble closes it too
+      await t.ev(() => tipShownFace());
+      await t.page.click('h1');
+      check('a press outside the bubble closes the tooltip', !(await coachShown(t.page)));
     } else {
       await t.ev(() => window.scrawlface.setTool('brush'));
       await t.page.waitForTimeout(400);

@@ -3175,6 +3175,11 @@ function setupCoach() {
     if (e.key === 'Escape' && !document.getElementById('coach').hidden) hideCoach('end');
   });
   window.addEventListener('resize', placeCoach);
+  // A press anywhere but the bubble puts a one-off tip away (the canvas
+  // does this too, in mousePressed; the tour stays until it's ended)
+  document.addEventListener('pointerdown', e => {
+    if (currentTip && !e.target.closest('#coach')) dismissTip();
+  });
 }
 
 // Shows the bubble at `anchor`; resolves 'next' (its key), 'end' (End tour
@@ -3324,8 +3329,7 @@ function dismissTip(id) {
 // -- The first scribble: find the face --
 // After the intro, the first scribble comes without eyes: you tap where you
 // see a face, and the eyes appear there. Show me puts them in their usual
-// random spots and offers another scribble; so does choosing another tool,
-// saving or sharing (without the offer).
+// random spots for them, as do choosing another tool, saving or sharing.
 
 let findFaceNext = false;  // the next scribble is the intro's first one
 let findingFace = false;   // its eyes are waiting to be placed
@@ -3338,24 +3342,20 @@ function tipFindFace() {
     text: 'Can you spot a face? Tap where you see one.', next: 'Show me' })
     .then(result => {
       if (result !== 'next') return;
-      // Show me: the eyes appear (in their random spots), and since this
-      // scribble didn't show them a face, another one is offered
+      // Show me: the eyes go in for them (in their random spots)
       revealFace(false);
-      tipTryAnother();
+      markTipSeen('drag-eyes');
+      tipShownFace();
     });
   currentTip = 'find-face';
 }
 
-// After Show me: offer another scribble (its eyes wait to be found too)
-function tipTryAnother() {
-  showCoach({ anchor: { el: document.getElementById('scrawl-container'), free: true },
-    text: 'There\'s more than meets the eye. Try another scribble.', next: 'Let\'s go!' })
-    .then(result => {
-      if (result !== 'next') return;
-      findFaceNext = true;
-      requestNewScrawl();
-    });
-  currentTip = 'try-another';
+// After Show me: point at the eyes placed for them. Let's go!, or a press
+// anywhere else, closes it.
+function tipShownFace() {
+  showCoach({ anchor: { rect: () => eyeScreenRect(0) },
+    text: 'There\'s more than meets the eye. Move the eyes to make it yours.', next: 'Let\'s go!' });
+  currentTip = 'shown-face';
 }
 
 // The eyes appear around the spot tapped
