@@ -1876,7 +1876,10 @@
       letter-spacing: 0.04em;
     }
 
+    /* Two lines tall, like the text below it: every screen keeps the same
+       height, so the keys don't move from one screen to the next */
     .intro-dialog h2 {
+      min-height: 2.4em;
       margin: 6px 0 8px;
       font-size: 22px;
       line-height: 1.2;
@@ -1894,7 +1897,6 @@
     /* 03 · How does it work: the three steps, the one illustrated in ink */
     .intro-text ol {
       display: inline-grid;
-      gap: 2px;
       margin: 0;
       padding-left: 1.4em;
       text-align: left;
