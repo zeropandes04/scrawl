@@ -123,9 +123,9 @@ const scrawlStrokeWeight = 1;
 
 let intensity = 15; // loops in the next scrawl (the faders go 1-30)
 let eyeStyles = ['classic', 'classic']; // style of each eye (see drawEye)
-let brushSize = 32; // the biggest size key: bold strokes from the start
+let brushSize = 16; // the 4th of the 6 size keys
 let brushColor = '#000000';
-let eraserSize = 32; // the biggest size key too: quick clean-ups
+let eraserSize = 16; // the 4th size key too
 let brushSizesShown = false; // mobile strip: brush sizes instead of colours
 
 // Scrawl segments still to be drawn by the draw-in animation

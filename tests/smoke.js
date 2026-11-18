@@ -132,15 +132,15 @@ async function run(label, contextOpts) {
   // Tool order, sidebar and phone row alike: the colour tools together, the eraser last
   const toolOrder = await ev(() => [...document.querySelectorAll('.tool-keys')].map(g => [...g.querySelectorAll('[data-tool]')].map(b => b.dataset.tool).join(' ')));
   check('tools ordered eyes, brush, fill, eraser', toolOrder.length === 2 && toolOrder.every(o => o === 'eyes brush fill eraser'), JSON.stringify(toolOrder));
-  // The brush starts at its biggest size, and that's the selected key
+  // The brush starts at the 4th of the 6 sizes, and that's the selected key
   const brushStart = await ev(() => ({ size: brushSize,
-    biggest: Math.max(...[...document.querySelectorAll('[data-size]')].map(b => +b.dataset.size)),
+    fourth: [...new Set([...document.querySelectorAll('[data-size]')].map(b => +b.dataset.size))].sort((a, b) => a - b)[3],
     selected: [...document.querySelectorAll('.size-key.selected')].map(b => +b.dataset.size) }));
-  check('brush starts at the biggest size', brushStart.size === brushStart.biggest && brushStart.selected.every(n => n === brushStart.biggest), JSON.stringify(brushStart));
+  check('brush starts at the 4th size', brushStart.size === brushStart.fourth && brushStart.selected.every(n => n === brushStart.fourth), JSON.stringify(brushStart));
   // ...and so does the eraser (its key is the one marked when it's picked)
   const eraserStart = await ev(() => { setTool('eraser'); const r = { size: eraserSize,
     selected: [...document.querySelectorAll('.size-key.selected')].map(b => +b.dataset.size) }; setTool('eyes'); return r; });
-  check('eraser starts at the biggest size', eraserStart.size === brushStart.biggest && eraserStart.selected.every(n => n === brushStart.biggest), JSON.stringify(eraserStart));
+  check('eraser starts at the 4th size', eraserStart.size === brushStart.fourth && eraserStart.selected.every(n => n === brushStart.fourth), JSON.stringify(eraserStart));
 
   // Idle, the frame loop is paused; New runs it for the draw-in, then it pauses again
   await page.waitForTimeout(100);
