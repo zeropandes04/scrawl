@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=81"></script>
+  <script src="scrawl.js?v=82"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1870,19 +1870,21 @@
       letter-spacing: 0.04em;
     }
 
-    /* Two lines tall, like the text below it: every screen keeps the same
-       height, so the keys don't move from one screen to the next */
+    /* The title sits right on its text; the pair keeps room for a
+       two-line title and three lines of text, so every screen is the same
+       height and the keys don't move from one screen to the next */
+    .intro-copy {
+      min-height: calc(2.4 * 22px + 6px + 4.2 * 15px);
+      margin-bottom: 15px;
+    }
+
     .intro-dialog h2 {
-      min-height: 2.4em;
-      margin: 6px 0 8px;
+      margin: 6px 0 6px;
       font-size: 22px;
       line-height: 1.2;
     }
 
-    /* Three lines tall, so screens don't jump */
     .intro-text {
-      margin: 1em 0;
-      min-height: 4.2em;
       font-size: 15px;
       line-height: 1.4;
       color: var(--muted);
@@ -2229,8 +2231,10 @@
         <div class="intro-slide" id="intro-slide">
           <div class="intro-art" id="intro-art" aria-hidden="true"></div>
           <p class="intro-step" id="intro-step"></p>
-          <h2 id="intro-title"></h2>
-          <div class="intro-text" id="intro-text"></div>
+          <div class="intro-copy">
+            <h2 id="intro-title"></h2>
+            <div class="intro-text" id="intro-text"></div>
+          </div>
         </div>
         <div class="intro-dots" id="intro-dots" aria-hidden="true"></div>
         <div class="intro-actions">
