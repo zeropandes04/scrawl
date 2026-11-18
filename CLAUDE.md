@@ -26,7 +26,7 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 
 ## Quality bar
 
-- Browser tests: `tests/smoke.js` (generate, eyes, doodle, undo/redo, fill, export) and `tests/gallery.js` (Save, draft, My Scrawls). See the header of `tests/smoke.js` to run them.
+- Browser tests: `tests/smoke.js` (generate, eyes, doodle, undo/redo, fill, export) `tests/gallery.js` (Save, draft, My Scrawls) and `tests/onboarding.js` (intro, help menu, tour, tips). See the header of `tests/smoke.js` to run them.
 
 - Test on Chrome mobile after every change — that is the primary target.
 - "No regressions" means manually walking the happy path: generate scrawl → place eyes → doodle → undo/redo.
@@ -49,6 +49,7 @@ The plan is to keep improving the web app, then wrap it in a native shell for iO
 - **Browser-only features are swappable.** Each goes through one function a shell can replace: `exportPNG` (the picture for Share / Download), `haptic`, `showError`, `confirmLeave` / `confirmDelete`, and `dbRequest` (IndexedDB). Don't call `navigator.vibrate`, `alert` and the like directly.
 - **Nothing remote.** p5.js and the wordmark fonts are bundled (`vendor/`, `fonts/`) and the app works offline; keep it that way: no CDN scripts, web fonts or other remote assets.
 - **Canvas-only mode.** `index.html?embedded` (or an `embedded` class on `<html>`) hides the web controls and lets the canvas fill the window: that's what a shell loads. New UI should hide in that mode too.
+- **Onboarding** (intro, ? help menu, coach marks, once-only tips) lives in the Onboarding section of `scrawl.js`; its state is in `localStorage` (`onboarding_completed`, `onboarding_skipped`, `onboarding_version_seen`, `tips_seen`). Raise `ONBOARDING_VERSION` only for an update worth showing everyone the intro again. A shell can drive it through `window.scrawlface` (`onboardingState`, `startTour`, `exploreFeatures`, `resetOnboarding`).
 - **The canvas fits any container.** It covers and masks itself to whatever box it's given (`fitCanvasToContainer`); keep it free of assumptions about the page around it.
 
 ## Success looks like

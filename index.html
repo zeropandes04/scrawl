@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=61"></script>
+  <script src="scrawl.js?v=66"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1541,6 +1541,16 @@
       .header-gallery-label {
         display: none;
       }
+
+      /* The widest wordmark typefaces still need room beside two keys */
+      h1 {
+        font-size: calc(24px * var(--wordmark-scale, 1));
+      }
+    }
+
+    /* A wide wordmark: My Scrawls goes icon-only (fitHeader, scrawl.js) */
+    .header-compact .header-gallery-label {
+      display: none;
     }
 
     /* Short phones: shrink the header so the fixed toolbar doesn't cover the canvas */
@@ -1685,12 +1695,312 @@
       }
     }
 
+    /* ---- Onboarding: help key, intro, tooltips (see scrawl.js) ---- */
+
+    /* Help key: a round ? next to My Scrawls, the same height */
+    .header-help-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      align-self: center;
+      margin: -8px 0 -8px 8px;
+      padding: 8px;
+      min-width: 0;
+    }
+
+    .header-help-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* My Scrawls and ? : the same height, centred on the wordmark's line;
+       44px on touch screens (Apple's minimum). The negative block margins
+       keep the header from growing. */
+    .header-gallery-btn,
+    .header-help-btn {
+      align-self: center;
+      align-items: center;
+      box-sizing: border-box;
+      height: 34px;
+    }
+
+    .header-help-btn {
+      flex-shrink: 0;
+      width: 34px;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .header-gallery-btn,
+      .header-help-btn {
+        height: 44px;
+        margin-top: -10px;
+        margin-bottom: -10px;
+      }
+
+      .header-help-btn {
+        width: 44px;
+      }
+    }
+
+    /* Its menu: two items, under the key, right-aligned (placed by script) */
+    .help-menu {
+      position: fixed;
+      z-index: 1050;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      width: min(280px, calc(100vw - 24px));
+      padding: 6px;
+      border-radius: 12px;
+      background: var(--key);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18), inset 0 0 0 1px var(--chassis-edge);
+    }
+
+    .help-menu button {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      min-height: 52px;
+      padding: 8px 12px;
+      text-align: left;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .help-menu button:hover,
+    .help-menu button:focus-visible {
+      background: var(--key-down);
+    }
+
+    .help-menu button span {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Intro: a centred card; full screen on phones */
+    .intro-dialog {
+      margin: auto;
+      width: min(400px, calc(100vw - 32px));
+      padding: 44px 24px 20px;
+      border: none;
+      border-radius: 18px;
+      background: var(--key);
+      color: var(--ink);
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    }
+
+    .intro-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.45);
+    }
+
+    @media (max-width: 768px) {
+      .intro-dialog[open] {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 100vw;
+        max-width: 100vw;
+        height: 100dvh;
+        max-height: 100dvh;
+        border-radius: 0;
+        padding: 56px 24px calc(24px + env(safe-area-inset-bottom));
+      }
+    }
+
+    .intro-skip {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: none;
+      box-shadow: none;
+      color: var(--muted);
+    }
+
+    .intro-skip:hover {
+      background: none;
+      color: var(--ink);
+    }
+
+    .intro-art {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: min(240px, 62vw);
+      aspect-ratio: 1;
+      margin: 0 auto 20px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: inset 0 0 0 1px var(--chassis-edge);
+    }
+
+    .intro-art canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* The last screen's pile of prints, like the blank start's */
+    .intro-art .pile {
+      width: 52%;
+      height: 52%;
+    }
+
+    .intro-step {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: lowercase;
+      letter-spacing: 0.04em;
+    }
+
+    .intro-dialog h2 {
+      margin: 6px 0 8px;
+      font-size: 22px;
+      line-height: 1.2;
+    }
+
+    /* Three lines tall, so screens don't jump */
+    .intro-text {
+      margin: 1em 0;
+      min-height: 4.2em;
+      font-size: 15px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    /* 03 · How does it work: the three steps, the one illustrated in ink */
+    .intro-text ol {
+      display: inline-grid;
+      gap: 2px;
+      margin: 0;
+      padding-left: 1.4em;
+      text-align: left;
+    }
+
+    .intro-text li {
+      transition: color 0.2s;
+    }
+
+    .intro-text li.on {
+      color: var(--ink);
+    }
+
+    .intro-dots {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin: 14px 0 18px;
+    }
+
+    .intro-dots span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--chassis-edge);
+    }
+
+    .intro-dots span.on {
+      background: var(--ink);
+    }
+
+    .intro-actions {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 10px;
+    }
+
+    .intro-actions button {
+      min-height: 48px;
+    }
+
+    /* Tooltip for the feature tour and the one-off tips: an ink bubble
+       with an arrow at what it explains (placed by script) */
+    .coach {
+      position: fixed;
+      z-index: 1100;
+      width: min(290px, calc(100vw - 24px));
+      padding: 14px 14px 10px;
+      border-radius: 14px;
+      background: var(--ink);
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1.4;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    }
+
+    /* A tour step's name, over its text */
+    .coach-title {
+      margin: 0.5em 0 0;
+      font-weight: 600;
+    }
+
+    .coach-title + .coach-text {
+      margin-top: 2px;
+    }
+
+    .coach-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .coach-count {
+      margin-right: auto;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .coach-link,
+    .coach-link:hover {
+      padding: 8px;
+      background: none;
+      box-shadow: none;
+      color: rgba(255,255,255,0.75);
+    }
+
+    .coach-next {
+      padding: 8px 18px;
+    }
+
+    .coach-arrow {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--ink);
+      transform: rotate(45deg);
+    }
+
+    .coach[data-side="below"] .coach-arrow {
+      top: -6px;
+    }
+
+    .coach[data-side="above"] .coach-arrow {
+      bottom: -6px;
+    }
+
+    .coach[data-side="inside"] .coach-arrow {
+      display: none;
+    }
+
+    /* What the tour step points at */
+    .coach-target {
+      outline: 3px solid var(--primary) !important;
+      outline-offset: 3px;
+    }
+
     /* ---- Canvas-only mode (html.embedded, see scrawl.js) ----
        For a native shell with its own controls: only the canvas shows, and
        it fills the window. The page's own controls are hidden, not
        removed, so the app works the same through window.scrawlface. */
     .embedded header,
     .embedded footer,
+    .embedded .help-menu,
+    .embedded .coach,
     .embedded .sidebar,
     .embedded .bottom-toolbar,
     .embedded .sheet-scrim,
@@ -1734,7 +2044,15 @@
       <h1>Scrawlface</h1>
       <!-- My Scrawls, top right on every screen size -->
       <button type="button" class="header-gallery-btn gallery-open-btn needs-storage" title="My Scrawls" aria-label="My Scrawls"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8.2 4.1c3.7-.6 7.4-.5 11.1-.1.5 3.6.4 7.2-.1 10.8"/><path d="M3.8 7.6c3.9-.6 7.9-.5 11.8 0 .4 4.1.3 8.2-.2 12.3-3.8.4-7.6.3-11.3-.2-.5-4-.6-8.1-.1-12.6"/><path d="M6.4 16.4c.3-2.8 2.1-5 3.6-4.5 1.4.5-.5 3.6.9 3.9 1.2.2 1.6-2.2 2.6-1.6"/></svg><span class="header-gallery-label">My Scrawls</span></button>
+      <!-- Help: the product tour and the feature tips, any time (onboarding in scrawl.js) -->
+      <button type="button" class="header-help-btn" id="help-btn" title="Help" aria-label="Help" aria-haspopup="menu" aria-expanded="false" aria-controls="help-menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.2 3.2c5 .1 8.7 3.9 8.6 8.9-.1 4.9-4 8.8-8.9 8.7-4.9-.1-8.8-4-8.7-8.9.1-4.9 4-8.8 9-8.7"/><path d="M9.3 9.4c.2-1.6 1.5-2.7 3-2.6 1.6.1 2.8 1.3 2.6 2.8-.2 1.9-2.8 2.1-2.9 4.2"/><path d="M12 17.1v.2"/></svg></button>
     </header>
+
+    <!-- Help menu (opens under the help key) -->
+    <div class="help-menu" id="help-menu" role="menu" aria-label="Help" hidden>
+      <button type="button" role="menuitem" id="help-tour"><b>Product tour</b><span>Meet Scrawlface and see how it works.</span></button>
+      <button type="button" role="menuitem" id="help-explore"><b>Explore features</b><span>Get to know the tools, one tip at a time.</span></button>
+    </div>
 
     <main>
       <section class="canvas-section">
@@ -1896,6 +2214,33 @@
       </dialog>
 
       <!-- My Scrawls: the saved ones, newest first (renderGallery) -->
+      <!-- Onboarding intro: four screens (Understand, Discover, Learn,
+           Experience), filled in and animated by scrawl.js -->
+      <dialog id="intro-dialog" class="intro-dialog" aria-labelledby="intro-title">
+        <button type="button" class="intro-skip" id="intro-skip">Skip</button>
+        <div class="intro-art" id="intro-art" aria-hidden="true"></div>
+        <p class="intro-step" id="intro-step"></p>
+        <h2 id="intro-title"></h2>
+        <div class="intro-text" id="intro-text"></div>
+        <div class="intro-dots" id="intro-dots" aria-hidden="true"></div>
+        <div class="intro-actions">
+          <button type="button" id="intro-back">Back</button>
+          <button type="button" id="intro-next" class="cta-button">Next</button>
+        </div>
+      </dialog>
+
+      <!-- One tooltip for the feature tour and the one-off tips -->
+      <div class="coach" id="coach" role="dialog" aria-live="polite" aria-labelledby="coach-text" hidden>
+        <p class="coach-title" id="coach-title" hidden></p>
+        <p class="coach-text" id="coach-text"></p>
+        <div class="coach-actions">
+          <span class="coach-count" id="coach-count"></span>
+          <button type="button" class="coach-link" id="coach-skip">End tour</button>
+          <button type="button" class="cta-button coach-next" id="coach-next">Next</button>
+        </div>
+        <span class="coach-arrow" id="coach-arrow"></span>
+      </div>
+
       <dialog id="gallery-dialog" class="gallery-dialog" aria-labelledby="gallery-title">
         <div class="gallery-head">
           <h2 id="gallery-title" aria-live="polite">My Scrawls</h2>

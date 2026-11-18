@@ -26,6 +26,14 @@ async function run(label, contextOpts) {
   console.log(`\n=== ${label} ===`);
   const browser = await chromium.launch();
   const ctx = await browser.newContext(contextOpts);
+  // The onboarding (intro, tips) is tested in tests/onboarding.js; here it's
+  // marked as done so it doesn't cover the page
+  await ctx.addInitScript(() => {
+    try {
+      localStorage.setItem('onboarding_completed', '1');
+      localStorage.setItem('tips_seen', JSON.stringify(['drag-eyes', 'gestures', 'fill', 'save', 'help-key']));
+    } catch (e) {}
+  });
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
