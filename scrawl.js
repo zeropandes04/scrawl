@@ -63,8 +63,13 @@ function fitHeader() {
   header.classList.remove('header-compact');
   if (header.scrollWidth > header.clientWidth) header.classList.add('header-compact');
 }
-document.addEventListener('DOMContentLoaded', fitHeader);
-document.fonts.ready.then(fitHeader);
+// The wordmark's typeface can arrive after the page is ready, so check
+// again whenever the wordmark changes size (and on resize)
+document.addEventListener('DOMContentLoaded', () => {
+  fitHeader();
+  const wordmark = document.querySelector('header h1');
+  if (wordmark && window.ResizeObserver) new ResizeObserver(fitHeader).observe(wordmark);
+});
 window.addEventListener('resize', fitHeader);
 
 // Canvas-only mode, for a native shell that draws its own controls: open
@@ -290,9 +295,6 @@ function setup() {
 // Replaces the scrawlface on the canvas with a new one. The keys go through
 // requestNewScrawl, which first offers to save unsaved changes.
 function generateScrawlface() {
-  // The intro's first scribble: the eyes wait until you find the face
-  findingFace = findFaceNext;
-  findFaceNext = false;
   canvasPressed = false;
 
   drawingGraphics.clear();
@@ -353,10 +355,10 @@ function generateScrawlface() {
     finishScrawlDrawIn();
   }
 
-  // First scrawl: once it has drawn in, a tip on the eyes
+  // First scrawl: once it has drawn in, the one tip on what to do
   const drawInMs = reducedMotion ? 0 :
     (scrawlDrawInBaseFrames + scrawlDrawInFramesPerSegment * scrawlQueue.length) / 60 * 1000;
-  setTimeout(findingFace ? tipFindFace : tipDragEyes, drawInMs + 300);
+  setTimeout(tipFirstScrawl, drawInMs + 300);
 
   const eye1X = random(eyeMargin, canvasSize - eyeMargin - eyeSize - 60);
   const eye1Y = random(eyeMargin, canvasSize - eyeMargin - eyeSize);
@@ -672,7 +674,7 @@ function mousePressed(event) {
   if (event && event.target !== canvas.elt) return;
 
   // Working on the canvas puts any one-off tip away, and keeps the
-  // drag-eyes tip from turning up late (see tipDragEyes)
+  // first scrawl's tip from turning up late (see tipFirstScrawl)
   dismissTip();
   canvasPressed = true;
 
@@ -681,13 +683,6 @@ function mousePressed(event) {
 
   // Blank start: nothing to draw on until the first scrawl is created
   if (document.body.classList.contains('is-blank')) return;
-
-  // The first scribble: the eyes go where you tap
-  if (findingFace && moveEyesMode && isMouseInCanvas()) {
-    const pos = getTransformedCoords(mouseX, mouseY);
-    placeEyesAt(pos.x, pos.y);
-    return;
-  }
 
   if (!drawMode && !eraseMode && !bucketMode && moveEyesMode) {
     const transformed = getTransformedCoords(mouseX, mouseY);
@@ -966,9 +961,6 @@ function redrawCanvas() {
   }
 
   pop();
-
-  // The first scribble: no eyes until you find the face
-  if (findingFace) return;
 
   // Always show eyes (window = the main canvas in p5 global mode)
   const onScreen = eyePositions.map(pos => getRotatedPosition(pos.x, pos.y));
@@ -1452,7 +1444,6 @@ function exportImage() {
 // shell would hand to its own share sheet or Photos. Resolves null if the
 // browser couldn't encode it.
 function exportPNG() {
-  revealFace();
   return new Promise(resolve => exportImage().toBlob(resolve, 'image/png'));
 }
 
@@ -1523,7 +1514,6 @@ function setTool(tool) {
   } else {
     cursor(bucketMode ? CROSS : ARROW);
   }
-  if (tool !== 'eyes') revealFace();
   updateToolButtons();
   tipForTool(tool);
 }
@@ -2356,7 +2346,6 @@ function saveToGallery() {
 
 async function saveToGalleryNow() {
   if (isBlankStart()) return;
-  revealFace();
   dismissTip('save');
   const version = editVersion;
   const token = scrawlfaceToken;
@@ -2760,7 +2749,7 @@ const ONBOARDING_VERSION = 1;
 
 // Not a drawing tutorial: an invitation to find the unexpected in random
 // lines. Three screens, each with its own key; the last one brings the
-// first scribble, where you find the face yourself (see findingFace).
+// first scribble (and its tip, see tipFirstScrawl).
 const introScreens = [
   { step: 'Look closer', art: 'reveal', title: 'Train your imagination.',
     text: 'Find faces, creatures and characters hiding in every scribble.', next: 'Let\'s look' },
@@ -3044,11 +3033,8 @@ function finishIntro(outcome) {
   markOnboarding(outcome);
   cancelAnimationFrame(introFrame);
   document.getElementById('intro-dialog').close();
-  // The last key creates the first scribble, where you find the face yourself
-  if (outcome === 'completed' && isBlankStart()) {
-    findFaceNext = true;
-    requestNewScrawl();
-  }
+  // The last key creates the first scribble
+  if (outcome === 'completed' && isBlankStart()) requestNewScrawl();
 }
 
 function showIntroScreen(i) {
@@ -3326,70 +3312,18 @@ function dismissTip(id) {
   if (currentTip && (!id || currentTip === id)) hideCoach('dismissed');
 }
 
-// -- The first scribble: find the face --
-// After the intro, the first scribble comes without eyes: you tap where you
-// see a face, and the eyes appear there. Show me puts them in their usual
-// random spots for them, as do choosing another tool, saving or sharing.
+// -- The first scrawl: one tip, pointing at the eyes --
+// Shown once ever, after the draw-in, unless they're already at work on the
+// canvas. Let's go!, or a press anywhere else, closes it.
 
-let findFaceNext = false;  // the next scribble is the intro's first one
-let findingFace = false;   // its eyes are waiting to be placed
-let canvasPressed = false; // the canvas was pressed since this scribble came
+let canvasPressed = false; // the canvas was pressed since this scrawl came
 
-function tipFindFace() {
-  if (!findingFace || isBlankStart() || touring || introOpen()) return;
-  dismissTip();
-  showCoach({ anchor: { el: document.getElementById('scrawl-container'), free: true },
-    text: 'Can you spot a face? Tap where you see one.', next: 'Show me' })
-    .then(result => {
-      if (result !== 'next') return;
-      // Show me: the eyes go in for them (in their random spots)
-      revealFace(false);
-      markTipSeen('drag-eyes');
-      tipShownFace();
-    });
-  currentTip = 'find-face';
-}
-
-// After Show me: point at the eyes placed for them. Let's go!, or a press
-// anywhere else, closes it.
-function tipShownFace() {
-  showCoach({ anchor: { rect: () => eyeScreenRect(0) },
-    text: 'There\'s more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill.', next: 'Let\'s go!' });
-  currentTip = 'shown-face';
-}
-
-// The eyes appear around the spot tapped
-function placeEyesAt(x, y) {
-  const spot = (dx, dy) => ({
-    x: constrain(x + dx, 60, canvasSize - 60),
-    y: constrain(y + dy, -40, canvasSize + 40)
-  });
-  eyePositions = [{ ...spot(-55, 0), scale: 1.0 }, { ...spot(55, -6), scale: 0.9 }];
-  findingFace = false;
-  haptic('tap');
-  redrawCanvas();
-  markChanged();
-  markTipSeen('drag-eyes');
-  setTimeout(() => showTip('found-face', { rect: () => eyeScreenRect(0) },
-    'Found one! Move the eyes to make it yours. Add details with Brush and Fill.'), 250);
-}
-
-// Not found (yet): the eyes go in their random spots. dragTip: follow up
-// with the tip on dragging them (not after Show me, which has its own).
-function revealFace(dragTip = true) {
-  if (!findingFace) return;
-  findingFace = false;
-  dismissTip('find-face');
-  redrawCanvas();
-  if (dragTip) setTimeout(tipDragEyes, 250);
-}
-
-// The first scrawl: point at an eye
-function tipDragEyes() {
-  // It follows the draw-in on a timer: no use once they're already at it
+function tipFirstScrawl() {
   if (canvasPressed) return;
-  if (isBlankStart() || !moveEyesMode || eyePositions.length === 0) return;
-  showTip('drag-eyes', { rect: () => eyeScreenRect(0) }, 'Try another spot! Drag the eyes to where you see a face.');
+  if (isBlankStart() || eyePositions.length === 0) return;
+  showTip('drag-eyes', { rect: () => eyeScreenRect(0) },
+    'There\'s more than meets the eye. Move the eyes and rotate the canvas. Can you spot a face? Add colour to make it yours.',
+    'Let\'s go!');
 }
 
 // An eye's box on screen
