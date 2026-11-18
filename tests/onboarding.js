@@ -52,35 +52,29 @@ async function run(label, contextOpts) {
   const browser = await chromium.launch();
   const mobile = !!contextOpts.isMobile;
 
-  // -- First launch: the intro; four screens, Back / Next, last one creates --
+  // -- First launch: the intro; three screens, Back / Next, last one creates --
   {
     const t = await fresh(browser, contextOpts);
     await t.load();
     check('first launch shows the intro', await introShown(t.page));
     const screens = [];
-    for (let i = 0; i < 4; i++) {
-      screens.push(await t.ev(() => [document.getElementById('intro-step').textContent, document.getElementById('intro-next').textContent]));
+    for (let i = 0; i < 3; i++) {
+      screens.push(await t.ev(() => [document.getElementById('intro-step').textContent, document.getElementById('intro-title').textContent,
+        document.getElementById('intro-next').textContent]));
       if (i === 1) { // Back and forth
         await t.page.click('#intro-back');
         const back = await t.ev(() => document.getElementById('intro-step').textContent);
         check('Back goes to the previous screen', back.startsWith('01 '), back);
         await t.page.click('#intro-next');
       }
-      if (i === 1) {
-        const art = await t.ev(() => ({ canvas: document.querySelector('#intro-art canvas').hidden, pile: document.querySelectorAll('#intro-art .pile img').length }));
-        check('screen 2 shows the pile of discoveries', art.canvas && art.pile === 3, JSON.stringify(art));
-      }
-      if (i === 2) {
-        await t.page.waitForTimeout(2200);
-        const list = await t.ev(() => ({ items: [...document.querySelectorAll('#intro-text li')].map(li => li.textContent),
-          on: [...document.querySelectorAll('#intro-text li')].findIndex(li => li.classList.contains('on')),
-          canvas: !document.querySelector('#intro-art canvas').hidden }));
-        check('screen 3 lists the three steps, the illustrated one marked', list.items.length === 3 && list.on === 1 && list.canvas, JSON.stringify(list));
-      }
-      if (i < 3) await t.page.click('#intro-next');
+      if (i < 2) await t.page.click('#intro-next');
     }
-    check('four screens: what, what can I do, how, ready', screens.map(s => s[0].split(' · ')[1]).join() === 'What is it?,What can I do?,How does it work?,Ready?' &&
-      screens[3][1] === 'Start discovering', JSON.stringify(screens));
+    check('three screens, each with its own key', JSON.stringify(screens) === JSON.stringify([
+      ['01 · Look closer', 'Train your imagination.', 'Let\'s look'],
+      ['02 · Make it yours', 'Every scribble holds a possibility.', 'Show me'],
+      ['03 · Find something unexpected', 'Your first scribble is waiting.', 'Surprise me!']]), JSON.stringify(screens));
+    const art = await t.ev(() => !document.querySelector('#intro-art canvas').hidden);
+    check('every screen\'s picture is drawn live', art);
     await t.page.click('#intro-next');
     await t.page.waitForFunction(() => !isBlankStart() && scrawlQueue.length === 0);
     const st = await state(t.page);
@@ -95,30 +89,49 @@ async function run(label, contextOpts) {
     await t.page.waitForTimeout(400);
     const found = await t.ev(() => ({ finding: findingFace, eyes: eyePositions.map(e => [Math.round(e.x), Math.round(e.y)]),
       unsaved: editVersion !== savedVersion, undo: historyStack.length,
-      tip: !document.getElementById('coach').hidden && document.getElementById('coach-text').textContent }));
+      tip: !document.getElementById('coach').hidden && document.getElementById('coach-text').textContent,
+      key: document.getElementById('coach-next').textContent }));
     const mid = found.eyes.length === 2 && Math.abs((found.eyes[0][0] + found.eyes[1][0]) / 2 - 400) < 8;
     check('tapping puts the eyes where you tapped, then a tip to fine-tune', !found.finding && mid && found.unsaved && found.undo === 0 &&
-      String(found.tip).includes('Found one'), JSON.stringify(found));
+      String(found.tip).includes('Found one') && found.key === 'Got it', JSON.stringify(found));
     await t.load();
     check('after finishing, the intro stays away on reload', !(await introShown(t.page)));
     check('no page errors (first launch)', t.errors.length === 0, t.errors.join(' | '));
     await t.ctx.close();
   }
 
-  // -- The first scribble without tapping: Surprise me, or another tool --
-  for (const how of ['surprise', 'tool']) {
+  // -- The first scribble without tapping: Show me, or another tool --
+  for (const how of ['show', 'tool']) {
     const t = await fresh(browser, contextOpts);
     await t.load();
-    for (let i = 0; i < 4; i++) await t.page.click('#intro-next');
+    for (let i = 0; i < 3; i++) await t.page.click('#intro-next');
     await t.page.waitForFunction(() => scrawlQueue.length === 0);
     await t.page.waitForTimeout(400);
-    if (how === 'surprise') await t.page.click('#coach-next');
-    else await t.ev(() => window.scrawlface.setTool('brush'));
-    await t.page.waitForTimeout(400);
-    const r = await t.ev(() => ({ finding: findingFace, eyes: eyePositions.length, coach: !document.getElementById('coach').hidden,
-      text: document.getElementById('coach-text').textContent }));
-    const ok = !r.finding && r.eyes === 2 && (how === 'tool' || (r.coach && r.text.includes('Drag the eyes')));
-    check(how === 'surprise' ? 'Surprise me puts the eyes in, then the drag tip' : 'choosing another tool puts the eyes in', ok, JSON.stringify(r));
+    const coach = () => t.ev(() => ({ finding: findingFace, eyes: eyePositions.length, shown: !document.getElementById('coach').hidden,
+      text: document.getElementById('coach-text').textContent, next: document.getElementById('coach-next').textContent, token: scrawlfaceToken }));
+    if (how === 'show') {
+      const first = await coach();
+      check('first scribble tip: Show me', first.shown && first.next === 'Show me', JSON.stringify(first));
+      await t.page.click('#coach-next');
+      const another = await coach();
+      check('Show me: the eyes go in, and a tooltip on them, Let\'s go!', another.shown && !another.finding && another.eyes === 2 &&
+        another.text === 'There\'s more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill.' && another.next === 'Let\'s go!',
+        JSON.stringify(another));
+      await t.page.click('#coach-next');
+      await t.page.waitForTimeout(300);
+      const closed = await coach();
+      check('Let\'s go! closes it, same scribble, eyes kept', !closed.shown && closed.token === another.token && !closed.finding && closed.eyes === 2,
+        JSON.stringify(closed));
+      // ...and a press outside the bubble closes it too
+      await t.ev(() => tipShownFace());
+      await t.page.click('h1');
+      check('a press outside the bubble closes the tooltip', !(await coachShown(t.page)));
+    } else {
+      await t.ev(() => window.scrawlface.setTool('brush'));
+      await t.page.waitForTimeout(400);
+      const r = await coach();
+      check('choosing another tool puts the eyes in', !r.finding && r.eyes === 2, JSON.stringify(r));
+    }
     check(`no page errors (${how})`, t.errors.length === 0, t.errors.join(' | '));
     await t.ctx.close();
   }
@@ -157,11 +170,11 @@ async function run(label, contextOpts) {
     const a = await step();
     await swipe(80, 300);
     const b = await step();
-    for (let i = 0; i < 4; i++) await swipe(300, 80);
+    for (let i = 0; i < 3; i++) await swipe(300, 80);
     const c = [await step(), await introShown(t.page)];
     await swipe(200, 180);
     const d = await step();
-    check('swipe left / right moves between screens; not past the last, short drags ignored', a === '02' && b === '01' && c[0] === '04' && c[1] && d === '04',
+    check('swipe left / right moves between screens; not past the last, short drags ignored', a === '02' && b === '01' && c[0] === '03' && c[1] && d === '03',
       JSON.stringify([a, b, c, d]));
     await t.ctx.close();
   }

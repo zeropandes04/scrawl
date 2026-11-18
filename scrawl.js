@@ -2759,17 +2759,15 @@ function setupGallery() {
 const ONBOARDING_VERSION = 1;
 
 // Not a drawing tutorial: an invitation to find the unexpected in random
-// lines. Three screens (what it is, what you can do, how it works), then
-// the first scribble, where you find the face yourself (see findingFace).
+// lines. Three screens, each with its own key; the last one brings the
+// first scribble, where you find the face yourself (see findingFace).
 const introScreens = [
-  { step: 'What is it?', art: 'reveal', title: 'There\'s more than meets the eye.',
-    text: 'Look closely and you\'ll find faces, creatures and characters hiding in the lines.' },
-  { step: 'What can I do?', art: 'pile', title: 'Every scribble holds a possibility.',
-    text: 'Explore random scribbles, discover hidden characters and share your finds.' },
-  { step: 'How does it work?', art: 'steps', title: 'Look again. What do you see?',
-    steps: ['Get a random scribble.', 'Spot a face or character.', 'Bring it to life.'] },
-  { step: 'Ready?', art: 'mystery', title: 'Let\'s find something unexpected.',
-    text: 'Your first scribble is waiting.' }
+  { step: 'Look closer', art: 'reveal', title: 'Train your imagination.',
+    text: 'Find faces, creatures and characters hiding in every scribble.', next: 'Let\'s look' },
+  { step: 'Make it yours', art: 'steps', title: 'Every scribble holds a possibility.',
+    text: 'Spot a face, bring it to life, and add your own details.', next: 'Show me' },
+  { step: 'Find something unexpected', art: 'mystery', title: 'Your first scribble is waiting.',
+    text: 'Look closely. What do you see?', next: 'Surprise me!' }
 ];
 
 function storageGet(key) {
@@ -2896,7 +2894,6 @@ let introFrame = null;   // requestAnimationFrame id
 let introArt = null;     // p5 graphic the illustrations are drawn on (800 units)
 let introScene = null;   // the scribble, eyes and mouth the illustrations use
 let introRound = 0;      // screens that repeat: which round is on show
-let introPile = null;    // the last screen's pile of prints
 
 function setupIntro() {
   const dialog = document.getElementById('intro-dialog');
@@ -3059,33 +3056,16 @@ function showIntroScreen(i) {
   introStart = performance.now();
   introRound = 0;
   // A fresh scribble for the screens that draw one in again
-  if (introScene && i > 0 && introScreens[i].art !== 'pile') introScene = makeIntroScene();
+  if (introScene && i > 0) introScene = makeIntroScene();
   const screen = introScreens[i];
   const last = i === introScreens.length - 1;
   document.getElementById('intro-step').textContent = `0${i + 1} · ${screen.step}`;
   document.getElementById('intro-title').textContent = screen.title;
-  const text = document.getElementById('intro-text');
-  if (screen.steps) {
-    const list = document.createElement('ol');
-    list.append(...screen.steps.map(step => {
-      const item = document.createElement('li');
-      item.textContent = step;
-      return item;
-    }));
-    text.replaceChildren(list);
-  } else {
-    text.textContent = screen.text;
-  }
+  document.getElementById('intro-text').textContent = screen.text;
   document.querySelectorAll('#intro-dots span').forEach((dot, k) => dot.classList.toggle('on', k === i));
   document.getElementById('intro-back').style.visibility = i === 0 ? 'hidden' : '';
-  document.getElementById('intro-next').textContent =
-    !last ? 'Next' : isBlankStart() ? 'Start discovering' : 'Done';
-
-  // The pile of prints is a picture of its own; the others are drawn live
-  const pile = screen.art === 'pile';
-  if (pile && !introPile) introPile = makeIntroPile();
-  introArt.elt.hidden = pile;
-  if (introPile) introPile.hidden = !pile;
+  // Replayed over a scrawlface, the last key just closes the tour
+  document.getElementById('intro-next').textContent = last && !isBlankStart() ? 'Done' : screen.next;
 }
 
 // The illustrations' material: one scribble, where the eyes go, a mouth
@@ -3152,18 +3132,13 @@ function introMoment(art, t) {
   const at = (from, length) => constrain((t - from) / length, 0, 1);
   // 01: a scribble draws itself in... and turns out to be someone
   if (art === 'reveal') return { lines: at(0, 1.6), eyes: at(2.1, 0.5) };
-  // 03: the three steps, again and again, a new scribble each time
+  // 02: spot a face, bring it to life, again and again, a new scribble each time
   if (art === 'steps') {
     return { lines: at(0, 1.6), eyes: at(1.9, 0.5), fill: at(3.2, 0.6), mouth: at(3.8, 0.8) };
   }
-  // 04: scribble after scribble: what's in this one?
+  // 03: scribble after scribble: what's in this one?
   if (art === 'mystery') return { lines: at(0, 1.6) };
   return { lines: 1, eyes: 1, fill: 1, mouth: 0 };
-}
-
-// 03: which of the three steps the illustration is on
-function introStepOn(t) {
-  return t < 1.8 ? 0 : t < 3.1 ? 1 : 2;
 }
 
 function animateIntro() {
@@ -3182,32 +3157,8 @@ function animateIntro() {
     t %= round;
   }
   if (reduced) t = 99;
-  if (art !== 'pile') drawIntroArt(introArt, introScene, introMoment(art, t));
-  if (art === 'steps') {
-    const on = reduced ? -1 : introStepOn(t);
-    document.querySelectorAll('#intro-text li').forEach((item, k) => item.classList.toggle('on', k === on));
-  }
+  drawIntroArt(introArt, introScene, introMoment(art, t));
   introFrame = requestAnimationFrame(animateIntro);
-}
-
-// Three finished discoveries, as a fanned pile of prints
-function makeIntroPile() {
-  const looks = [
-    { background: '#26ACD9', eyes: 'frog' },
-    { background: '#F2A6ED', eyes: 'lashes' },
-    { background: '#FFA64D', eyes: 'cat' }
-  ];
-  const pile = document.createElement('span');
-  pile.className = 'pile';
-  looks.forEach(look => {
-    drawIntroArt(introArt, makeIntroScene(), { lines: 1, eyes: 1, fill: 1 }, look);
-    const img = document.createElement('img');
-    img.src = introArt.elt.toDataURL('image/png');
-    img.alt = '';
-    pile.append(img);
-  });
-  document.getElementById('intro-art').append(pile);
-  return pile;
 }
 
 // -- Tooltips: the feature tour and the one-off tips share one bubble --
@@ -3224,6 +3175,11 @@ function setupCoach() {
     if (e.key === 'Escape' && !document.getElementById('coach').hidden) hideCoach('end');
   });
   window.addEventListener('resize', placeCoach);
+  // A press anywhere but the bubble puts a one-off tip away (the canvas
+  // does this too, in mousePressed; the tour stays until it's ended)
+  document.addEventListener('pointerdown', e => {
+    if (currentTip && !e.target.closest('#coach')) dismissTip();
+  });
 }
 
 // Shows the bubble at `anchor`; resolves 'next' (its key), 'end' (End tour
@@ -3372,8 +3328,8 @@ function dismissTip(id) {
 
 // -- The first scribble: find the face --
 // After the intro, the first scribble comes without eyes: you tap where you
-// see a face, and the eyes appear there. Choosing another tool, Surprise me,
-// saving or sharing puts them in the usual random spots instead.
+// see a face, and the eyes appear there. Show me puts them in their usual
+// random spots for them, as do choosing another tool, saving or sharing.
 
 let findFaceNext = false;  // the next scribble is the intro's first one
 let findingFace = false;   // its eyes are waiting to be placed
@@ -3383,9 +3339,23 @@ function tipFindFace() {
   if (!findingFace || isBlankStart() || touring || introOpen()) return;
   dismissTip();
   showCoach({ anchor: { el: document.getElementById('scrawl-container'), free: true },
-    text: 'Can you spot a face? Tap where you see one.', next: 'Surprise me!' })
-    .then(result => { if (result === 'next') revealFace(); });
+    text: 'Can you spot a face? Tap where you see one.', next: 'Show me' })
+    .then(result => {
+      if (result !== 'next') return;
+      // Show me: the eyes go in for them (in their random spots)
+      revealFace(false);
+      markTipSeen('drag-eyes');
+      tipShownFace();
+    });
   currentTip = 'find-face';
+}
+
+// After Show me: point at the eyes placed for them. Let's go!, or a press
+// anywhere else, closes it.
+function tipShownFace() {
+  showCoach({ anchor: { rect: () => eyeScreenRect(0) },
+    text: 'There\'s more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill.', next: 'Let\'s go!' });
+  currentTip = 'shown-face';
 }
 
 // The eyes appear around the spot tapped
@@ -3401,16 +3371,17 @@ function placeEyesAt(x, y) {
   markChanged();
   markTipSeen('drag-eyes');
   setTimeout(() => showTip('found-face', { rect: () => eyeScreenRect(0) },
-    'Found one! Move the eyes to make it yours. Add details with Brush and Fill.', 'Let\'s go!'), 250);
+    'Found one! Move the eyes to make it yours. Add details with Brush and Fill.'), 250);
 }
 
-// Not found (yet): the eyes go in their random spots
-function revealFace() {
+// Not found (yet): the eyes go in their random spots. dragTip: follow up
+// with the tip on dragging them (not after Show me, which has its own).
+function revealFace(dragTip = true) {
   if (!findingFace) return;
   findingFace = false;
   dismissTip('find-face');
   redrawCanvas();
-  setTimeout(tipDragEyes, 250);
+  if (dragTip) setTimeout(tipDragEyes, 250);
 }
 
 // The first scrawl: point at an eye

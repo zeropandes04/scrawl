@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=75"></script>
+  <script src="scrawl.js?v=79"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1862,12 +1862,6 @@
       height: 100% !important;
     }
 
-    /* The last screen's pile of prints, like the blank start's */
-    .intro-art .pile {
-      width: 52%;
-      height: 52%;
-    }
-
     .intro-step {
       font-family: var(--mono);
       font-size: 11px;
@@ -1892,22 +1886,6 @@
       font-size: 15px;
       line-height: 1.4;
       color: var(--muted);
-    }
-
-    /* 03 · How does it work: the three steps, the one illustrated in ink */
-    .intro-text ol {
-      display: inline-grid;
-      margin: 0;
-      padding-left: 1.4em;
-      text-align: left;
-    }
-
-    .intro-text li {
-      transition: color 0.2s;
-    }
-
-    .intro-text li.on {
-      color: var(--ink);
     }
 
     .intro-dots {
@@ -2079,7 +2057,7 @@
 
     <!-- Help menu (opens under the help key) -->
     <div class="help-menu" id="help-menu" role="menu" aria-label="Help" hidden>
-      <button type="button" role="menuitem" id="help-tour"><b>Product tour</b><span>Meet Scrawlface and see how it works.</span></button>
+      <button type="button" role="menuitem" id="help-tour"><b>Product tour</b><span>Meet Scrawlface</span></button>
       <button type="button" role="menuitem" id="help-explore"><b>Explore features</b><span>Get to know the tools, one tip at a time.</span></button>
     </div>
 

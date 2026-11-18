@@ -3,7 +3,7 @@
 **Overall Progress:** `100%` (all six steps done; tests in `tests/onboarding.js`)
 
 ## TLDR
-Add onboarding as a learning resource, not just a first-launch carousel: a short **intro** (4 screens) on first launch, a persistent **help key** to replay it or **explore the features** with tooltips, and **contextual tips** that appear once, at the moment a feature becomes relevant. Progress is stored locally (three states, versioned) so the intro shows automatically only once per version.
+Add onboarding as a learning resource, not just a first-launch carousel: a short **intro** (3 screens, see the latest revision at the end) on first launch, a persistent **help key** to replay it or **explore the features** with tooltips, and **contextual tips** that appear once, at the moment a feature becomes relevant. Progress is stored locally (three states, versioned) so the intro shows automatically only once per version.
 
 ## Critical Decisions
 - **Four intro screens, one per principle:**
@@ -37,7 +37,7 @@ Add onboarding as a learning resource, not just a first-launch carousel: a short
   - [x] 🟩 `onboardingState()` / `markOnboarding('completed' | 'skipped')`, `tipSeen(id)` / `markTipSeen(id)`, versioned as above; storage failures fall back to "don't show"
   - [x] 🟩 Auto-show rule: on load, if `onboarding_version_seen < ONBOARDING_VERSION` (and not embedded)
 
-- [x] 🟩 **Step 2: Intro (4 screens)**
+- [x] 🟩 **Step 2: Intro (4 screens at first; now 3, see the end)**
   - [x] 🟩 `<dialog>` with the four screens, dots, Back / Next, Skip; last screen's key creates the first scrawlface
   - [x] 🟩 Live illustrations drawn by the engine
   - [x] 🟩 Phone: full-screen sheet; desktop: centred card; respects reduced motion; keyboard (←/→, Esc = skip)
@@ -81,3 +81,5 @@ Promise: *boost your imagination by discovering the unexpected in the ordinary.*
 - [x] 🟩 **Tone pass**: playful, curious, slightly mischievous; short sentences, fewer instructions, and "imagination" left for the experience to show rather than the copy to say.
 - [x] 🟩 **Copywriter pass** (all of it, intro to tour). Principles: playful, not childish; concise, not cryptic; conversational, not instructional. Exclamation marks only for the interactive moments. Terms: scribble (the random drawing), scrawlface (the finished piece), discover / spot / find, bring it to life / make it yours, My Scrawls, and the controls' exact names.
   - Tour steps now have a short title over their text (`coach-title`).
+- [x] 🟩 **Product tour, three steps** (menu: "Product tour · Meet Scrawlface"), each with its own key: 01 · Look closer, "Train your imagination." (Let's look) · 02 · Make it yours, "Every scribble holds a possibility." (Show me) · 03 · Find something unexpected, "Your first scribble is waiting." (Surprise me!, or Done when replayed over a scrawlface). The pile of prints and the list of steps are gone.
+  - First scribble: "Can you spot a face?" Tapping the canvas puts the eyes there: "Found one! …" (Got it). Show me puts them in for you: "There's more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill." (Let's go! closes it). A press anywhere outside a one-off tip closes it too.
