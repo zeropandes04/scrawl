@@ -3239,13 +3239,15 @@ function showCoach({ anchor, title = '', text, count = '', next = 'Next', canEnd
   document.getElementById('coach').hidden = false;
   coachAnchor = anchor;
   coachRings(anchor).forEach(el => el.classList.add('coach-target'));
+  document.getElementById('coach-box').hidden = !anchor.box;
   placeCoach();
   return new Promise(resolve => { coachResolve = resolve; });
 }
 
-// What a tour step rings: its control, or several together
+// What a tour step rings: its control (several controls get one box
+// around them all instead, see placeCoach)
 function coachRings(anchor) {
-  return anchor.rings || (anchor.ring && anchor.el ? [anchor.el] : []);
+  return anchor.ring && anchor.el ? [anchor.el] : [];
 }
 
 // The box around several elements on screen
@@ -3261,6 +3263,7 @@ function hideCoach(result) {
   if (coach.hidden) return;
   coach.hidden = true;
   if (coachAnchor) coachRings(coachAnchor).forEach(el => el.classList.remove('coach-target'));
+  document.getElementById('coach-box').hidden = true;
   coachAnchor = null;
   currentTip = null;
   const resolve = coachResolve;
@@ -3274,6 +3277,14 @@ function placeCoach() {
   const coach = document.getElementById('coach');
   if (coach.hidden || !coachAnchor) return;
   const r = coachAnchor.el ? coachAnchor.el.getBoundingClientRect() : coachAnchor.rect();
+  if (coachAnchor.box) {
+    // One outline around them all, as far out as a single control's ring
+    const box = document.getElementById('coach-box').style;
+    box.left = `${r.left - 6}px`;
+    box.top = `${r.top - 6}px`;
+    box.width = `${r.width + 12}px`;
+    box.height = `${r.height + 12}px`;
+  }
   const w = coach.offsetWidth;
   const h = coach.offsetHeight;
   const gap = 12;
@@ -3316,7 +3327,7 @@ async function exploreFeatures() {
   touring = true;
   const desktop = shownElement('.sidebar') !== null;
   // [what it points at, title, text]; the tools step covers the tool keys
-  // and the selected tool's options together
+  // and the selected tool's options together (on phones, Undo and Redo too)
   const steps = (desktop ? [
     ['#generate-btn', 'New scrawl & Loops', 'Get a fresh scribble. Use Loops to control how tangled it gets.'],
     [['.sidebar .tool-keys', '.sidebar-section > .tool-options'], 'Your creative tools', 'Move and style the eyes. Bring your discoveries to life with Brush, Fill and Eraser.'],
@@ -3324,8 +3335,7 @@ async function exploreFeatures() {
     ['#scrawl-container', 'The canvas', 'Move the eyes, draw with Brush or tap to Fill. Find Rotate and Hide lines under View.'],
     ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
   ] : [
-    [['.tool-row .tool-keys', '.options-strip'], 'Your creative tools', 'Move and style the eyes. Bring your discoveries to life with Brush, Fill and Eraser.'],
-    ['.history-pair', 'Undo & Redo', 'Undo or redo any change.'],
+    [['.options-strip', '.tool-row'], 'Your creative tools', 'Move and style the eyes. Bring your discoveries to life with Brush, Fill and Eraser. Undo or redo any change.'],
     ['#scrawl-container', 'Explore the canvas', 'Pinch to zoom and rotate. Touch and hold to peek under the lines.'],
     ['#toggle-mobile-menu', 'More tools', 'Swipe up for New scrawl, Loops, Hide lines, Clear, Save and Share.'],
     ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
@@ -3336,7 +3346,7 @@ async function exploreFeatures() {
     const last = i === steps.length - 1;
     const result = await showCoach({
       anchor: steps[i].els.length === 1 ? { el: steps[i].els[0], ring: true }
-        : { rect: () => boxAround(steps[i].els), rings: steps[i].els },
+        : { rect: () => boxAround(steps[i].els), box: true },
       title: steps[i].title,
       text: steps[i].text,
       count: `${i + 1} of ${steps.length}`,

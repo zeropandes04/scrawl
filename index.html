@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=71"></script>
+  <script src="scrawl.js?v=72"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -2015,6 +2015,17 @@
       outline-offset: 3px;
     }
 
+    /* ...or, for several controls together, one box around them all
+       (placed by script, just under the bubble) */
+    .coach-box {
+      position: fixed;
+      z-index: 1090;
+      box-sizing: border-box;
+      border: 3px solid var(--primary);
+      border-radius: 16px;
+      pointer-events: none;
+    }
+
     /* ---- Canvas-only mode (html.embedded, see scrawl.js) ----
        For a native shell with its own controls: only the canvas shows, and
        it fills the window. The page's own controls are hidden, not
@@ -2023,6 +2034,7 @@
     .embedded footer,
     .embedded .help-menu,
     .embedded .coach,
+    .embedded .coach-box,
     .embedded .sidebar,
     .embedded .bottom-toolbar,
     .embedded .sheet-scrim,
@@ -2255,6 +2267,8 @@
       </dialog>
 
       <!-- One tooltip for the feature tour and the one-off tips -->
+      <!-- A tour step's outline when it covers several controls at once -->
+      <div class="coach-box" id="coach-box" aria-hidden="true" hidden></div>
       <div class="coach" id="coach" role="dialog" aria-live="polite" aria-labelledby="coach-text" hidden>
         <p class="coach-title" id="coach-title" hidden></p>
         <p class="coach-text" id="coach-text"></p>
