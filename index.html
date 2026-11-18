@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=65"></script>
+  <script src="scrawl.js?v=66"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1541,6 +1541,16 @@
       .header-gallery-label {
         display: none;
       }
+
+      /* The widest wordmark typefaces still need room beside two keys */
+      h1 {
+        font-size: calc(24px * var(--wordmark-scale, 1));
+      }
+    }
+
+    /* A wide wordmark: My Scrawls goes icon-only (fitHeader, scrawl.js) */
+    .header-compact .header-gallery-label {
+      display: none;
     }
 
     /* Short phones: shrink the header so the fixed toolbar doesn't cover the canvas */
@@ -1701,6 +1711,35 @@
     .header-help-btn svg {
       width: 18px;
       height: 18px;
+    }
+
+    /* My Scrawls and ? : the same height, centred on the wordmark's line;
+       44px on touch screens (Apple's minimum). The negative block margins
+       keep the header from growing. */
+    .header-gallery-btn,
+    .header-help-btn {
+      align-self: center;
+      align-items: center;
+      box-sizing: border-box;
+      height: 34px;
+    }
+
+    .header-help-btn {
+      flex-shrink: 0;
+      width: 34px;
+    }
+
+    @media (hover: none) and (pointer: coarse) {
+      .header-gallery-btn,
+      .header-help-btn {
+        height: 44px;
+        margin-top: -10px;
+        margin-bottom: -10px;
+      }
+
+      .header-help-btn {
+        width: 44px;
+      }
     }
 
     /* Its menu: two items, under the key, right-aligned (placed by script) */

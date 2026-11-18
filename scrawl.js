@@ -54,6 +54,19 @@ function loadWordmarkFont() {
 }
 loadWordmarkFont();
 
+// The header is one line: the wordmark, My Scrawls and ?. Some wordmark
+// typefaces are wide; when the line doesn't fit, My Scrawls drops its
+// label and becomes an icon key like ?.
+function fitHeader() {
+  const header = document.querySelector('header');
+  if (!header) return;
+  header.classList.remove('header-compact');
+  if (header.scrollWidth > header.clientWidth) header.classList.add('header-compact');
+}
+document.addEventListener('DOMContentLoaded', fitHeader);
+document.fonts.ready.then(fitHeader);
+window.addEventListener('resize', fitHeader);
+
 // Canvas-only mode, for a native shell that draws its own controls: open
 // the page with ?embedded (or the shell adds the class itself). Set while
 // the <head> is parsed, so the web controls never show.
