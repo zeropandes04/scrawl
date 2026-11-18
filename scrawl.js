@@ -2834,7 +2834,7 @@ function setupOnboarding() {
   const createdBefore = storageGet('createdScrawlface') === '1';
   if (createdBefore && state.versionSeen === 0) {
     setTimeout(() => showTip('help-key', { el: document.getElementById('help-btn') },
-      'New: Take a quick tour and discover tips for every control, whenever you need them.'), 800);
+      'New: Take a quick tour or explore tool tips whenever you need them.'), 800);
     return;
   }
   openIntro();
@@ -3238,16 +3238,29 @@ function showCoach({ anchor, title = '', text, count = '', next = 'Next', canEnd
   document.getElementById('coach-skip').hidden = !canEnd;
   document.getElementById('coach').hidden = false;
   coachAnchor = anchor;
-  if (anchor.ring && anchor.el) anchor.el.classList.add('coach-target');
+  coachRings(anchor).forEach(el => el.classList.add('coach-target'));
   placeCoach();
   return new Promise(resolve => { coachResolve = resolve; });
+}
+
+// What a tour step rings: its control, or several together
+function coachRings(anchor) {
+  return anchor.rings || (anchor.ring && anchor.el ? [anchor.el] : []);
+}
+
+// The box around several elements on screen
+function boxAround(els) {
+  const rects = els.map(el => el.getBoundingClientRect());
+  const left = Math.min(...rects.map(r => r.left));
+  const top = Math.min(...rects.map(r => r.top));
+  return new DOMRect(left, top, Math.max(...rects.map(r => r.right)) - left, Math.max(...rects.map(r => r.bottom)) - top);
 }
 
 function hideCoach(result) {
   const coach = document.getElementById('coach');
   if (coach.hidden) return;
   coach.hidden = true;
-  if (coachAnchor && coachAnchor.el) coachAnchor.el.classList.remove('coach-target');
+  if (coachAnchor) coachRings(coachAnchor).forEach(el => el.classList.remove('coach-target'));
   coachAnchor = null;
   currentTip = null;
   const resolve = coachResolve;
@@ -3302,27 +3315,28 @@ async function exploreFeatures() {
   dismissTip();
   touring = true;
   const desktop = shownElement('.sidebar') !== null;
+  // [what it points at, title, text]; the tools step covers the tool keys
+  // and the selected tool's options together
   const steps = (desktop ? [
-    ['#generate-btn', 'New scrawl & Loops', 'Get a fresh random scribble with New scrawl. Use Loops to control how tangled the next one gets.'],
-    ['.sidebar .tool-keys', 'Your creative tools', 'Use Eyes to move and restyle the eyes. Brush, Fill and Eraser help bring your discoveries to life.'],
-    ['.sidebar-section > .tool-options', 'Tool options', 'Find the options for your selected tool here: eye styles and Mix, or brush sizes and colours.'],
-    ['.sidebar .history-keys', 'Undo, Redo & Clear', 'Changed your mind? Undo or Redo any change. Clear wipes the paint, and you can undo that too.'],
-    ['#scrawl-container', 'The canvas', 'Drag the eyes, draw with Brush or tap an area with Fill. Find Rotate and Hide lines under View.'],
-    ['.sidebar .save-row', 'Save & Download', 'Save your scrawlface to My Scrawls. Use ⋯ to download the image.'],
-    ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces, together in one place on this device.']
+    ['#generate-btn', 'New scrawl & Loops', 'Get a fresh scribble. Use Loops to control how tangled it gets.'],
+    [['.sidebar .tool-keys', '.sidebar-section > .tool-options'], 'Your creative tools', 'Move and style the eyes. Bring your discoveries to life with Brush, Fill and Eraser.'],
+    ['.sidebar .history-keys', 'Undo, Redo & Clear', 'Undo or redo changes. Clear removes all the paint.'],
+    ['#scrawl-container', 'The canvas', 'Move the eyes, draw with Brush or tap to Fill. Find Rotate and Hide lines under View.'],
+    ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
   ] : [
-    ['.tool-row .tool-keys', 'Your creative tools', 'Use Eyes to move and restyle the eyes. Brush, Fill and Eraser help bring your discoveries to life.'],
-    ['.options-strip', 'Tool options', 'Find the options for your selected tool here: eye styles and Mix, or brush colours and sizes.'],
-    ['.history-pair', 'Undo & Redo', 'Changed your mind? Undo or Redo any change.'],
-    ['#scrawl-container', 'Explore the canvas', 'Pinch with two fingers to zoom and turn the canvas. Touch and hold to peek under the lines.'],
-    ['#toggle-mobile-menu', 'More tools', 'Swipe up to discover more: New scrawl, Loops, Hide lines, Clear, Save and Share.'],
-    ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces, together in one place on this device.']
-  ]).map(([selector, title, text]) => ({ el: shownElement(selector), title, text })).filter(step => step.el);
+    [['.tool-row .tool-keys', '.options-strip'], 'Your creative tools', 'Move and style the eyes. Bring your discoveries to life with Brush, Fill and Eraser.'],
+    ['.history-pair', 'Undo & Redo', 'Undo or redo any change.'],
+    ['#scrawl-container', 'Explore the canvas', 'Pinch to zoom and rotate. Touch and hold to peek under the lines.'],
+    ['#toggle-mobile-menu', 'More tools', 'Swipe up for New scrawl, Loops, Hide lines, Clear, Save and Share.'],
+    ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
+  ]).map(([selectors, title, text]) => ({ els: [].concat(selectors).map(shownElement).filter(Boolean), title, text }))
+    .filter(step => step.els.length);
 
   for (let i = 0; i < steps.length; i++) {
     const last = i === steps.length - 1;
     const result = await showCoach({
-      anchor: { el: steps[i].el, ring: true },
+      anchor: steps[i].els.length === 1 ? { el: steps[i].els[0], ring: true }
+        : { rect: () => boxAround(steps[i].els), rings: steps[i].els },
       title: steps[i].title,
       text: steps[i].text,
       count: `${i + 1} of ${steps.length}`,
