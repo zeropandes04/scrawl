@@ -115,7 +115,7 @@ async function run(label, contextOpts) {
       await t.page.click('#coach-next');
       const another = await coach();
       check('Show me: the eyes go in, and a tooltip on them, Let\'s go!', another.shown && !another.finding && another.eyes === 2 &&
-        another.text === 'There\'s more than meets the eye. Move the eyes to make it yours.' && another.next === 'Let\'s go!',
+        another.text === 'There\'s more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill.' && another.next === 'Let\'s go!',
         JSON.stringify(another));
       await t.page.click('#coach-next');
       await t.page.waitForTimeout(300);

@@ -3354,7 +3354,7 @@ function tipFindFace() {
 // anywhere else, closes it.
 function tipShownFace() {
   showCoach({ anchor: { rect: () => eyeScreenRect(0) },
-    text: 'There\'s more than meets the eye. Move the eyes to make it yours.', next: 'Let\'s go!' });
+    text: 'There\'s more than meets the eye. Move the eyes to make it yours. Add details with Brush and Fill.', next: 'Let\'s go!' });
   currentTip = 'shown-face';
 }
 
