@@ -3,7 +3,7 @@
 **Overall Progress:** `100%` (all six steps done; tests in `tests/onboarding.js`)
 
 ## TLDR
-Add onboarding as a learning resource, not just a first-launch carousel: a short **intro** (4 screens) on first launch, a persistent **help key** to replay it or **explore the features** with tooltips, and **contextual tips** that appear once, at the moment a feature becomes relevant. Progress is stored locally (three states, versioned) so the intro shows automatically only once per version.
+Add onboarding as a learning resource, not just a first-launch carousel: a short **intro** (3 screens, see the latest revision at the end) on first launch, a persistent **help key** to replay it or **explore the features** with tooltips, and **contextual tips** that appear once, at the moment a feature becomes relevant. Progress is stored locally (three states, versioned) so the intro shows automatically only once per version.
 
 ## Critical Decisions
 - **Four intro screens, one per principle:**
@@ -37,7 +37,7 @@ Add onboarding as a learning resource, not just a first-launch carousel: a short
   - [x] 🟩 `onboardingState()` / `markOnboarding('completed' | 'skipped')`, `tipSeen(id)` / `markTipSeen(id)`, versioned as above; storage failures fall back to "don't show"
   - [x] 🟩 Auto-show rule: on load, if `onboarding_version_seen < ONBOARDING_VERSION` (and not embedded)
 
-- [x] 🟩 **Step 2: Intro (4 screens)**
+- [x] 🟩 **Step 2: Intro (4 screens at first; now 3, see the end)**
   - [x] 🟩 `<dialog>` with the four screens, dots, Back / Next, Skip; last screen's key creates the first scrawlface
   - [x] 🟩 Live illustrations drawn by the engine
   - [x] 🟩 Phone: full-screen sheet; desktop: centred card; respects reduced motion; keyboard (←/→, Esc = skip)
