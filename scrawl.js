@@ -293,6 +293,7 @@ function generateScrawlface() {
   // The intro's first scribble: the eyes wait until you find the face
   findingFace = findFaceNext;
   findFaceNext = false;
+  canvasPressed = false;
 
   drawingGraphics.clear();
   hasDrawings = false;
@@ -670,8 +671,10 @@ function mousePressed(event) {
   // even if their coordinates fall inside the canvas bounds.
   if (event && event.target !== canvas.elt) return;
 
-  // Working on the canvas puts any one-off tip away
+  // Working on the canvas puts any one-off tip away, and keeps the
+  // drag-eyes tip from turning up late (see tipDragEyes)
   dismissTip();
+  canvasPressed = true;
 
   // A second finger is a pinch, not another press
   if (pinch) return;
@@ -3250,6 +3253,7 @@ function dismissTip(id) {
 
 let findFaceNext = false;  // the next scribble is the intro's first one
 let findingFace = false;   // its eyes are waiting to be placed
+let canvasPressed = false; // the canvas was pressed since this scribble came
 
 function tipFindFace() {
   if (!findingFace || isBlankStart() || touring || introOpen()) return;
@@ -3287,6 +3291,8 @@ function revealFace() {
 
 // The first scrawl: point at an eye
 function tipDragEyes() {
+  // It follows the draw-in on a timer: no use once they're already at it
+  if (canvasPressed) return;
   if (isBlankStart() || !moveEyesMode || eyePositions.length === 0) return;
   showTip('drag-eyes', { rect: () => eyeScreenRect(0) }, 'Try another spot! Drag the eyes to where you see a face.');
 }
