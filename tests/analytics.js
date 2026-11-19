@@ -199,12 +199,22 @@ async function run(label, contextOpts) {
     await t.ev(() => setTool('brush'));
     await drag([0.2, 0.2], [0.3, 0.3]);
     await t.mark();
-    await t.ev(() => { requestNewScrawl('new_button'); });
+    // The New scribble button: the sidebar's on desktop, the drawer's on a phone
+    if (mobile) {
+      await t.page.click('#toggle-mobile-menu');
+      await t.page.waitForTimeout(400);
+      await t.page.click('#generate-btn-sheet');
+    } else {
+      await t.page.click('#generate-btn');
+    }
     await t.page.click('#leave-dialog [value="discard"]');
     await t.page.waitForFunction(() => window.__events.some(x => x.name === 'scribble_generated'));
     e = await t.take();
-    check('leave_prompt_answered discard, then scribble_generated from New', one(e, 'leave_prompt_answered')?.answer === 'discard' &&
-      one(e, 'scribble_generated')?.source === 'new_button', JSON.stringify(e.map(x => [x.name, x.props.answer || x.props.source])));
+    check('leave_prompt_answered discard, then scribble_generated from the sidebar / drawer', one(e, 'leave_prompt_answered')?.answer === 'discard' &&
+      one(e, 'scribble_generated')?.source === (mobile ? 'drawer' : 'sidebar'), JSON.stringify(e.map(x => [x.name, x.props.answer || x.props.source])));
+    // (the drawer closes with its New key: let it finish before drawing again)
+    await t.page.waitForFunction(() => !document.querySelector('.sheet-scrim.show'));
+    await t.page.waitForTimeout(300);
     await t.ev(() => setTool('brush'));
     await drag([0.2, 0.2], [0.3, 0.3]);
     await t.mark();
@@ -221,6 +231,16 @@ async function run(label, contextOpts) {
     await t.page.waitForTimeout(300);
     e = await t.take();
     check('error on a failed save', one(e, 'error')?.where === 'save', JSON.stringify(e));
+
+    // Phones: the New key on the canvas
+    if (mobile) {
+      await t.ev(() => { setTool('eyes'); hasDrawings = false; editVersion = savedVersion; });
+      await t.mark();
+      await t.page.tap('#canvas-new-btn');
+      await t.page.waitForFunction(() => window.__events.some(x => x.name === 'scribble_generated'));
+      e = await t.take();
+      check('scribble_generated from the New key on the canvas', one(e, 'scribble_generated')?.source === 'canvas_button', JSON.stringify(e.map(x => [x.name, x.props.source])));
+    }
 
     // Mobile gestures: a pinch, and touch and hold to peek
     if (mobile) {

@@ -19,7 +19,7 @@
 ## Core
 | Event | When | Properties |
 |---|---|---|
-| `scribble_generated` | A new scribble appears | `source`: `blank_start`, `new_button`, `key_n`, `my_scrawls`, `tour`, `other` (shell) · `loops` |
+| `scribble_generated` | A new scribble appears | `source`: `blank_start`, `sidebar` (desktop New scribble), `drawer` (phone drawer's New scribble), `canvas_button` (the floating New key on phones), `key_n`, `my_scrawls`, `tour`, `other` (shell) · `loops` |
 | `scrawlface_saved` | A save succeeds | `trigger`: `button`, `auto` (5-minute autosave), `leave_prompt`, `my_scrawls` · `first_save` · `seconds_since_generated` (null for a reopened or restored one) · `tools_used` · `strokes` · `fills` |
 | `scrawlface_shared` | The share sheet sends it | `from`: `canvas` |
 | `share_cancelled` | The share sheet is dismissed | `from`: `canvas` |

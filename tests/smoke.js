@@ -125,6 +125,17 @@ async function run(label, contextOpts) {
     clearDis: document.getElementById('clear-drawings-btn').disabled }));
 
   check('starts on eyes tool', await ev(() => currentTool()) === 'eyes');
+  // Phones: New scribble floats on the canvas with the Eyes tool only (the
+  // sidebar has its own New key on wider screens)
+  const newKey = () => ev(() => { const k = document.getElementById('canvas-new-btn'); const r = k.getBoundingClientRect();
+    const c = document.getElementById('scrawl-container').getBoundingClientRect();
+    return { shown: k.getClientRects().length > 0, inside: r.right <= c.right && r.bottom <= c.bottom, h: Math.round(r.height) }; });
+  const keyEyes = await newKey();
+  await ev(() => setTool('brush'));
+  const keyBrush = await newKey();
+  await ev(() => setTool('eyes'));
+  check('phones: New key on the canvas with Eyes, gone with Brush; none on desktop', mobile
+    ? keyEyes.shown && keyEyes.inside && keyEyes.h >= 44 && !keyBrush.shown : !keyEyes.shown && !keyBrush.shown, JSON.stringify({ keyEyes, keyBrush }));
   const onAfterNew = await page.evaluate(blankKeys);
   // (Save stays off until there's a change to save)
   check('blank start disables Rotate, Hide lines, Save and Share; New enables all but Save',
