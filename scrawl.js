@@ -1,34 +1,34 @@
 // The "Scrawlface" wordmark is set in a different typeface on every page
 // load, the same way the scrawl itself is different every time. It also
 // changes when you come back after a break (an app is rarely reloaded) and
-// when the wordmark is tapped (see nextWordmark).
+// when the wordmark is tapped (see nextWordmark). The typefaces take turns
+// in the order below, starting at the first on a first visit and going
+// back to it after the last; the one shown last is remembered.
 // Each entry: [family, file in fonts/ (.woff2), CSS weight, CSS style, size scale].
 // The files are bundled (not fetched from Google Fonts) so the app works
 // offline: each holds only the letters of "Scrawlface" (see fonts/README.md).
 const wordmarkFonts = [
-  ['Bungee Shade', 'bungee-shade', 400, 'normal', 0.9],                 // display
-  ['Monoton', 'monoton', 400, 'normal', 0.95],                          // decorative
   ['Pacifico', 'pacifico', 400, 'normal', 1],                           // script
-  ['Lobster', 'lobster', 400, 'normal', 1.1],                           // flamboyant
-  ['Permanent Marker', 'permanent-marker', 400, 'normal', 1],           // marker
+  ['Monoton', 'monoton', 400, 'normal', 0.95],                          // decorative
   ['Caveat', 'caveat', 700, 'normal', 1.35],                            // handwritten
   ['UnifrakturMaguntia', 'unifrakturmaguntia', 400, 'normal', 1.15],    // blackletter
+  ['Lobster', 'lobster', 400, 'normal', 1.1],                           // flamboyant
+  ['Bungee Shade', 'bungee-shade', 400, 'normal', 0.9],                 // display
+  ['Permanent Marker', 'permanent-marker', 400, 'normal', 1],           // marker
   ['Press Start 2P', 'press-start-2p', 400, 'normal', 0.6]              // pixel
 ];
 
 let wordmarkIndex = -1;      // the typeface on show (index in wordmarkFonts)
 
-// Any typeface but the one on show (or, on a page load, the last one shown)
+// The next typeface in turn after the one on show (or, on a page load, the
+// one shown last); the first, on a first visit
 function pickWordmark() {
   let last = wordmarkIndex;
   if (last === -1) {
     try { last = parseInt(localStorage.getItem('wordmarkFont')); } catch (e) {}
   }
-  let i;
-  do {
-    i = Math.floor(Math.random() * wordmarkFonts.length);
-  } while (i === last);
-  return i;
+  if (!(last >= 0 && last < wordmarkFonts.length)) return 0;
+  return (last + 1) % wordmarkFonts.length;
 }
 
 function applyWordmark(i) {
@@ -137,6 +137,10 @@ const maxZoom = 8;
 let pinch = null;      // two-finger gesture in progress: the view and fingers when it started
 let pressChangedDrawing = false; // the current press started a stroke or filled
 let showScrawl = true;
+// Hide paint: a way to look at the scribble and eyes without the paint.
+// Only the view: Save and Share keep the paint, and picking a paint tool,
+// Undo, Redo or Clear shows it again (see showPaintAgain).
+let showPaint = true;
 let moveEyesMode = false;
 let drawMode = false;
 let eraseMode = false;
@@ -280,6 +284,8 @@ function setup() {
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
+  select("#toggle-paint-btn").mousePressed(togglePaint);
+  select("#toggle-paint-btn-mobile").mousePressed(togglePaint);
   select("#blank-cta-btn").mousePressed(() => requestNewScrawl('blank_start'));
   select("#canvas-new-btn").mousePressed(() => requestNewScrawl('canvas_button'));
   select("#clear-drawings-btn").mousePressed(clearDrawings);
@@ -376,6 +382,7 @@ function generateScrawlface(source = 'other') {
   scrawlfaceToken++;
   galleryId = null;
   savedVersion = editVersion;
+  paintSavedVersion = paintVersion;
   forgetDraft();
   restartAutoSave();
   updateGallerySaveButtons();
@@ -385,6 +392,7 @@ function generateScrawlface(source = 'other') {
     showScrawl = true;
     updateScrawlToggleButtons();
   }
+  showPaintAgain();
 
   // Transparent, not white: the scrawl is drawn on top of the paint, so
   // the lines stay visible to follow (the canvas background is the white)
@@ -795,10 +803,12 @@ function cancelPressMark() {
   } else if (pressChangedDrawing) {
     // A fill: already a history step
     const version = editVersion;
+    const paint = paintVersion;
     undo();
     redoStack.pop(); // undo() queued the cancelled mark for redo
     updateUndoRedoButtons();
     editVersion = version;
+    paintVersion = paint;
     updateGallerySaveButtons();
     pressChangedDrawing = false;
   }
@@ -922,6 +932,7 @@ function mouseReleased() {
   const eye = eyePositions[draggedEyeIndex];
   const eyeMoved = eye && (eye.x !== dragStart.x || eye.y !== dragStart.y);
   const changed = pressChangedDrawing || eyeMoved;
+  const painted = pressChangedDrawing;
 
   if (draggedEyeIndex !== -1) {
     draggedEyeIndex = -1;
@@ -959,7 +970,7 @@ function mouseReleased() {
 
   isDrawing = false;
   pressChangedDrawing = false;
-  if (changed) markChanged();
+  if (changed) markChanged(painted);
 }
 
 function keyPressed() {
@@ -1013,8 +1024,8 @@ function redrawCanvas() {
   // Draw the layers straight onto the canvas (no intermediate composite),
   // so each frame while drawing only copies what's needed. The scrawl goes
   // on top of the paint so its lines can still be followed; Hide lines
-  // takes them away.
-  image(drawingGraphics, 0, 0);
+  // takes them away, and Hide paint the paint.
+  if (showPaint) image(drawingGraphics, 0, 0);
   if (showScrawl && !peekingLines) {
     image(baseScrawlGraphics, 0, 0);
   }
@@ -1563,6 +1574,28 @@ function toggleEyes() {
   track('lines_hidden', { hidden: !showScrawl });
 }
 
+function togglePaint() {
+  if (!hasDrawings && showPaint) return;
+  showPaint = !showPaint;
+  updatePaintToggleButtons();
+  redrawCanvas();
+  track('paint_hidden', { hidden: !showPaint });
+}
+
+// Paint on show again (if it was hidden)
+function showPaintAgain() {
+  if (showPaint) return;
+  showPaint = true;
+  updatePaintToggleButtons();
+  redrawCanvas();
+}
+
+function updatePaintToggleButtons() {
+  const label = showPaint ? 'Hide paint' : 'Show paint';
+  document.querySelectorAll('.toggle-paint-btn').forEach(btn => { btn.textContent = label; });
+  stateChanged();
+}
+
 // The buttons name what pressing them will do, rather than lighting up when
 // the scrawl is hidden
 function updateScrawlToggleButtons() {
@@ -1586,6 +1619,8 @@ function setTool(tool) {
   } else {
     cursor(bucketMode ? CROSS : ARROW);
   }
+  // Painting on paint you can't see would be guesswork
+  if (tool !== 'eyes') showPaintAgain();
   updateToolButtons();
   tipForTool(tool);
 }
@@ -1627,6 +1662,7 @@ function fitCanvasToContainer() {
 
 function clearDrawings() {
   if (!hasDrawings) return;
+  showPaintAgain();
 
   // Save state BEFORE clearing so Clear can be undone (only the painted
   // area: it's all Clear changes). Paint that was all erased leaves nothing.
@@ -1638,7 +1674,7 @@ function clearDrawings() {
   disableClearButton();
 
   redrawCanvas();
-  markChanged();
+  markChanged(true);
   track('clear_used');
 }
 
@@ -1650,13 +1686,15 @@ function setButtonsDisabled(ids, disabled) {
   });
 }
 
+// Clear and Hide paint: on while there's paint
 function enableClearButton() {
-  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], false);
+  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile', 'toggle-paint-btn', 'toggle-paint-btn-mobile'], false);
   stateChanged();
 }
 
 function disableClearButton() {
-  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], true);
+  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile', 'toggle-paint-btn', 'toggle-paint-btn-mobile'], true);
+  showPaintAgain();
   stateChanged();
 }
 
@@ -1952,19 +1990,21 @@ function swapState(from, to) {
 
   redrawCanvas();
   updateUndoRedoButtons();
-  markChanged();
+  markChanged(true);
 }
 
 // Not mid-stroke: the stroke isn't a step yet, and its "before" copy
 // would no longer match the layer
 function undo() {
   if (historyStack.length === 0 || isDrawing) return;
+  showPaintAgain();
   swapState(historyStack, redoStack);
   track('undo_used');
 }
 
 function redo() {
   if (redoStack.length === 0 || isDrawing) return;
+  showPaintAgain();
   swapState(redoStack, historyStack);
   track('redo_used');
 }
@@ -2225,6 +2265,12 @@ function setupMobileSheet() {
 let galleryId = null;    // gallery entry the current scrawlface is saved as
 let editVersion = 0;     // bumped on every change...
 let savedVersion = 0;    // ...and copied here when saved: unsaved = they differ
+// Paint (Brush, Fill, Eraser, Clear, and undoing / redoing them) is the work
+// worth protecting: only unsaved paint asks Save / Discard on leaving, gets
+// saved on its own and brings the Save tip. Moving or restyling the eyes,
+// rotating or hiding the lines can still be saved by hand.
+let paintVersion = 0;
+let paintSavedVersion = 0;
 let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
 let draftTimer = null;
 const autoSaveMs = 5 * 60 * 1000; // see autoSave
@@ -2236,6 +2282,10 @@ const longPressMs = 500;     // touch: press and hold a gallery tile to start se
 
 function hasUnsavedChanges() {
   return editVersion !== savedVersion;
+}
+
+function hasUnsavedPaint() {
+  return paintVersion !== paintSavedVersion;
 }
 
 // Leaves the blank start (New, or opening a saved scrawlface): the create
@@ -2352,6 +2402,7 @@ async function restoreScrawlface(record) {
   setEyeStyles(record.eyeStyles);
   showScrawl = record.showScrawl;
   updateScrawlToggleButtons();
+  showPaintAgain();
   rotation = record.rotation;
   viewZoom = 1;
   viewPan = { x: 0, y: 0 };
@@ -2370,13 +2421,15 @@ async function restoreScrawlface(record) {
 
 // Called after every change to the scrawlface: it now has unsaved changes,
 // and the draft is written once the changes settle
-function markChanged() {
+// paint: the change is to the paint (see paintVersion)
+function markChanged(paint = false) {
   if (isBlankStart()) return;
   editVersion++;
+  if (paint) paintVersion++;
   updateGallerySaveButtons();
   clearTimeout(draftTimer);
   draftTimer = setTimeout(saveDraft, 1000);
-  if (!autoSaveTimer) autoSaveTimer = setTimeout(autoSave, autoSaveMs);
+  if (!autoSaveTimer && hasUnsavedPaint()) autoSaveTimer = setTimeout(autoSave, autoSaveMs);
   tipSave();
 }
 
@@ -2385,7 +2438,7 @@ function markChanged() {
 // work is never older than that. Quick shuffles with New never get there.
 function autoSave() {
   autoSaveTimer = null;
-  if (isBlankStart() || !hasUnsavedChanges()) return;
+  if (isBlankStart() || !hasUnsavedPaint()) return;
   saveToGallery('auto').catch(() => {}); // the draft still has the work
 }
 
@@ -2393,7 +2446,7 @@ function autoSave() {
 // again from its next change (or now, if it still has unsaved changes)
 function restartAutoSave() {
   clearTimeout(autoSaveTimer);
-  autoSaveTimer = hasUnsavedChanges() ? setTimeout(autoSave, autoSaveMs) : null;
+  autoSaveTimer = hasUnsavedPaint() ? setTimeout(autoSave, autoSaveMs) : null;
 }
 
 async function saveDraft() {
@@ -2431,6 +2484,7 @@ async function saveToGalleryNow(trigger = 'button') {
   if (isBlankStart()) return;
   dismissTip('save');
   const version = editVersion;
+  const paint = paintVersion;
   const token = scrawlfaceToken;
   const record = await captureScrawlface(true);
   if (token !== scrawlfaceToken) return;
@@ -2448,6 +2502,7 @@ async function saveToGalleryNow(trigger = 'button') {
     fills: scrawlfaceStats.fills
   });
   savedVersion = version;
+  paintSavedVersion = paint;
   if (!hasUnsavedChanges()) forgetDraft();
   restartAutoSave();
   updateGallerySaveButtons();
@@ -2474,8 +2529,9 @@ function flashSaved() {
 
 // Leaving a scrawlface with unsaved changes (New, or opening another one)
 // asks first: Save, Discard or Cancel. Resolves true to go ahead.
+// Only unsaved paint asks (see paintVersion); other changes go quietly.
 function confirmLeave() {
-  if (isBlankStart() || !hasUnsavedChanges()) return Promise.resolve(true);
+  if (isBlankStart() || !hasUnsavedPaint()) return Promise.resolve(true);
   // No storage, so nothing to save to
   if (document.body.classList.contains('no-storage')) {
     const go = confirm('Start a new scribble? Your drawing will be lost.');
@@ -2528,6 +2584,7 @@ async function openFromGallery(id) {
   track('scrawlface_reopened');
   galleryId = record.id;
   savedVersion = editVersion;
+  paintSavedVersion = paintVersion;
   restartAutoSave();
   updateGallerySaveButtons();
   document.getElementById('gallery-dialog').close();
@@ -2827,6 +2884,7 @@ function setupGallery() {
           track('draft_restored');
           galleryId = draft.galleryId;
           editVersion = savedVersion + 1;
+          if (hasDrawings) paintVersion = paintSavedVersion + 1;
           restartAutoSave();
           updateGallerySaveButtons();
         } catch (e) {
@@ -3465,7 +3523,7 @@ function tipForTool(tool) {
 
 // After a handful of changes to a scrawlface that was never saved
 function tipSave() {
-  if (galleryId !== null || editVersion - savedVersion < 6) return;
+  if (galleryId !== null || editVersion - savedVersion < 6 || !hasUnsavedPaint()) return;
   if (document.body.classList.contains('no-storage')) return;
   const saveKey = shownElement('.sidebar .gallery-save-btn');
   if (saveKey) {
@@ -3554,6 +3612,7 @@ function appState() {
     loops: intensity,
     eyeStyles: [...eyeStyles],
     linesShown: showScrawl,
+    paintShown: showPaint,
     canUndo: historyStack.length > 0,
     canRedo: redoStack.length > 0,
     hasDrawings,
@@ -3594,7 +3653,7 @@ window.scrawlface = {
   setTool, setBrushSize, setEraserSize, setBrushColor, setLoops,
   eyeSets: Object.keys(eyeSets), pickEyeSet, mixEyes,
   undo, redo, clear: clearDrawings,
-  rotate: rotateCanvas, toggleLines: toggleEyes,
+  rotate: rotateCanvas, toggleLines: toggleEyes, togglePaint,
   save: saveToGallery, listGallery, openFromGallery,
   exportPNG,
   onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding,

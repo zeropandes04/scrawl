@@ -272,7 +272,10 @@ async function run(label, contextOpts) {
     const gestures = await coachShown(t.page);
     check(mobile ? 'touch: first time on Brush, the pinch / hold tip' : 'mouse: no pinch tip on Brush', gestures === mobile);
     if (gestures) await t.page.click('#coach-next');
+    // Eye moves and the like don't bring it; paint does
     for (let i = 0; i < 6; i++) await t.ev(() => markChanged());
+    check('no Save tip for changes without paint', !(await coachShown(t.page)));
+    for (let i = 0; i < 6; i++) await t.ev(() => markChanged(true));
     const save = await t.ev(() => [!document.getElementById('coach').hidden, document.getElementById('coach-text').textContent]);
     check('after a few changes, a tip to Save', save[0] && save[1].toLowerCase().includes('save it to my scrawls'), JSON.stringify(save));
     await t.ev(() => saveToGallery());

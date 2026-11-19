@@ -140,6 +140,9 @@ async function run(label, contextOpts) {
     e = await t.take();
     check('tool_used fill', one(e, 'tool_used')?.tool === 'fill', JSON.stringify(e.map(x => [x.name, x.props.tool])));
 
+    await t.ev(() => { window.scrawlface.togglePaint(); window.scrawlface.togglePaint(); });
+    e = await t.take();
+    check('paint_hidden, then shown', JSON.stringify(named(e, 'paint_hidden').map(x => x.props.hidden)) === '[true,false]', JSON.stringify(e.map(x => [x.name, x.props.hidden])));
     await t.ev(() => { window.scrawlface.undo(); window.scrawlface.redo(); window.scrawlface.rotate(); window.scrawlface.toggleLines(); });
     await t.ev(() => { window.scrawlface.pickEyeSet(window.scrawlface.eyeSets[1]); window.scrawlface.mixEyes(); });
     e = await t.take();
@@ -234,7 +237,7 @@ async function run(label, contextOpts) {
 
     // Phones: the New key on the canvas
     if (mobile) {
-      await t.ev(() => { setTool('eyes'); hasDrawings = false; editVersion = savedVersion; });
+      await t.ev(() => { setTool('eyes'); hasDrawings = false; editVersion = savedVersion; paintVersion = paintSavedVersion; });
       await t.mark();
       await t.page.tap('#canvas-new-btn');
       await t.page.waitForFunction(() => window.__events.some(x => x.name === 'scribble_generated'));
@@ -305,6 +308,24 @@ async function run(label, contextOpts) {
     });
     check('onEvent: a listener gets events until it stops', JSON.stringify(got) === '["canvas_rotated"]', JSON.stringify(got));
     check('no page errors (help)', t.errors.length === 0, t.errors.join(' | '));
+    await t.ctx.close();
+  }
+
+  // -- The wordmark's typefaces take turns in a set order, and loop --
+  {
+    const order = ['Pacifico', 'Monoton', 'Caveat', 'UnifrakturMaguntia', 'Lobster', 'Bungee Shade', 'Permanent Marker', 'Press Start 2P'];
+    const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1' });
+    await t.load();
+    const shown = () => t.ev(() => window.scrawlface.appState().wordmark);
+    const seen = [await shown()];
+    await t.load();
+    seen.push(await shown());
+    for (let i = 0; i < 7; i++) {
+      await t.ev(() => window.scrawlface.nextWordmark('tap'));
+      seen.push(await shown());
+    }
+    check('wordmark: first visit Pacifico, then a reload and taps go in order, back to Pacifico after Press Start 2P',
+      JSON.stringify(seen) === JSON.stringify([...order, order[0]]), JSON.stringify(seen));
     await t.ctx.close();
   }
 
