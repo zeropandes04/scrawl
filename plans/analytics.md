@@ -3,10 +3,10 @@
 **Status:** built. Events are named in `track()` calls in `scrawl.js` (section "Analytics events"); tested by `tests/analytics.js`.
 
 ## How it works
-- `track(name, props)` records an event. **Nothing leaves the device from the web page** (CLAUDE.md: nothing remote). Events go to listeners, and the last 50 are kept for checking.
-- A native shell listens with `window.scrawlface.onEvent(fn)` (returns a function that stops listening) and forwards events to its own analytics. `window.scrawlface.recentEvents()` returns the last 50.
-- Sending events from the website itself would need an analytics provider approved first (and, in Europe, consent).
-- **Privacy:** no drawing, image data or personal details in any event. The shell adds its own install ID if it needs one.
+- `track(name, props)` records an event. Events go to listeners, and the last 50 are kept for checking (`window.scrawlface.recentEvents()`).
+- **The website** sends them to **Vercel Web Analytics**: `scrawl.js` adds Vercel's script (`/_vercel/insights/script.js`, served by Vercel itself), which counts page views, and forwards each event as a custom event (`va('event', { name, data })`). Lists become comma-separated text, since custom event values must be plain. The script exists only where Vercel hosts the site; elsewhere (e.g. GitHub Pages) it fails to load and nothing is sent. Custom events are only recorded on Vercel plans that include them; page views on every plan. Web Analytics has to be switched on for the project in the Vercel dashboard.
+- **A native shell** listens with `window.scrawlface.onEvent(fn)` (returns a function that stops listening) and forwards events to its own analytics. Canvas-only mode loads no Vercel script.
+- **Privacy:** no drawing, image data or personal details in any event. Vercel Web Analytics uses no cookies.
 
 ## Every event carries
 | Property | Value |

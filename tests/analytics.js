@@ -261,6 +261,16 @@ async function run(label, contextOpts) {
       check('canvas_zoomed (pinch) and lines_peeked (touch and hold)', !!one(e, 'canvas_zoomed') && !!one(e, 'lines_peeked'), JSON.stringify(e.map(x => x.name)));
     }
 
+    // Vercel Web Analytics: the script is asked for (same site), and events
+    // wait in its queue as custom events with plain values
+    const vercel = await t.ev(() => ({
+      script: !!document.querySelector('script[src="/_vercel/insights/script.js"]'),
+      saved: (window.vaq || []).map(args => args[1]).find(e => e && e.name === 'scrawlface_saved')
+    }));
+    check('Vercel: script added, events queued with plain values (lists as text)', vercel.script && vercel.saved &&
+      typeof vercel.saved.data.tools_used === 'string' && Object.values(vercel.saved.data).every(v => v === null || typeof v !== 'object'),
+      JSON.stringify(vercel));
+
     // No drawing or image data in any event; each is small
     const all = await t.ev(() => window.scrawlface.recentEvents());
     check('events carry no image data and stay small', all.every(x => !/data:|blob:/.test(JSON.stringify(x)) && JSON.stringify(x).length < 600),
@@ -368,6 +378,7 @@ async function run(label, contextOpts) {
     await t.ev(() => window.scrawlface.newScrawl());
     await t.page.waitForFunction(() => scrawlQueue.length === 0);
     const e = await t.ev(() => window.scrawlface.recentEvents());
+    check('embedded: nothing for Vercel (no script, no queue)', await t.ev(() => !document.querySelector('script[src*="_vercel"]') && !window.vaq && !window.va));
     check('embedded: platform shell, scribble_generated, no onboarding events',
       e.length > 0 && e.every(x => x.props.platform === 'shell') && !!one(e, 'scribble_generated') && !e.some(x => /^onboarding|^tip_/.test(x.name)),
       JSON.stringify(e.map(x => x.name)));
