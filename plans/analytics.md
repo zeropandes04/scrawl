@@ -33,8 +33,8 @@
 | `canvas_rotated` | Rotate | `rotation` (0, 90, 180, 270) |
 | `lines_hidden` | Hide / Show lines | `hidden` |
 | `paint_hidden` | Hide / Show paint | `hidden` |
-| `canvas_zoomed` | A two-finger pinch starts | (none) |
-| `lines_peeked` | Touch and hold to peek under the lines | (none) |
+| `canvas_zoomed` | A pinch starts (two fingers, or a trackpad pinch / two-finger move on desktop) | `input`: `touch`, `trackpad` |
+| `lines_peeked` | Hold still to peek under the lines (touch, or a trackpad / mouse press) | (none) |
 | `undo_used` / `redo_used` | Only when something was undone / redone | (none) |
 | `clear_used` | Clear removed paint | (none) |
 

@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=94"></script>
+  <script src="scrawl.js?v=95"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -2267,8 +2267,8 @@
       </dialog>
 
       <!-- My Scrawls: the saved ones, newest first (renderGallery) -->
-      <!-- Onboarding intro: four screens (Understand, Discover, Learn,
-           Experience), filled in and animated by scrawl.js -->
+      <!-- Onboarding intro (the product tour): three screens, filled in and
+           animated by scrawl.js (introScreens) -->
       <dialog id="intro-dialog" class="intro-dialog" aria-labelledby="intro-title">
         <button type="button" class="intro-skip" id="intro-skip">Skip</button>
         <!-- The part that slides between screens -->
