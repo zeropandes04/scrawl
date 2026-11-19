@@ -3536,10 +3536,11 @@ function tipSave() {
 
 // ---- Analytics events ----
 // What people do, as named events with a few properties (see
-// plans/analytics.md). Nothing leaves the device from the web page: events go
-// to listeners (a native shell forwards them to its analytics through
-// window.scrawlface.onEvent) and the last few are kept for checking.
-// Never put the drawing, image data or personal details in an event.
+// plans/analytics.md). Events go to listeners (a native shell forwards them
+// to its analytics through window.scrawlface.onEvent; the website sends
+// them to Vercel Web Analytics, see below) and the last few are kept for
+// checking. Never put the drawing, image data or personal details in an
+// event.
 
 const eventListeners = [];
 const recentEvents = [];
@@ -3570,6 +3571,28 @@ function onEvent(fn) {
     const i = eventListeners.indexOf(fn);
     if (i !== -1) eventListeners.splice(i, 1);
   };
+}
+
+// Vercel Web Analytics, on the website only (a native shell has its own):
+// Vercel's script counts page views, and our events go to it as custom
+// events. The script exists only where Vercel hosts the site; elsewhere it
+// fails to load and nothing is sent. Its queue (window.va) takes events
+// before the script has loaded.
+if (!isEmbedded()) {
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  const vercel = document.createElement('script');
+  vercel.defer = true;
+  vercel.src = '/_vercel/insights/script.js';
+  document.head.appendChild(vercel);
+  // Custom event properties must be plain values: lists become text
+  onEvent(event => {
+    const data = {};
+    Object.entries(event.props).forEach(([key, value]) => {
+      if (Array.isArray(value)) data[key] = value.join(',');
+      else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) data[key] = value;
+    });
+    window.va('event', { name: event.name, data });
+  });
 }
 
 // The scrawlface on the canvas: what's been used on it, for tool_used (the
