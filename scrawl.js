@@ -277,6 +277,22 @@ function setup() {
   canvasElement.addEventListener('touchend', onTouchEnd, { passive: false });
   canvasElement.addEventListener('touchcancel', onTouchEnd, { passive: false });
 
+  // Trackpad and mouse: pinch and two-finger moves, and press and hold to
+  // peek under the lines (see the Trackpad and Touch and hold sections)
+  canvasElement.addEventListener('wheel', onCanvasWheel, { passive: false });
+  canvasElement.addEventListener('gesturestart', onGestureStart);
+  canvasElement.addEventListener('gesturechange', onGestureChange);
+  canvasElement.addEventListener('gestureend', onGestureEnd);
+  canvasElement.addEventListener('pointerdown', (e) => {
+    if (e.pointerType !== 'touch' && e.button === 0) startLinesPeekTimer(e);
+  });
+  canvasElement.addEventListener('pointermove', (e) => {
+    if (e.pointerType !== 'touch') moveLinesPeekTimer(e);
+  });
+  window.addEventListener('pointerup', (e) => {
+    if (e.pointerType !== 'touch') endLinesPeek();
+  });
+
   // Drawn on in units; their pixels (getImageData, undo, fill) are at res
   baseScrawlGraphics = createGraphics(canvasSize, canvasSize);
   baseScrawlGraphics.pixelDensity(res);
@@ -844,7 +860,7 @@ function startPinch(touches) {
     zoom: viewZoom,
     rotation: rotation
   };
-  track('canvas_zoomed');
+  track('canvas_zoomed', { input: 'touch' });
 }
 
 function movePinch(touches) {
@@ -868,9 +884,13 @@ function movePinch(touches) {
 
 function endPinch() {
   pinch = null;
+  settleView();
+}
 
-  // Settle on a quarter turn when close to one, and on the full view when
-  // barely zoomed, so it's easy to get back to a straight, whole canvas
+// After a pinch (touch or trackpad): settle on a quarter turn when close to
+// one, and on the full view when barely zoomed, so it's easy to get back to
+// a straight, whole canvas
+function settleView() {
   const quarterTurn = round(rotation / 90) * 90;
   if (abs(rotation - quarterTurn) < 8) rotation = quarterTurn;
   rotation = ((rotation % 360) + 360) % 360;
@@ -879,6 +899,89 @@ function endPinch() {
 
   if (drawMode || eraseMode) setBrushCursor();
   redrawCanvas();
+}
+
+// ---- Trackpad (desktop): the same view gestures as on a touch screen ----
+// A trackpad pinch zooms the view about the pointer: browsers report it as
+// a wheel event with ctrlKey (Chrome, Edge, Firefox), and Safari also as
+// gesture events, which carry the two-finger turn too. Moving two fingers
+// pans the view while it's zoomed in. The view settles (as after a touch
+// pinch) a moment after the fingers stop. Turning needs Safari: other
+// browsers don't report a trackpad turn (Rotate in the sidebar does it).
+let trackpadActive = false;
+let trackpadSettleTimer = null;
+let safariGesture = null; // { anchor, point, zoom, rotation } at its start
+
+function startTrackpadGesture() {
+  if (!trackpadActive) {
+    trackpadActive = true;
+    // The pointer may have been pressed: the gesture wins, as with a pinch
+    cancelPressMark();
+    draggedEyeIndex = -1;
+    track('canvas_zoomed', { input: 'trackpad' });
+  }
+  clearTimeout(trackpadSettleTimer);
+  trackpadSettleTimer = setTimeout(() => {
+    trackpadActive = false;
+    settleView();
+  }, 250);
+}
+
+// Shifts the view so the drawing's point `anchor` is on screen at `point`
+function placeView(anchor, point) {
+  viewPan = { x: 0, y: 0 };
+  const onScreen = getRotatedPosition(anchor.x, anchor.y);
+  viewPan = { x: point.x - onScreen.x, y: point.y - onScreen.y };
+  clampViewPan();
+  redrawCanvas();
+}
+
+function onCanvasWheel(e) {
+  if (isBlankStart() || pinch) return;
+  const lines = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1; // to pixels
+  if (e.ctrlKey) {
+    // A pinch (Ctrl + mouse wheel does the same)
+    e.preventDefault(); // not the browser's page zoom
+    if (safariGesture) return; // Safari's gesture events have it
+    startTrackpadGesture();
+    const point = touchPoint(e);
+    const anchor = getTransformedCoords(point.x, point.y);
+    viewZoom = constrain(viewZoom * Math.exp(-e.deltaY * lines * 0.01), 1, maxZoom);
+    placeView(anchor, point);
+  } else if (viewZoom > 1) {
+    // Two fingers moving over the zoomed view: move it with them
+    e.preventDefault();
+    startTrackpadGesture();
+    const k = width / canvas.elt.getBoundingClientRect().width;
+    viewPan = { x: viewPan.x - e.deltaX * lines * k, y: viewPan.y - e.deltaY * lines * k };
+    clampViewPan();
+    redrawCanvas();
+  }
+}
+
+// Safari: a trackpad pinch and turn. (On an iPad, Safari sends these for a
+// touch pinch as well; the touch pinch has it, so they're ignored then.)
+function onGestureStart(e) {
+  if (isBlankStart() || pinch) return;
+  e.preventDefault();
+  startTrackpadGesture();
+  const point = touchPoint(e);
+  safariGesture = { anchor: getTransformedCoords(point.x, point.y), point, zoom: viewZoom, rotation };
+}
+
+function onGestureChange(e) {
+  if (!safariGesture) return;
+  e.preventDefault();
+  startTrackpadGesture();
+  viewZoom = constrain(safariGesture.zoom * e.scale, 1, maxZoom);
+  rotation = safariGesture.rotation + e.rotation;
+  placeView(safariGesture.anchor, safariGesture.point);
+}
+
+function onGestureEnd(e) {
+  if (!safariGesture) return;
+  e.preventDefault();
+  safariGesture = null;
 }
 
 // The view can only be shifted as far as the zoom has pushed the picture
@@ -892,9 +995,10 @@ function clampViewPan() {
 }
 
 // ---- Touch and hold: peek under the lines ----
-// On a touch screen, holding one finger still on the canvas hides the
-// scrawl lines until the finger lifts, to see the drawing without them. It
-// is only a view: Hide lines (sheet / sidebar) is what hides them for good.
+// Holding one finger still on the canvas hides the scrawl lines until the
+// finger lifts, to see the drawing without them; on a desktop, pressing and
+// holding the trackpad or mouse still does the same. It is only a view:
+// Hide lines (sheet / sidebar) is what hides them for good.
 const linesPeekMs = 500;
 let linesPeekTimer = null;
 let linesPeekStart = null; // where the finger went down (page px)
@@ -3450,7 +3554,8 @@ async function exploreFeatures() {
     ['#generate-btn', 'New scribble and Loops', 'Get a fresh scribble. Use Loops to make it more or less tangled.'],
     [['.sidebar .tool-keys', '.sidebar-section > .tool-options'], 'Your creative tools', 'Add eyes and colour to bring your discoveries to life.'],
     ['.sidebar .history-keys', 'Undo, Redo & Clear', 'Undo or redo changes. Clear removes all paint from the canvas.'],
-    ['#scrawl-container', 'The canvas', 'Move the eyes, draw with Brush or tap to Fill. Find Rotate and Hide lines under View.'],
+    ['#scrawl-container', 'The canvas', isTouchScreen() ? 'Pinch to zoom and rotate. Touch and hold to peek under the lines.'
+      : 'Move the eyes, draw with Brush or tap to Fill. Find Rotate and Hide lines under View.'],
     ['.header-gallery-btn', 'My Scrawls', 'All your saved scrawlfaces in one place.']
   ] : [
     [['.options-strip', '.tool-row'], 'Your creative tools', 'Add eyes and colour to bring your discoveries to life.'],

@@ -226,6 +226,43 @@ async function run(label, contextOpts) {
     await page.waitForTimeout(300);
   }
 
+  // Desktop trackpad: a pinch (wheel + ctrlKey) zooms about the pointer;
+  // two fingers pan the zoomed view (and leave the page alone at zoom 1);
+  // Safari's gesture events zoom and turn; the view settles after; pressing
+  // and holding still peeks under the lines
+  if (!mobile) {
+    const pad = await ev(async () => {
+      const c = canvas.elt; const r = c.getBoundingClientRect();
+      const x = r.left + r.width * 0.3, y = r.top + r.height * 0.4;
+      const wheel = o => { const e = new WheelEvent('wheel', { clientX: x, clientY: y, bubbles: true, cancelable: true, ...o }); c.dispatchEvent(e); return e.defaultPrevented; };
+      const plainAtFull = wheel({ deltaY: 20 });
+      const pt = touchPoint({ clientX: x, clientY: y }); const before = getTransformedCoords(pt.x, pt.y);
+      for (let i = 0; i < 10; i++) wheel({ deltaY: -10, ctrlKey: true });
+      const after = getTransformedCoords(pt.x, pt.y);
+      const zoom = viewZoom;
+      const panBefore = { ...viewPan };
+      const panned = wheel({ deltaX: 30, deltaY: 20 });
+      const pan = Math.hypot(viewPan.x - panBefore.x, viewPan.y - panBefore.y);
+      viewZoom = 1; viewPan = { x: 0, y: 0 };
+      const g = (type, scale, rot) => c.dispatchEvent(Object.assign(new Event(type, { bubbles: true, cancelable: true }), { scale, rotation: rot, clientX: x, clientY: y }));
+      g('gesturestart', 1, 0); g('gesturechange', 2, 30);
+      const turned = { zoom: viewZoom, rotation };
+      g('gesturechange', 1.02, 86); g('gestureend', 1.02, 86);
+      await new Promise(res => setTimeout(res, 400));
+      const settled = { zoom: viewZoom, rotation };
+      rotation = 0; viewZoom = 1; viewPan = { x: 0, y: 0 }; redrawCanvas();
+      return { plainAtFull, zoom, anchorKept: Math.hypot(after.x - before.x, after.y - before.y) < 1, panned, pan, turned, settled };
+    });
+    check('trackpad: pinch zooms about the pointer, two fingers pan, Safari turns, the view settles; plain scroll left alone at zoom 1',
+      !pad.plainAtFull && pad.zoom > 2 && pad.anchorKept && pad.panned && pad.pan > 0 && pad.turned.zoom === 2 && pad.turned.rotation === 30 &&
+      pad.settled.zoom === 1 && pad.settled.rotation === 90, JSON.stringify(pad));
+    const cb = await page.locator('#scrawl-container canvas').boundingBox();
+    await page.mouse.move(cb.x + 20, cb.y + 20); await page.mouse.down(); await page.waitForTimeout(700);
+    const held = await ev(() => peekingLines); await page.mouse.up();
+    const released = await ev(() => peekingLines);
+    check('trackpad / mouse: press and hold still peeks under the lines, until released', held && !released);
+  }
+
   // Brush stroke
   await tool('brush');
   await drag([150, 650], [350, 700]);

@@ -302,9 +302,32 @@ async function run(label, contextOpts) {
   await browser.close();
 }
 
+// Tablets in landscape get the sidebar, but touch: the tour's canvas step
+// tells them about the touch gestures
+async function tabletTour() {
+  console.log('\n=== tablet (landscape) ===');
+  const browser = await chromium.launch();
+  const t = await fresh(browser, { ...devices['iPad Pro 11 landscape'] }, { onboarding_completed: '1', onboarding_version_seen: '1',
+    tips_seen: '["drag-eyes","gestures","fill","save","help-key"]' });
+  await t.load();
+  await t.page.tap('#blank-cta-btn');
+  await t.page.waitForFunction(() => scrawlQueue.length === 0);
+  await t.page.tap('#help-btn');
+  await t.page.tap('#help-explore');
+  let text = null;
+  for (let i = 0; i < 6 && await coachShown(t.page); i++) {
+    const step = await t.ev(() => [document.getElementById('coach-title').textContent, document.getElementById('coach-text').textContent]);
+    if (step[0] === 'The canvas') text = step[1];
+    await t.page.tap('#coach-next');
+  }
+  check('tablet: the canvas step tells about pinch and touch and hold', text === 'Pinch to zoom and rotate. Touch and hold to peek under the lines.', text);
+  await browser.close();
+}
+
 (async () => {
   await run('desktop', { viewport: { width: 1280, height: 800 } });
   await run('mobile', { ...devices['Pixel 5'] });
+  await tabletTour();
   console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
   process.exit(failures ? 1 : 0);
 })();
