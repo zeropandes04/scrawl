@@ -15,6 +15,7 @@ Single-page pareidolia art generator: draw a random scrawl, place "eyes" on it, 
 - `scrawl.js` — all app logic: canvas setup, scrawl generation (bezier curves), brush/eraser/bucket tools, eye placement & dragging, undo/redo (memento pattern), mobile toolbar wiring
 - `vendor/` — p5.js and its licence
 - `fonts/` — the wordmark fonts (letter subsets) and their licences, see `fonts/README.md`
+- `examples/fox/` — the example scrawlface an empty My Scrawls shows (its layers, eyes and thumbnail; opened as a copy by `openExample`)
 
 ## Words in the UI
 

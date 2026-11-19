@@ -42,6 +42,7 @@
 | Event | When | Properties |
 |---|---|---|
 | `my_scrawls_opened` | My Scrawls opens | `count` (saved scrawlfaces) |
+| `example_opened` | The example scrawlface (empty My Scrawls) is opened as a copy | (none) |
 | `scrawlface_reopened` | A saved one is opened onto the canvas | (none) |
 | `scrawlface_deleted` | Delete confirmed | `count` |
 | `leave_prompt_answered` | The Save / Discard prompt is answered | `answer`: `save`, `discard`, `cancel` |

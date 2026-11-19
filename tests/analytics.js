@@ -184,11 +184,18 @@ async function run(label, contextOpts) {
     check('scrawlface_downloaded, scrawlface_shared, share_cancelled', one(e, 'scrawlface_downloaded')?.from === 'canvas' &&
       one(e, 'scrawlface_shared')?.from === 'canvas' && one(e, 'share_cancelled')?.from === 'canvas', JSON.stringify(e.map(x => x.name)));
 
+    // The example (empty My Scrawls): opened
+    await t.ev(() => window.scrawlface.openExample());
+    e = await t.take();
+    check('example_opened', !!one(e, 'example_opened'), JSON.stringify(e.map(x => x.name)));
+    await t.ev(() => window.scrawlface.save());
+    await t.mark();
+
     // My Scrawls: opened, reopened, deleted
     await t.ev(() => openGallery());
     await t.page.waitForTimeout(300);
     e = await t.take();
-    check('my_scrawls_opened with the count', one(e, 'my_scrawls_opened')?.count === 1, JSON.stringify(e));
+    check('my_scrawls_opened with the count (the saved one and the example copy)', one(e, 'my_scrawls_opened')?.count === 2, JSON.stringify(e));
     await t.ev(() => openFromGallery(galleryId));
     await t.page.waitForTimeout(300);
     e = await t.take();

@@ -2764,38 +2764,16 @@ async function renderGallery() {
     return item;
   }));
   // First tile: start a new scrawlface from here, without going back to the
-  // sidebar or the sheet (disabled while selecting; the empty gallery has
-  // its own key)
-  if (records.length > 0) grid.prepend(newScrawlTile());
-  const empty = records.length === 0;
-  document.getElementById('gallery-empty').hidden = !empty;
-  grid.hidden = empty;
-  if (empty) {
-    // A fresh faint scrawl, as on the blank start
-    const ctx = document.getElementById('gallery-empty-scrawl').getContext('2d');
-    ctx.clearRect(0, 0, canvasSize, canvasSize);
-    ctx.strokeStyle = 'rgb(200, 200, 200)';
-    ctx.lineWidth = scrawlStrokeWeight;
-    const preview = scrawlSegments(intensity);
-    fitScrawlToCanvas(preview);
-    preview.forEach(([x1, y1, cx1, cy1, cx2, cy2, x2, y2]) => {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.bezierCurveTo(cx1, cy1, cx2, cy2, x2, y2);
-      ctx.stroke();
-    });
-    // Blank start: create one. A scrawlface on the canvas: save it, so its
-    // thumbnail shows up right here.
-    let label = 'Save this scrawlface';
-    let line = 'Your saved scrawlfaces show up here.';
-    if (isBlankStart()) {
-      let created = false;
-      try { created = localStorage.getItem('createdScrawlface') === '1'; } catch (e) {}
-      label = created ? 'Create a new scrawlface' : 'Create your first scrawlface';
-      line = 'Move the eyes, find the face, doodle on top';
-    }
-    document.getElementById('gallery-empty-btn').lastChild.textContent = label;
-    document.getElementById('gallery-empty-text').textContent = line;
+  // sidebar or the sheet (disabled while selecting). Empty: that tile (or
+  // "Save this scrawlface", with one on the canvas), then the example and a
+  // line on what goes here.
+  if (records.length > 0) {
+    grid.prepend(newScrawlTile());
+  } else {
+    const note = document.createElement('li');
+    note.className = 'gallery-note subtitle';
+    note.textContent = 'Your saved scrawlfaces show up here.';
+    grid.append(isBlankStart() ? newScrawlTile() : saveThisTile(), exampleTile(), note);
   }
   updateGallerySelection();
 
@@ -2809,23 +2787,97 @@ async function renderGallery() {
   recents.hidden = records.length === 0;
 }
 
-// The gallery's "New scribble" tile: back to the canvas with a new scribble,
-// asking to save unsaved changes first (requestNewScrawl)
-function newScrawlTile() {
+// A gallery tile that does something rather than open a saved scrawlface:
+// an icon and a label in the primary colour (see .gallery-action-tile)
+function actionTile(icon, label, onClick) {
   const item = document.createElement('li');
   const tile = document.createElement('button');
   tile.type = 'button';
-  tile.className = 'gallery-tile gallery-new-tile';
-  // The same scrawl icon as the New scrawl keys
+  tile.className = 'gallery-tile gallery-action-tile';
   tile.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
-    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
-    '<path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg>New scribble';
-  tile.addEventListener('click', () => {
+    'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + icon + '</svg>';
+  tile.append(label);
+  tile.addEventListener('click', onClick);
+  item.append(tile);
+  return item;
+}
+
+// "New scribble": back to the canvas with a new scribble, asking to save
+// unsaved paint first (requestNewScrawl). The same icon as the New keys.
+function newScrawlTile() {
+  const item = actionTile('<path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/>', 'New scribble', () => {
     document.getElementById('gallery-dialog').close();
     requestNewScrawl('my_scrawls');
   });
+  item.firstChild.classList.add('gallery-new-tile'); // off while selecting
+  return item;
+}
+
+// "Save this scrawlface" (empty gallery, a scrawlface on the canvas): saves
+// it, so its thumbnail shows up right here. The My Scrawls icon.
+function saveThisTile() {
+  return actionTile('<path d="M8.2 4.1c3.7-.6 7.4-.5 11.1-.1.5 3.6.4 7.2-.1 10.8"/>' +
+    '<path d="M3.8 7.6c3.9-.6 7.9-.5 11.8 0 .4 4.1.3 8.2-.2 12.3-3.8.4-7.6.3-11.3-.2-.5-4-.6-8.1-.1-12.6"/>' +
+    '<path d="M6.4 16.4c.3-2.8 2.1-5 3.6-4.5 1.4.5-.5 3.6.9 3.9 1.2.2 1.6-2.2 2.6-1.6"/>', 'Save this scrawlface', () => {
+    saveToGallery('my_scrawls')
+      .then(renderGallery)
+      .catch(() => reportError('save', 'Sorry, this scrawlface couldn\'t be saved.'));
+  });
+}
+
+// ---- The example scrawlface ----
+// An empty My Scrawls shows one finished scrawlface (bundled in examples/,
+// so it works offline) to show what goes here. Tapping it opens a copy on
+// the canvas to play with; the example itself never changes. It steps aside
+// once anything is saved.
+const exampleDir = 'examples/fox/';
+
+function exampleTile() {
+  const item = document.createElement('li');
+  const tile = document.createElement('button');
+  tile.type = 'button';
+  tile.className = 'gallery-tile gallery-example-tile';
+  const img = document.createElement('img');
+  img.src = exampleDir + 'thumb.jpg';
+  img.alt = 'Example scrawlface';
+  img.draggable = false;
+  const tag = document.createElement('span');
+  tag.className = 'gallery-example-tag';
+  tag.textContent = 'Example';
+  tile.append(img, tag);
+  tile.addEventListener('click', openExample);
   item.append(tile);
   return item;
+}
+
+// A copy of the example on the canvas: a new scrawlface, not in My Scrawls
+// and with nothing unsaved until it's changed
+async function openExample() {
+  if (!(await confirmLeave())) return;
+  const get = async (file, as) => {
+    const response = await fetch(exampleDir + file);
+    if (!response.ok) throw new Error(file);
+    return response[as]();
+  };
+  try {
+    const [meta, scrawl, drawing] = await Promise.all([
+      get('scrawlface.json', 'json'), get('scrawl.png', 'blob'), get('drawing.png', 'blob')
+    ]);
+    await restoreScrawlface({ ...meta, scrawl, drawing });
+  } catch (e) {
+    reportError('open', 'Sorry, the example couldn\'t be opened.');
+    return;
+  }
+  scrawlfaceToken++;
+  forgetDraft();
+  startScrawlfaceStats(false);
+  galleryId = null;
+  savedVersion = editVersion;
+  paintSavedVersion = paintVersion;
+  restartAutoSave();
+  updateGallerySaveButtons();
+  document.getElementById('gallery-dialog').close();
+  track('example_opened');
 }
 
 function openGallery() {
@@ -2953,18 +3005,6 @@ function setupGallery() {
     document.getElementById('gallery-dialog').close();
   });
   document.getElementById('gallery-cancel').addEventListener('click', () => setGallerySelecting(false));
-  // Empty gallery's key: on the blank start, back to the canvas with a new
-  // scrawl; otherwise save the scrawlface on the canvas and show it here
-  document.getElementById('gallery-empty-btn').addEventListener('click', () => {
-    if (isBlankStart()) {
-      document.getElementById('gallery-dialog').close();
-      requestNewScrawl('my_scrawls');
-      return;
-    }
-    saveToGallery('my_scrawls')
-      .then(renderGallery)
-      .catch(() => reportError('save', 'Sorry, this scrawlface couldn\'t be saved.'));
-  });
   document.getElementById('gallery-delete').addEventListener('click', deleteSelected);
   // Closing (Close, Esc, backdrop) always leaves Select mode
   document.getElementById('gallery-dialog').addEventListener('close', () => setGallerySelecting(false));
@@ -3797,6 +3837,6 @@ window.scrawlface = {
   save: saveToGallery, listGallery, openFromGallery,
   exportPNG,
   onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding,
-  onEvent, recentEvents: () => [...recentEvents],
+  onEvent, recentEvents: () => [...recentEvents], openExample,
   nextWordmark
 };
