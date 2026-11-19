@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=84"></script>
+  <script src="scrawl.js?v=85"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -1695,6 +1695,39 @@
       }
     }
 
+    /* New scribble on the canvas (phones): a floating key at the bottom right
+       of the canvas, shown with the Eyes tool only (the canvas stays clear
+       for painting), not on the blank start */
+    .canvas-new-btn {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .canvas-new-btn {
+        position: absolute;
+        right: 16px;
+        bottom: 16px;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 48px;
+        padding: 0 18px;
+        border-radius: 24px;
+        font-size: 16px;
+      }
+
+      .canvas-new-btn svg {
+        width: 22px;
+        height: 22px;
+      }
+
+      .canvas-new-btn[hidden],
+      body.is-blank .canvas-new-btn {
+        display: none;
+      }
+    }
+
     /* ---- Onboarding: help key, intro, tooltips (see scrawl.js) ---- */
 
     /* Help key: a round ? next to My Scrawls, the same height */
@@ -2010,6 +2043,7 @@
     .embedded .help-menu,
     .embedded .coach,
     .embedded .coach-box,
+    .embedded .canvas-new-btn,
     .embedded .sidebar,
     .embedded .bottom-toolbar,
     .embedded .sheet-scrim,
@@ -2079,6 +2113,9 @@
                 <span class="pile-label" id="recents-label">My Scrawls</span>
               </button>
             </div>
+            <!-- Phones: New scribble at hand on the canvas while looking for a
+                 face (Eyes tool; data-for hides it with the other tools) -->
+            <button type="button" id="canvas-new-btn" class="cta-button canvas-new-btn" data-for="eyes" title="New scribble" aria-label="New scribble"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 14.5c-2-4 1-9 5-9s5 6 2 8-5-2-2-5 8-3 10 1-1 8-5 8"/></svg><span>New</span></button>
           </div>
         </div>
 

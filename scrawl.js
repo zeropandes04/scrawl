@@ -233,6 +233,7 @@ function setup() {
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
   select("#blank-cta-btn").mousePressed(() => requestNewScrawl('blank_start'));
+  select("#canvas-new-btn").mousePressed(() => requestNewScrawl('canvas_button'));
   select("#clear-drawings-btn").mousePressed(clearDrawings);
   // On click, not press: Clear disables itself, and a disabled key gets no
   // click, so the sheet (which closes on its keys' clicks) would stay open
