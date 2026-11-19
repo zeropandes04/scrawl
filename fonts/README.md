@@ -1,6 +1,6 @@
 # Wordmark fonts
 
-The "Scrawlface" wordmark is set in one of these 8 typefaces, picked at random on each page load, after a break and on a tap (`loadWordmarkFont` / `nextWordmark` in `scrawl.js`). They're bundled so the app works offline.
+The "Scrawlface" wordmark is set in one of these 8 typefaces, taking turns in the order of `wordmarkFonts` on each page load, after a break and on a tap (`loadWordmarkFont` / `nextWordmark` in `scrawl.js`). They're bundled so the app works offline.
 
 - **Source:** Google Fonts, the same files the app used to download at run time: each `.woff2` is Google's subset containing only the letters of "Scrawlface" (requested with `&text=Scrawlface`), for the weight and style the app uses.
 - **Licences:** `licenses/<font>.txt`, one per font. All are under the SIL Open Font License 1.1, except Permanent Marker (Apache License 2.0). The licence texts come from the Fontsource npm packages of the same fonts.

@@ -1,34 +1,34 @@
 // The "Scrawlface" wordmark is set in a different typeface on every page
 // load, the same way the scrawl itself is different every time. It also
 // changes when you come back after a break (an app is rarely reloaded) and
-// when the wordmark is tapped (see nextWordmark).
+// when the wordmark is tapped (see nextWordmark). The typefaces take turns
+// in the order below, starting at the first on a first visit and going
+// back to it after the last; the one shown last is remembered.
 // Each entry: [family, file in fonts/ (.woff2), CSS weight, CSS style, size scale].
 // The files are bundled (not fetched from Google Fonts) so the app works
 // offline: each holds only the letters of "Scrawlface" (see fonts/README.md).
 const wordmarkFonts = [
-  ['Bungee Shade', 'bungee-shade', 400, 'normal', 0.9],                 // display
-  ['Monoton', 'monoton', 400, 'normal', 0.95],                          // decorative
   ['Pacifico', 'pacifico', 400, 'normal', 1],                           // script
-  ['Lobster', 'lobster', 400, 'normal', 1.1],                           // flamboyant
-  ['Permanent Marker', 'permanent-marker', 400, 'normal', 1],           // marker
+  ['Monoton', 'monoton', 400, 'normal', 0.95],                          // decorative
   ['Caveat', 'caveat', 700, 'normal', 1.35],                            // handwritten
   ['UnifrakturMaguntia', 'unifrakturmaguntia', 400, 'normal', 1.15],    // blackletter
+  ['Lobster', 'lobster', 400, 'normal', 1.1],                           // flamboyant
+  ['Bungee Shade', 'bungee-shade', 400, 'normal', 0.9],                 // display
+  ['Permanent Marker', 'permanent-marker', 400, 'normal', 1],           // marker
   ['Press Start 2P', 'press-start-2p', 400, 'normal', 0.6]              // pixel
 ];
 
 let wordmarkIndex = -1;      // the typeface on show (index in wordmarkFonts)
 
-// Any typeface but the one on show (or, on a page load, the last one shown)
+// The next typeface in turn after the one on show (or, on a page load, the
+// one shown last); the first, on a first visit
 function pickWordmark() {
   let last = wordmarkIndex;
   if (last === -1) {
     try { last = parseInt(localStorage.getItem('wordmarkFont')); } catch (e) {}
   }
-  let i;
-  do {
-    i = Math.floor(Math.random() * wordmarkFonts.length);
-  } while (i === last);
-  return i;
+  if (!(last >= 0 && last < wordmarkFonts.length)) return 0;
+  return (last + 1) % wordmarkFonts.length;
 }
 
 function applyWordmark(i) {

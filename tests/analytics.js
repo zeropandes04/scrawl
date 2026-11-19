@@ -308,6 +308,24 @@ async function run(label, contextOpts) {
     await t.ctx.close();
   }
 
+  // -- The wordmark's typefaces take turns in a set order, and loop --
+  {
+    const order = ['Pacifico', 'Monoton', 'Caveat', 'UnifrakturMaguntia', 'Lobster', 'Bungee Shade', 'Permanent Marker', 'Press Start 2P'];
+    const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1' });
+    await t.load();
+    const shown = () => t.ev(() => window.scrawlface.appState().wordmark);
+    const seen = [await shown()];
+    await t.load();
+    seen.push(await shown());
+    for (let i = 0; i < 7; i++) {
+      await t.ev(() => window.scrawlface.nextWordmark('tap'));
+      seen.push(await shown());
+    }
+    check('wordmark: first visit Pacifico, then a reload and taps go in order, back to Pacifico after Press Start 2P',
+      JSON.stringify(seen) === JSON.stringify([...order, order[0]]), JSON.stringify(seen));
+    await t.ctx.close();
+  }
+
   // -- The wordmark: a new typeface on a tap, and after a break of 30 minutes --
   {
     const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1' });
