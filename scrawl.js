@@ -1,5 +1,7 @@
 // The "Scrawlface" wordmark is set in a different typeface on every page
-// load, the same way the scrawl itself is different every time.
+// load, the same way the scrawl itself is different every time. It also
+// changes when you come back after a break (an app is rarely reloaded) and
+// when the wordmark is tapped (see nextWordmark).
 // Each entry: [family, file in fonts/ (.woff2), CSS weight, CSS style, size scale].
 // The files are bundled (not fetched from Google Fonts) so the app works
 // offline: each holds only the letters of "Scrawlface" (see fonts/README.md).
@@ -20,22 +22,39 @@ const wordmarkFonts = [
   ['Press Start 2P', 'press-start-2p', 400, 'normal', 0.6]              // pixel
 ];
 
+let wordmarkIndex = -1;      // the typeface on show (index in wordmarkFonts)
+
+// Any typeface but the one on show (or, on a page load, the last one shown)
+function pickWordmark() {
+  let last = wordmarkIndex;
+  if (last === -1) {
+    try { last = parseInt(localStorage.getItem('wordmarkFont')); } catch (e) {}
+  }
+  let i;
+  do {
+    i = Math.floor(Math.random() * wordmarkFonts.length);
+  } while (i === last);
+  return i;
+}
+
+function applyWordmark(i) {
+  const [family, , weight, style, scale] = wordmarkFonts[i];
+  wordmarkIndex = i;
+  try { localStorage.setItem('wordmarkFont', i); } catch (e) {}
+  const root = document.documentElement.style;
+  root.setProperty('--wordmark-font', `'${family}', sans-serif`);
+  root.setProperty('--wordmark-weight', weight);
+  root.setProperty('--wordmark-style', style);
+  root.setProperty('--wordmark-scale', scale);
+}
+
 // Runs while the <head> is still being parsed, so the font is on its way
 // before the header is painted. The wordmark stays invisible for a moment
 // while it loads (font-display: block) rather than flashing another font;
 // if it can't load, the header falls back to the system font.
 function loadWordmarkFont() {
-  // Never the same typeface twice in a row
-  let last = -1;
-  try { last = parseInt(localStorage.getItem('wordmarkFont')); } catch (e) {}
-  let i;
-  do {
-    i = Math.floor(Math.random() * wordmarkFonts.length);
-  } while (i === last);
-  try { localStorage.setItem('wordmarkFont', i); } catch (e) {}
-
-  const [family, file, weight, style, scale] = wordmarkFonts[i];
-
+  const i = pickWordmark();
+  const [family, file, weight, style] = wordmarkFonts[i];
   const face = document.createElement('style');
   face.textContent = `@font-face {
     font-family: '${family}';
@@ -45,14 +64,47 @@ function loadWordmarkFont() {
     font-display: block;
   }`;
   document.head.appendChild(face);
-
-  const root = document.documentElement.style;
-  root.setProperty('--wordmark-font', `'${family}', sans-serif`);
-  root.setProperty('--wordmark-weight', weight);
-  root.setProperty('--wordmark-style', style);
-  root.setProperty('--wordmark-scale', scale);
+  applyWordmark(i);
 }
 loadWordmarkFont();
+
+// A new typeface for the wordmark, once it has loaded (so the wordmark
+// never blinks). trigger: tap, return, or other (a shell), for the
+// wordmark_changed event. Resolves to the new family, or null.
+let wordmarkLoading = false;
+
+async function nextWordmark(trigger = 'other') {
+  if (wordmarkLoading) return null;
+  wordmarkLoading = true;
+  const i = pickWordmark();
+  const [family, file, weight, style] = wordmarkFonts[i];
+  try {
+    const face = new FontFace(family, `url('fonts/${file}.woff2') format('woff2')`, { weight: String(weight), style });
+    await face.load();
+    document.fonts.add(face);
+  } catch (e) {
+    wordmarkLoading = false;
+    return null;
+  }
+  applyWordmark(i);
+  wordmarkLoading = false;
+  track('wordmark_changed', { trigger, font: family });
+  stateChanged();
+  return family;
+}
+
+// Back after a break (the page hidden for 30 minutes or more): a new one,
+// like a fresh visit
+const wordmarkBreakMs = 30 * 60 * 1000;
+let wordmarkHiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    wordmarkHiddenAt = Date.now();
+  } else if (wordmarkHiddenAt !== null && Date.now() - wordmarkHiddenAt >= wordmarkBreakMs) {
+    wordmarkHiddenAt = null;
+    nextWordmark('return');
+  }
+});
 
 // The header is one line: the wordmark, My Scrawls and ?. Some wordmark
 // typefaces are wide; when the line doesn't fit, My Scrawls drops its
@@ -69,6 +121,8 @@ document.addEventListener('DOMContentLoaded', () => {
   fitHeader();
   const wordmark = document.querySelector('header h1');
   if (wordmark && window.ResizeObserver) new ResizeObserver(fitHeader).observe(wordmark);
+  // A hidden toy: tap the wordmark for another typeface
+  if (wordmark) wordmark.addEventListener('click', () => nextWordmark('tap'));
 });
 window.addEventListener('resize', fitHeader);
 
@@ -3511,7 +3565,8 @@ function appState() {
     hasDrawings,
     blankStart: isBlankStart(),
     unsavedChanges: hasUnsavedChanges(),
-    saved: galleryId !== null
+    saved: galleryId !== null,
+    wordmark: wordmarkFonts[wordmarkIndex][0]
   };
 }
 
@@ -3549,5 +3604,6 @@ window.scrawlface = {
   save: saveToGallery, listGallery, openFromGallery,
   exportPNG,
   onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding,
-  onEvent, recentEvents: () => [...recentEvents]
+  onEvent, recentEvents: () => [...recentEvents],
+  nextWordmark
 };

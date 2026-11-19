@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=87"></script>
+  <script src="scrawl.js?v=88"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -72,9 +72,9 @@
       padding: 12px 0 8px;
     }
 
-    /* The wordmark's typeface is picked at random on every page load (see
-       loadWordmarkFont in scrawl.js). The fixed line box keeps the layout
-       identical whichever typeface comes up. */
+    /* The wordmark's typeface is picked at random on every page load, after
+       a break and on a tap (see nextWordmark in scrawl.js). The fixed line
+       box keeps the layout identical whichever typeface comes up. */
     h1 {
       font-family: var(--wordmark-font, inherit);
       font-weight: var(--wordmark-weight, 600);
@@ -84,6 +84,11 @@
       height: 40px;
       white-space: nowrap;
       color: #1d1d1f;
+      /* Tapping it gives another typeface (nextWordmark): no text selection
+         or grey tap flash from quick taps */
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .subtitle {

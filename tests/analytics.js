@@ -308,6 +308,38 @@ async function run(label, contextOpts) {
     await t.ctx.close();
   }
 
+  // -- The wordmark: a new typeface on a tap, and after a break of 30 minutes --
+  {
+    const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1' });
+    await t.load();
+    const font = () => t.ev(() => getComputedStyle(document.querySelector('h1')).fontFamily);
+    const before = await font();
+    await t.mark();
+    if (mobile) await t.page.tap('h1'); else await t.page.click('h1');
+    await t.page.waitForFunction(b => getComputedStyle(document.querySelector('h1')).fontFamily !== b, before);
+    let e = await t.take();
+    const tapped = one(e, 'wordmark_changed');
+    const after = await font();
+    const fits = await t.ev(() => document.getElementById('help-btn').getBoundingClientRect().right <= innerWidth);
+    check('tapping the wordmark: another typeface, wordmark_changed (tap), header still fits', tapped?.trigger === 'tap' && after !== before &&
+      after.includes(tapped.font) && fits && await t.ev(() => window.scrawlface.appState().wordmark) === tapped.font, JSON.stringify({ before, after, tapped }));
+    // Back after a short break: the same; after 30 minutes or more: a new one
+    const back = async minutes => {
+      await t.page.evaluate(m => { wordmarkHiddenAt = Date.now() - m * 60000; document.dispatchEvent(new Event('visibilitychange')); }, minutes);
+      await t.page.waitForTimeout(400);
+    };
+    await back(5);
+    e = await t.take();
+    check('back after 5 minutes: same typeface', !named(e, 'wordmark_changed').length && await font() === after, JSON.stringify(e));
+    await back(31);
+    await t.page.waitForFunction(() => window.__events.some(x => x.name === 'wordmark_changed'), null, { timeout: 5000 }).catch(() => {});
+    e = await t.take();
+    check('back after 31 minutes: a new typeface, wordmark_changed (return)', one(e, 'wordmark_changed')?.trigger === 'return' && await font() !== after,
+      JSON.stringify(e));
+    check('no page errors (wordmark)', t.errors.length === 0, t.errors.join(' | '));
+    await t.ctx.close();
+  }
+
   // -- Canvas-only mode (a native shell): events still flow, marked as the shell's --
   {
     const t = await fresh(browser, contextOpts);
