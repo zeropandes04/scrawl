@@ -227,8 +227,8 @@ function setup() {
   new ResizeObserver(fitCanvasToContainer).observe(document.getElementById('scrawl-container'));
 
   // Desktop and mobile keys that do the same thing
-  select("#generate-btn").mousePressed(() => requestNewScrawl('new_button'));
-  select("#generate-btn-sheet").mousePressed(() => requestNewScrawl('new_button'));
+  select("#generate-btn").mousePressed(() => requestNewScrawl('sidebar'));
+  select("#generate-btn-sheet").mousePressed(() => requestNewScrawl('drawer'));
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
@@ -2151,6 +2151,10 @@ function setupMobileSheet() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') setOpen(false);
   });
+  // New scribble with unsaved work asks Save / Discard first; the prompt
+  // opens as the key is pressed, so the key's click (which would close the
+  // sheet) never comes. Close it once the prompt is answered.
+  document.getElementById('leave-dialog').addEventListener('close', () => setOpen(false));
 
   // Picking a tool, colour or size means "back to the canvas", and so do
   // the sheet keys marked .closes-sheet (their result shows on the canvas,

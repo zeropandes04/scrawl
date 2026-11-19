@@ -199,12 +199,22 @@ async function run(label, contextOpts) {
     await t.ev(() => setTool('brush'));
     await drag([0.2, 0.2], [0.3, 0.3]);
     await t.mark();
-    await t.ev(() => { requestNewScrawl('new_button'); });
+    // The New scribble button: the sidebar's on desktop, the drawer's on a phone
+    if (mobile) {
+      await t.page.click('#toggle-mobile-menu');
+      await t.page.waitForTimeout(400);
+      await t.page.click('#generate-btn-sheet');
+    } else {
+      await t.page.click('#generate-btn');
+    }
     await t.page.click('#leave-dialog [value="discard"]');
     await t.page.waitForFunction(() => window.__events.some(x => x.name === 'scribble_generated'));
     e = await t.take();
-    check('leave_prompt_answered discard, then scribble_generated from New', one(e, 'leave_prompt_answered')?.answer === 'discard' &&
-      one(e, 'scribble_generated')?.source === 'new_button', JSON.stringify(e.map(x => [x.name, x.props.answer || x.props.source])));
+    check('leave_prompt_answered discard, then scribble_generated from the sidebar / drawer', one(e, 'leave_prompt_answered')?.answer === 'discard' &&
+      one(e, 'scribble_generated')?.source === (mobile ? 'drawer' : 'sidebar'), JSON.stringify(e.map(x => [x.name, x.props.answer || x.props.source])));
+    // (the drawer closes with its New key: let it finish before drawing again)
+    await t.page.waitForFunction(() => !document.querySelector('.sheet-scrim.show'));
+    await t.page.waitForTimeout(300);
     await t.ev(() => setTool('brush'));
     await drag([0.2, 0.2], [0.3, 0.3]);
     await t.mark();
