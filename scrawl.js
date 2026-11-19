@@ -3070,7 +3070,7 @@ const ONBOARDING_VERSION = 1;
 const introScreens = [
   { step: 'Look closer', art: 'reveal', title: 'Train your imagination.',
     text: 'Find faces, creatures and characters hiding in every scribble.', next: 'Let\'s look' },
-  { step: 'Make it yours', art: 'steps', title: 'Every scribble holds a possibility.',
+  { step: 'Make it yours', art: 'example', title: 'Every scribble holds a possibility.',
     text: 'Explore the canvas, spot a face, and add your own details.', next: 'Show me' },
   { step: 'Find something unexpected', art: 'mystery', title: 'Your first scribble is waiting.',
     text: 'Look closely. What do you see?', next: 'Surprise me!' }
@@ -3198,7 +3198,7 @@ let introIndex = 0;
 let introStart = 0;      // when the screen on show started (ms)
 let introFrame = null;   // requestAnimationFrame id
 let introArt = null;     // p5 graphic the illustrations are drawn on (800 units)
-let introScene = null;   // the scribble, eyes and mouth the illustrations use
+let introScene = null;   // the scribble and eyes the generated illustrations use
 let introRound = 0;      // screens that repeat: which round is on show
 
 function setupIntro() {
@@ -3342,6 +3342,7 @@ function openIntro(source = 'other') {
   closeHelpMenu();
   hideCoach('end');
   introScene = makeIntroScene();
+  loadTourExample();
   markIntroSeen();
   showIntroScreen(0);
   document.getElementById('intro-dialog').showModal();
@@ -3374,7 +3375,7 @@ function showIntroScreen(i) {
   document.getElementById('intro-next').textContent = last && !isBlankStart() ? 'Done' : screen.next;
 }
 
-// The illustrations' material: one scribble, where the eyes go, a mouth
+// The illustrations' material: one scribble, and where the eyes go
 function makeIntroScene() {
   if (!introArt) {
     introArt = createGraphics(canvasSize, canvasSize);
@@ -3384,43 +3385,16 @@ function makeIntroScene() {
   }
   const segments = scrawlSegments(9);
   fitScrawlToCanvas(segments);
-  return {
-    segments,
-    eyes: [{ x: 335, y: 340, scale: 1 }, { x: 470, y: 330, scale: 0.9 }],
-    mouth: [330, 520, 380, 585, 445, 585, 495, 515]
-  };
+  return { segments, eyes: [{ x: 335, y: 340, scale: 1 }, { x: 470, y: 330, scale: 0.9 }] };
 }
 
-// Draws one moment of an illustration. Each part goes from 0 (not there)
-// to 1 (all there): lines (the scribble drawing itself in), eyes (popping
-// in, one after the other), fill (the background fading in), mouth (a
-// brush stroke drawing itself in). look: { background, eyes } for a
-// finished picture.
-function drawIntroArt(g, scene, { lines = 1, eyes = 0, fill = 0, mouth = 0 }, look = {}) {
-  const ease = x => 1 - Math.pow(1 - constrain(x, 0, 1), 3);
+// Draws one moment of a generated illustration. Each part goes from 0 (not
+// there) to 1 (all there): lines (the scribble drawing itself in), eyes
+// (popping in, one after the other).
+function drawIntroArt(g, scene, { lines = 1, eyes = 0 }) {
   g.clear();
   g.background(255);
   g.push();
-  if (fill > 0) {
-    g.noStroke();
-    const c = color(look.background || '#66BD0F');
-    c.setAlpha(255 * fill);
-    g.fill(c);
-    g.rect(0, 0, canvasSize, canvasSize);
-  }
-  if (mouth > 0) {
-    const [x1, y1, cx1, cy1, cx2, cy2, x2, y2] = scene.mouth;
-    g.noFill();
-    g.stroke('#CC0000');
-    g.strokeWeight(22);
-    g.strokeCap(ROUND);
-    g.beginShape();
-    for (let k = 0; k <= 30 * mouth; k++) {
-      const u = k / 30;
-      g.vertex(bezierPoint(x1, cx1, cx2, x2, u), bezierPoint(y1, cy1, cy2, y2, u));
-    }
-    g.endShape();
-  }
   const n = Math.ceil(scene.segments.length * lines);
   g.noFill();
   g.stroke(0);
@@ -3428,8 +3402,63 @@ function drawIntroArt(g, scene, { lines = 1, eyes = 0, fill = 0, mouth = 0 }, lo
   scene.segments.slice(0, n).forEach(seg => g.bezier(...seg));
   g.pop();
   scene.eyes.forEach((eye, k) => {
-    const pop = ease(eyes * 1.5 - k * 0.5);
-    if (pop > 0.01) drawEye(g, eye.x, eye.y, eye.scale * pop, look.eyes || 'classic', k);
+    const pop = popIn(eyes * 1.5 - k * 0.5);
+    if (pop > 0.01) drawEye(g, eye.x, eye.y, eye.scale * pop, 'classic', k);
+  });
+}
+
+// 0 to 1, fast then gently: how the eyes pop in
+function popIn(x) {
+  return 1 - Math.pow(1 - constrain(x, 0, 1), 3);
+}
+
+// Screen 02's illustration: a real scrawlface made in the app (bundled in
+// examples/tour/, like a saved one: its lines, its paint, its eyes and
+// rotation). Loaded when the tour opens; blank until it has.
+const tourExampleDir = 'examples/tour/';
+let tourExample = null;
+
+function loadTourExample() {
+  if (tourExample) return;
+  tourExample = { ready: false };
+  const image = file => new Promise((ok, fail) => {
+    const img = new Image();
+    img.onload = () => ok(img);
+    img.onerror = fail;
+    img.src = tourExampleDir + file;
+  });
+  Promise.all([fetch(tourExampleDir + 'scrawlface.json').then(r => r.json()), image('scrawl.png'), image('drawing.png')])
+    .then(([meta, scrawl, drawing]) => Object.assign(tourExample, meta, { scrawl, drawing, ready: true }))
+    .catch(() => { tourExample = null; }); // tried again next time
+}
+
+// One moment of it: lines, eyes and paint each from 0 (not there) to 1.
+// Laid out as on the canvas: the paint under the lines, both turned by its
+// rotation about the middle, and the eyes upright at their turned spots.
+function drawTourExample(g, { lines, eyes, paint }) {
+  g.clear();
+  g.background(255);
+  if (!tourExample || !tourExample.ready) return;
+  const ctx = g.drawingContext;
+  const mid = canvasSize / 2;
+  const angle = radians(tourExample.rotation);
+  ctx.save();
+  ctx.translate(mid, mid);
+  ctx.rotate(angle);
+  ctx.globalAlpha = paint;
+  if (paint > 0) ctx.drawImage(tourExample.drawing, -layerSize / 2, -layerSize / 2, layerSize, layerSize);
+  ctx.globalAlpha = lines;
+  if (lines > 0) ctx.drawImage(tourExample.scrawl, -mid, -mid, canvasSize, canvasSize);
+  ctx.restore();
+  const spots = tourExample.eyes.map(eye => ({
+    x: mid + (eye.x - mid) * Math.cos(angle) - (eye.y - mid) * Math.sin(angle),
+    y: mid + (eye.x - mid) * Math.sin(angle) + (eye.y - mid) * Math.cos(angle)
+  }));
+  tourExample.eyes.forEach((eye, k) => {
+    const pop = popIn(eyes * 1.5 - k * 0.5);
+    // Whichever eye is further right is drawn as the right-hand one, as on the canvas
+    const isRight = spots[k].x > spots[1 - k].x ? 1 : 0;
+    if (pop > 0.01) drawEye(g, spots[k].x, spots[k].y, eye.scale * pop, tourExample.eyeStyles[k], isRight);
   });
 }
 
@@ -3438,13 +3467,10 @@ function introMoment(art, t) {
   const at = (from, length) => constrain((t - from) / length, 0, 1);
   // 01: a scribble draws itself in... and turns out to be someone
   if (art === 'reveal') return { lines: at(0, 1.6), eyes: at(2.1, 0.5) };
-  // 02: spot a face, bring it to life, again and again, a new scribble each time
-  if (art === 'steps') {
-    return { lines: at(0, 1.6), eyes: at(1.9, 0.5), fill: at(3.2, 0.6), mouth: at(3.8, 0.8) };
-  }
+  // 02: the example comes together: its lines fade in, then its eyes, then its paint
+  if (art === 'example') return { lines: at(0, 1), eyes: at(1.3, 0.5), paint: at(2.2, 0.8) };
   // 03: scribble after scribble: what's in this one?
-  if (art === 'mystery') return { lines: at(0, 1.6) };
-  return { lines: 1, eyes: 1, fill: 1, mouth: 0 };
+  return { lines: at(0, 1.6) };
 }
 
 function animateIntro() {
@@ -3452,18 +3478,19 @@ function animateIntro() {
   const art = introScreens[introIndex].art;
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let t = (performance.now() - introStart) / 1000;
-  // Screens that repeat: a new scribble each round
-  const round = art === 'steps' ? 6.5 : art === 'mystery' ? 3.5 : 0;
+  // Screens that repeat: 02 plays again; 03 draws a new scribble each round
+  const round = art === 'example' ? 6 : art === 'mystery' ? 3.5 : 0;
   if (round && !reduced) {
     const n = Math.floor(t / round);
     if (n !== introRound) {
       introRound = n;
-      if (n > 0) introScene = makeIntroScene();
+      if (n > 0 && art === 'mystery') introScene = makeIntroScene();
     }
     t %= round;
   }
   if (reduced) t = 99;
-  drawIntroArt(introArt, introScene, introMoment(art, t));
+  if (art === 'example') drawTourExample(introArt, introMoment(art, t));
+  else drawIntroArt(introArt, introScene, introMoment(art, t));
   introFrame = requestAnimationFrame(animateIntro);
 }
 
