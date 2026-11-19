@@ -272,6 +272,28 @@ async function run(label, contextOpts) {
   s = await state();
   check('redo all', s.h === 3 && s.r === 0 && s.has, JSON.stringify(s));
 
+  // Hide paint: only the view. Not a change, Share keeps the paint, and a
+  // paint tool (or Undo, Redo, Clear) shows it again
+  const hidePaint = await ev(async () => {
+    const onScreen = () => { const ctx = canvas.elt.getContext('2d'); const d = ctx.getImageData(0, 0, canvas.elt.width, canvas.elt.height).data;
+      let n = 0; for (let i = 0; i < d.length; i += 4 * 97) if (d[i] < 200 && d[i + 1] > 150 && d[i + 2] < 100) n++; return n; };
+    setTool('fill'); floodFill(5, 5, '#66BD0F'); setTool('eyes'); redrawCanvas();
+    const before = onScreen();
+    const version = editVersion;
+    togglePaint();
+    const hidden = { shown: showPaint, onScreen: onScreen(), label: document.getElementById('toggle-paint-btn').textContent, changed: editVersion !== version };
+    const blob = await exportPNG();
+    const img = await createImageBitmap(blob); const c = new OffscreenCanvas(img.width, img.height); const x = c.getContext('2d'); x.drawImage(img, 0, 0);
+    const corner = x.getImageData(4, 4, 1, 1).data;
+    setTool('brush');
+    const back = showPaint;
+    undo(); setTool('eyes');
+    return { before, hidden, exportKeepsPaint: corner[1] > 150 && corner[0] < 200, back };
+  });
+  check('Hide paint hides the paint on screen only; not a change; a paint tool shows it again',
+    hidePaint.before > 0 && !hidePaint.hidden.shown && hidePaint.hidden.onScreen === 0 && hidePaint.hidden.label === 'Show paint' && !hidePaint.hidden.changed && hidePaint.exportKeepsPaint && hidePaint.back,
+    JSON.stringify(hidePaint));
+
   // Clear is undoable
   await ev('clearDrawings()');
   s = await state();

@@ -140,6 +140,9 @@ async function run(label, contextOpts) {
     e = await t.take();
     check('tool_used fill', one(e, 'tool_used')?.tool === 'fill', JSON.stringify(e.map(x => [x.name, x.props.tool])));
 
+    await t.ev(() => { window.scrawlface.togglePaint(); window.scrawlface.togglePaint(); });
+    e = await t.take();
+    check('paint_hidden, then shown', JSON.stringify(named(e, 'paint_hidden').map(x => x.props.hidden)) === '[true,false]', JSON.stringify(e.map(x => [x.name, x.props.hidden])));
     await t.ev(() => { window.scrawlface.undo(); window.scrawlface.redo(); window.scrawlface.rotate(); window.scrawlface.toggleLines(); });
     await t.ev(() => { window.scrawlface.pickEyeSet(window.scrawlface.eyeSets[1]); window.scrawlface.mixEyes(); });
     e = await t.take();

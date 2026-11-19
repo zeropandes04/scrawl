@@ -137,6 +137,10 @@ const maxZoom = 8;
 let pinch = null;      // two-finger gesture in progress: the view and fingers when it started
 let pressChangedDrawing = false; // the current press started a stroke or filled
 let showScrawl = true;
+// Hide paint: a way to look at the scribble and eyes without the paint.
+// Only the view: Save and Share keep the paint, and picking a paint tool,
+// Undo, Redo or Clear shows it again (see showPaintAgain).
+let showPaint = true;
 let moveEyesMode = false;
 let drawMode = false;
 let eraseMode = false;
@@ -280,6 +284,8 @@ function setup() {
   select("#rotate-btn").mousePressed(rotateCanvas);
   select("#toggle-eyes-btn").mousePressed(toggleEyes);
   select("#toggle-eyes-btn-mobile").mousePressed(toggleEyes);
+  select("#toggle-paint-btn").mousePressed(togglePaint);
+  select("#toggle-paint-btn-mobile").mousePressed(togglePaint);
   select("#blank-cta-btn").mousePressed(() => requestNewScrawl('blank_start'));
   select("#canvas-new-btn").mousePressed(() => requestNewScrawl('canvas_button'));
   select("#clear-drawings-btn").mousePressed(clearDrawings);
@@ -386,6 +392,7 @@ function generateScrawlface(source = 'other') {
     showScrawl = true;
     updateScrawlToggleButtons();
   }
+  showPaintAgain();
 
   // Transparent, not white: the scrawl is drawn on top of the paint, so
   // the lines stay visible to follow (the canvas background is the white)
@@ -1017,8 +1024,8 @@ function redrawCanvas() {
   // Draw the layers straight onto the canvas (no intermediate composite),
   // so each frame while drawing only copies what's needed. The scrawl goes
   // on top of the paint so its lines can still be followed; Hide lines
-  // takes them away.
-  image(drawingGraphics, 0, 0);
+  // takes them away, and Hide paint the paint.
+  if (showPaint) image(drawingGraphics, 0, 0);
   if (showScrawl && !peekingLines) {
     image(baseScrawlGraphics, 0, 0);
   }
@@ -1567,6 +1574,28 @@ function toggleEyes() {
   track('lines_hidden', { hidden: !showScrawl });
 }
 
+function togglePaint() {
+  if (!hasDrawings && showPaint) return;
+  showPaint = !showPaint;
+  updatePaintToggleButtons();
+  redrawCanvas();
+  track('paint_hidden', { hidden: !showPaint });
+}
+
+// Paint on show again (if it was hidden)
+function showPaintAgain() {
+  if (showPaint) return;
+  showPaint = true;
+  updatePaintToggleButtons();
+  redrawCanvas();
+}
+
+function updatePaintToggleButtons() {
+  const label = showPaint ? 'Hide paint' : 'Show paint';
+  document.querySelectorAll('.toggle-paint-btn').forEach(btn => { btn.textContent = label; });
+  stateChanged();
+}
+
 // The buttons name what pressing them will do, rather than lighting up when
 // the scrawl is hidden
 function updateScrawlToggleButtons() {
@@ -1590,6 +1619,8 @@ function setTool(tool) {
   } else {
     cursor(bucketMode ? CROSS : ARROW);
   }
+  // Painting on paint you can't see would be guesswork
+  if (tool !== 'eyes') showPaintAgain();
   updateToolButtons();
   tipForTool(tool);
 }
@@ -1631,6 +1662,7 @@ function fitCanvasToContainer() {
 
 function clearDrawings() {
   if (!hasDrawings) return;
+  showPaintAgain();
 
   // Save state BEFORE clearing so Clear can be undone (only the painted
   // area: it's all Clear changes). Paint that was all erased leaves nothing.
@@ -1654,13 +1686,15 @@ function setButtonsDisabled(ids, disabled) {
   });
 }
 
+// Clear and Hide paint: on while there's paint
 function enableClearButton() {
-  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], false);
+  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile', 'toggle-paint-btn', 'toggle-paint-btn-mobile'], false);
   stateChanged();
 }
 
 function disableClearButton() {
-  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile'], true);
+  setButtonsDisabled(['clear-drawings-btn', 'clear-drawings-btn-mobile', 'toggle-paint-btn', 'toggle-paint-btn-mobile'], true);
+  showPaintAgain();
   stateChanged();
 }
 
@@ -1963,12 +1997,14 @@ function swapState(from, to) {
 // would no longer match the layer
 function undo() {
   if (historyStack.length === 0 || isDrawing) return;
+  showPaintAgain();
   swapState(historyStack, redoStack);
   track('undo_used');
 }
 
 function redo() {
   if (redoStack.length === 0 || isDrawing) return;
+  showPaintAgain();
   swapState(redoStack, historyStack);
   track('redo_used');
 }
@@ -2366,6 +2402,7 @@ async function restoreScrawlface(record) {
   setEyeStyles(record.eyeStyles);
   showScrawl = record.showScrawl;
   updateScrawlToggleButtons();
+  showPaintAgain();
   rotation = record.rotation;
   viewZoom = 1;
   viewPan = { x: 0, y: 0 };
@@ -3575,6 +3612,7 @@ function appState() {
     loops: intensity,
     eyeStyles: [...eyeStyles],
     linesShown: showScrawl,
+    paintShown: showPaint,
     canUndo: historyStack.length > 0,
     canRedo: redoStack.length > 0,
     hasDrawings,
@@ -3615,7 +3653,7 @@ window.scrawlface = {
   setTool, setBrushSize, setEraserSize, setBrushColor, setLoops,
   eyeSets: Object.keys(eyeSets), pickEyeSet, mixEyes,
   undo, redo, clear: clearDrawings,
-  rotate: rotateCanvas, toggleLines: toggleEyes,
+  rotate: rotateCanvas, toggleLines: toggleEyes, togglePaint,
   save: saveToGallery, listGallery, openFromGallery,
   exportPNG,
   onboardingState, startTour: openIntro, exploreFeatures, resetOnboarding,

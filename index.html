@@ -11,7 +11,7 @@
   <!-- Bump ?v= whenever scrawl.js changes. Browsers cache this page and the
        script separately; without it a phone can run the new page with an old
        script (seen as a stretched canvas). -->
-  <script src="scrawl.js?v=91"></script>
+  <script src="scrawl.js?v=92"></script>
   <style>
     /* Control panel look (sidebar + mobile drawer) borrowed from Teenage
        Engineering hardware (OP-1): an aluminium panel, physical keycaps
@@ -2215,9 +2215,10 @@
 
           <div class="sidebar-section">
             <h3>View</h3>
-            <div class="tools-grid two-keys">
+            <div class="tools-grid">
               <button type="button" id="rotate-btn" title="Rotate 90°" disabled>Rotate</button>
               <button type="button" id="toggle-eyes-btn" title="Hide or show the scribble lines" disabled>Hide lines</button>
+              <button type="button" id="toggle-paint-btn" class="toggle-paint-btn" title="Hide or show the paint (Save and Share keep it)" disabled>Hide paint</button>
             </div>
           </div>
 
@@ -2351,9 +2352,10 @@
                    the tool row -->
               <div class="mobile-section">
                 <div class="mobile-section-label">Drawing</div>
-                <div class="tools-grid two-keys">
+                <div class="tools-grid">
                   <button type="button" id="clear-drawings-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Clear</button>
                   <button type="button" id="toggle-eyes-btn-mobile" class="mobile-control-btn closes-sheet" disabled>Hide lines</button>
+                  <button type="button" id="toggle-paint-btn-mobile" class="mobile-control-btn toggle-paint-btn closes-sheet" disabled>Hide paint</button>
                 </div>
               </div>
 

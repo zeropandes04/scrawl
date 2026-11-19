@@ -32,6 +32,7 @@
 | `eye_style_changed` | An eye set is picked, or Mix | `style`: the set's name, or `mix` |
 | `canvas_rotated` | Rotate | `rotation` (0, 90, 180, 270) |
 | `lines_hidden` | Hide / Show lines | `hidden` |
+| `paint_hidden` | Hide / Show paint | `hidden` |
 | `canvas_zoomed` | A two-finger pinch starts | (none) |
 | `lines_peeked` | Touch and hold to peek under the lines | (none) |
 | `undo_used` / `redo_used` | Only when something was undone / redone | (none) |
