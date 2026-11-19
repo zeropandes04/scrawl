@@ -75,6 +75,16 @@ async function run(label, contextOpts) {
       ['03 · Find something unexpected', 'Your first scribble is waiting.', 'Surprise me!']]), JSON.stringify(screens));
     const art = await t.ev(() => !document.querySelector('#intro-art canvas').hidden);
     check('every screen\'s picture is drawn live', art);
+    // Screen 02 builds up the bundled example: lines, then eyes, then paint
+    await t.page.click('#intro-back');
+    const colour = () => t.ev(() => { const c = document.querySelector('#intro-art canvas'); const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let n = 0; for (let i = 0; i < d.length; i += 16) if (d[i + 2] > 100 && d[i] < 60 && d[i + 1] < 60) n++; return n; }); // the example's dark blue
+    await t.page.waitForTimeout(1500);
+    const early = await colour();
+    await t.page.waitForTimeout(2200);
+    const later = await colour();
+    check('screen 02: the example\'s paint fades in after its lines and eyes', early === 0 && later > 100, JSON.stringify({ early, later }));
+    await t.page.click('#intro-next');
     await t.page.click('#intro-next');
     await t.page.waitForFunction(() => !isBlankStart() && scrawlQueue.length === 0);
     const st = await state(t.page);
