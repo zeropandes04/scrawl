@@ -330,10 +330,15 @@ async function run(label, contextOpts) {
     const seen = [await shown()];
     await t.load();
     seen.push(await shown());
+    const labelled = [];
     for (let i = 0; i < 7; i++) {
       await t.ev(() => window.scrawlface.nextWordmark('tap'));
       seen.push(await shown());
+      await t.page.waitForTimeout(100);
+      labelled.push(await t.ev(() => !document.querySelector('header').classList.contains('header-compact') &&
+        document.getElementById('help-btn').getBoundingClientRect().right <= innerWidth));
     }
+    check('every typeface leaves room for the My Scrawls label (wide ones get a little smaller)', labelled.every(Boolean), JSON.stringify(labelled));
     check('wordmark: first visit Pacifico, then a reload and taps go in order, back to Pacifico after Press Start 2P',
       JSON.stringify(seen) === JSON.stringify([...order, order[0]]), JSON.stringify(seen));
     await t.ctx.close();

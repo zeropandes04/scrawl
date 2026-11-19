@@ -101,13 +101,25 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // The header is one line: the wordmark, My Scrawls and ?. Some wordmark
-// typefaces are wide; when the line doesn't fit, My Scrawls drops its
-// label and becomes an icon key like ?.
+// typefaces are wide; when the line doesn't fit, the wordmark gets a little
+// smaller (down to 60%), so My Scrawls keeps its label. Only if that isn't
+// enough (the narrowest phones) does My Scrawls drop its label instead and
+// become an icon key like ?, with the wordmark at its full size.
 function fitHeader() {
   const header = document.querySelector('header');
   if (!header) return;
+  const wordmark = header.querySelector('h1');
+  const overflows = () => header.scrollWidth > header.clientWidth;
   header.classList.remove('header-compact');
-  if (header.scrollWidth > header.clientWidth) header.classList.add('header-compact');
+  wordmark.style.fontSize = '';
+  const full = parseFloat(getComputedStyle(wordmark).fontSize);
+  for (let size = full - 1; overflows() && size >= full * 0.6; size--) {
+    wordmark.style.fontSize = `${size}px`;
+  }
+  if (overflows()) {
+    wordmark.style.fontSize = '';
+    header.classList.add('header-compact');
+  }
 }
 // The wordmark's typeface can arrive after the page is ready, so check
 // again whenever the wordmark changes size (and on resize)
