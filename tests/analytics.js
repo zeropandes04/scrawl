@@ -234,7 +234,7 @@ async function run(label, contextOpts) {
 
     // Phones: the New key on the canvas
     if (mobile) {
-      await t.ev(() => { setTool('eyes'); hasDrawings = false; editVersion = savedVersion; });
+      await t.ev(() => { setTool('eyes'); hasDrawings = false; editVersion = savedVersion; paintVersion = paintSavedVersion; });
       await t.mark();
       await t.page.tap('#canvas-new-btn');
       await t.page.waitForFunction(() => window.__events.some(x => x.name === 'scribble_generated'));

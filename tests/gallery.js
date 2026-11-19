@@ -105,7 +105,23 @@ async function run(label, contextOpts) {
   // An eye that moves is a change
   await ev(() => { draggedEyeIndex = 0; eyePositions[0].x += 30; mouseReleased(); });
   check('dragging an eye is an unsaved change', await ev(() => hasUnsavedChanges()));
+  // ...that can be saved by hand, but doesn't ask on leaving or save itself:
+  // only paint does
+  await ev(() => { pickEyeSet(Object.keys(eyeSets)[2]); rotateCanvas(); toggleEyes(); toggleEyes(); });
+  const eyesOnly = await ev(async () => ({
+    saveable: !document.querySelector('.gallery-save-btn').disabled,
+    paint: hasUnsavedPaint(),
+    autoSave: autoSaveTimer !== null,
+    leaves: await confirmLeave(),
+    asked: document.getElementById('leave-dialog').open
+  }));
+  check('eyes, rotate, lines only: Save offered, no prompt on leaving, no autosave',
+    eyesOnly.saveable && !eyesOnly.paint && !eyesOnly.autoSave && eyesOnly.leaves && !eyesOnly.asked, JSON.stringify(eyesOnly));
+  await stroke();
+  const painted = await ev(() => ({ paint: hasUnsavedPaint(), autoSave: autoSaveTimer !== null }));
+  check('a stroke is unsaved paint: autosave scheduled', painted.paint && painted.autoSave, JSON.stringify(painted));
   await ev(() => saveToGallery());
+  check('saving clears unsaved paint', !(await ev(() => hasUnsavedPaint())));
 
   // Draft: unsaved work survives a reload
   await stroke();

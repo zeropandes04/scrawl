@@ -376,6 +376,7 @@ function generateScrawlface(source = 'other') {
   scrawlfaceToken++;
   galleryId = null;
   savedVersion = editVersion;
+  paintSavedVersion = paintVersion;
   forgetDraft();
   restartAutoSave();
   updateGallerySaveButtons();
@@ -795,10 +796,12 @@ function cancelPressMark() {
   } else if (pressChangedDrawing) {
     // A fill: already a history step
     const version = editVersion;
+    const paint = paintVersion;
     undo();
     redoStack.pop(); // undo() queued the cancelled mark for redo
     updateUndoRedoButtons();
     editVersion = version;
+    paintVersion = paint;
     updateGallerySaveButtons();
     pressChangedDrawing = false;
   }
@@ -922,6 +925,7 @@ function mouseReleased() {
   const eye = eyePositions[draggedEyeIndex];
   const eyeMoved = eye && (eye.x !== dragStart.x || eye.y !== dragStart.y);
   const changed = pressChangedDrawing || eyeMoved;
+  const painted = pressChangedDrawing;
 
   if (draggedEyeIndex !== -1) {
     draggedEyeIndex = -1;
@@ -959,7 +963,7 @@ function mouseReleased() {
 
   isDrawing = false;
   pressChangedDrawing = false;
-  if (changed) markChanged();
+  if (changed) markChanged(painted);
 }
 
 function keyPressed() {
@@ -1638,7 +1642,7 @@ function clearDrawings() {
   disableClearButton();
 
   redrawCanvas();
-  markChanged();
+  markChanged(true);
   track('clear_used');
 }
 
@@ -1952,7 +1956,7 @@ function swapState(from, to) {
 
   redrawCanvas();
   updateUndoRedoButtons();
-  markChanged();
+  markChanged(true);
 }
 
 // Not mid-stroke: the stroke isn't a step yet, and its "before" copy
@@ -2225,6 +2229,12 @@ function setupMobileSheet() {
 let galleryId = null;    // gallery entry the current scrawlface is saved as
 let editVersion = 0;     // bumped on every change...
 let savedVersion = 0;    // ...and copied here when saved: unsaved = they differ
+// Paint (Brush, Fill, Eraser, Clear, and undoing / redoing them) is the work
+// worth protecting: only unsaved paint asks Save / Discard on leaving, gets
+// saved on its own and brings the Save tip. Moving or restyling the eyes,
+// rotating or hiding the lines can still be saved by hand.
+let paintVersion = 0;
+let paintSavedVersion = 0;
 let scrawlfaceToken = 0; // bumped when another scrawlface takes the canvas
 let draftTimer = null;
 const autoSaveMs = 5 * 60 * 1000; // see autoSave
@@ -2236,6 +2246,10 @@ const longPressMs = 500;     // touch: press and hold a gallery tile to start se
 
 function hasUnsavedChanges() {
   return editVersion !== savedVersion;
+}
+
+function hasUnsavedPaint() {
+  return paintVersion !== paintSavedVersion;
 }
 
 // Leaves the blank start (New, or opening a saved scrawlface): the create
@@ -2370,13 +2384,15 @@ async function restoreScrawlface(record) {
 
 // Called after every change to the scrawlface: it now has unsaved changes,
 // and the draft is written once the changes settle
-function markChanged() {
+// paint: the change is to the paint (see paintVersion)
+function markChanged(paint = false) {
   if (isBlankStart()) return;
   editVersion++;
+  if (paint) paintVersion++;
   updateGallerySaveButtons();
   clearTimeout(draftTimer);
   draftTimer = setTimeout(saveDraft, 1000);
-  if (!autoSaveTimer) autoSaveTimer = setTimeout(autoSave, autoSaveMs);
+  if (!autoSaveTimer && hasUnsavedPaint()) autoSaveTimer = setTimeout(autoSave, autoSaveMs);
   tipSave();
 }
 
@@ -2385,7 +2401,7 @@ function markChanged() {
 // work is never older than that. Quick shuffles with New never get there.
 function autoSave() {
   autoSaveTimer = null;
-  if (isBlankStart() || !hasUnsavedChanges()) return;
+  if (isBlankStart() || !hasUnsavedPaint()) return;
   saveToGallery('auto').catch(() => {}); // the draft still has the work
 }
 
@@ -2393,7 +2409,7 @@ function autoSave() {
 // again from its next change (or now, if it still has unsaved changes)
 function restartAutoSave() {
   clearTimeout(autoSaveTimer);
-  autoSaveTimer = hasUnsavedChanges() ? setTimeout(autoSave, autoSaveMs) : null;
+  autoSaveTimer = hasUnsavedPaint() ? setTimeout(autoSave, autoSaveMs) : null;
 }
 
 async function saveDraft() {
@@ -2431,6 +2447,7 @@ async function saveToGalleryNow(trigger = 'button') {
   if (isBlankStart()) return;
   dismissTip('save');
   const version = editVersion;
+  const paint = paintVersion;
   const token = scrawlfaceToken;
   const record = await captureScrawlface(true);
   if (token !== scrawlfaceToken) return;
@@ -2448,6 +2465,7 @@ async function saveToGalleryNow(trigger = 'button') {
     fills: scrawlfaceStats.fills
   });
   savedVersion = version;
+  paintSavedVersion = paint;
   if (!hasUnsavedChanges()) forgetDraft();
   restartAutoSave();
   updateGallerySaveButtons();
@@ -2474,8 +2492,9 @@ function flashSaved() {
 
 // Leaving a scrawlface with unsaved changes (New, or opening another one)
 // asks first: Save, Discard or Cancel. Resolves true to go ahead.
+// Only unsaved paint asks (see paintVersion); other changes go quietly.
 function confirmLeave() {
-  if (isBlankStart() || !hasUnsavedChanges()) return Promise.resolve(true);
+  if (isBlankStart() || !hasUnsavedPaint()) return Promise.resolve(true);
   // No storage, so nothing to save to
   if (document.body.classList.contains('no-storage')) {
     const go = confirm('Start a new scribble? Your drawing will be lost.');
@@ -2528,6 +2547,7 @@ async function openFromGallery(id) {
   track('scrawlface_reopened');
   galleryId = record.id;
   savedVersion = editVersion;
+  paintSavedVersion = paintVersion;
   restartAutoSave();
   updateGallerySaveButtons();
   document.getElementById('gallery-dialog').close();
@@ -2827,6 +2847,7 @@ function setupGallery() {
           track('draft_restored');
           galleryId = draft.galleryId;
           editVersion = savedVersion + 1;
+          if (hasDrawings) paintVersion = paintSavedVersion + 1;
           restartAutoSave();
           updateGallerySaveButtons();
         } catch (e) {
@@ -3465,7 +3486,7 @@ function tipForTool(tool) {
 
 // After a handful of changes to a scrawlface that was never saved
 function tipSave() {
-  if (galleryId !== null || editVersion - savedVersion < 6) return;
+  if (galleryId !== null || editVersion - savedVersion < 6 || !hasUnsavedPaint()) return;
   if (document.body.classList.contains('no-storage')) return;
   const saveKey = shownElement('.sidebar .gallery-save-btn');
   if (saveKey) {
