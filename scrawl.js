@@ -6,18 +6,12 @@
 // The files are bundled (not fetched from Google Fonts) so the app works
 // offline: each holds only the letters of "Scrawlface" (see fonts/README.md).
 const wordmarkFonts = [
-  ['Space Grotesk', 'space-grotesk', 700, 'normal', 1],                 // modern sans
-  ['Archivo Black', 'archivo-black', 400, 'normal', 0.95],              // heavy sans
-  ['Playfair Display', 'playfair-display', 700, 'italic', 1.05],        // italic serif
-  ['Instrument Serif', 'instrument-serif', 400, 'italic', 1.25],        // elegant italic
-  ['Abril Fatface', 'abril-fatface', 400, 'normal', 1.05],              // display serif
   ['Bungee Shade', 'bungee-shade', 400, 'normal', 0.9],                 // display
   ['Monoton', 'monoton', 400, 'normal', 0.95],                          // decorative
   ['Pacifico', 'pacifico', 400, 'normal', 1],                           // script
   ['Lobster', 'lobster', 400, 'normal', 1.1],                           // flamboyant
   ['Permanent Marker', 'permanent-marker', 400, 'normal', 1],           // marker
   ['Caveat', 'caveat', 700, 'normal', 1.35],                            // handwritten
-  ['Rye', 'rye', 400, 'normal', 0.95],                                  // western
   ['UnifrakturMaguntia', 'unifrakturmaguntia', 400, 'normal', 1.15],    // blackletter
   ['Press Start 2P', 'press-start-2p', 400, 'normal', 0.6]              // pixel
 ];
