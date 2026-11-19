@@ -269,6 +269,40 @@ async function run(label, contextOpts) {
   await deleting;
   check('delete empties the gallery', await galleryCount() === 0);
 
+  // Nothing saved: New scribble (or Save this scrawlface) and the example;
+  // tapping the example opens a copy, with nothing unsaved and not in My
+  // Scrawls; once something is saved the example steps aside
+  {
+    await ev(() => { hasDrawings = false; editVersion = savedVersion; paintVersion = paintSavedVersion; galleryId = null; });
+    await ev(() => openGallery());
+    await page.waitForSelector('#gallery-dialog[open] .gallery-example-tile img');
+    const empty = await ev(() => ({
+      tiles: [...document.querySelectorAll('#gallery-grid .gallery-tile')].map(t => t.classList.contains('gallery-example-tile') ? 'example' : t.textContent.trim()),
+      note: document.querySelector('.gallery-note')?.textContent,
+      checks: document.querySelectorAll('#gallery-grid .gallery-check').length,
+      blank: isBlankStart()
+    }));
+    check('empty My Scrawls: New scribble (blank start) or Save this scrawlface, the example (no tick circle) and a line',
+      JSON.stringify(empty.tiles) === JSON.stringify([empty.blank ? 'New scribble' : 'Save this scrawlface', 'example']) &&
+      empty.note === 'Your saved scrawlfaces show up here.' && empty.checks === 0, JSON.stringify(empty));
+    const loaded = await ev(() => new Promise(r => { const i = document.querySelector('.gallery-example-tile img'); i.complete ? r(i.naturalWidth) : i.onload = () => r(i.naturalWidth); }));
+    check('the example thumbnail loads', loaded === 320, String(loaded));
+    await page.click('.gallery-example-tile');
+    await page.waitForFunction(() => !document.getElementById('gallery-dialog').open);
+    const opened = await ev(() => ({ galleryId, unsaved: hasUnsavedChanges(), paint: hasUnsavedPaint(), hasDrawings, rotation, eyes: eyePositions.length,
+      saveable: !document.querySelector('.gallery-save-btn').disabled }));
+    check('tapping the example opens a copy: painted, not in My Scrawls, nothing unsaved, can be saved',
+      opened.galleryId === null && !opened.unsaved && !opened.paint && opened.hasDrawings && opened.rotation === 180 && opened.eyes === 2 && opened.saveable,
+      JSON.stringify(opened));
+    await ev(() => saveToGallery());
+    await ev(() => openGallery());
+    await page.waitForTimeout(300);
+    const after = await ev(() => ({ example: !!document.querySelector('.gallery-example-tile'), tiles: document.querySelectorAll('#gallery-grid .gallery-tile').length }));
+    check('once saved, the example steps aside', !after.example && after.tiles === 2, JSON.stringify(after));
+    await ev(() => document.getElementById('gallery-dialog').close());
+  }
+
+
   // Ignore failed fetches of things the test doesn't serve (icons etc.)
   check('no page errors', errors.length === 0, errors.join(' | '));
   await browser.close();
