@@ -49,6 +49,7 @@
 ## App and errors
 | Event | When | Properties |
 |---|---|---|
+| `wordmark_changed` | The wordmark takes another typeface: tapped, or back after a 30-minute break | `trigger`: `tap`, `return`, `other` (shell) · `font` |
 | `app_opened` | Every load | `first_open` · `days_since_last` (null the first time) |
 | `error` | An error message is shown | `where`: `save`, `open` |
 
