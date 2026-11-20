@@ -26,6 +26,8 @@
 | `share_cancelled` | The share sheet is dismissed | `from`: `canvas` |
 | `scrawlface_downloaded` | The PNG is downloaded | `from`: `canvas` |
 | `tool_used` | First use of a tool on this scrawlface (a stroke, a fill, an eye drag) | `tool`: `brush`, `fill`, `eraser`, `eyes` |
+| `drawing_started` | The first paint (Brush, Fill, Eraser) on a scrawlface | `tool` · `seconds_since_generated` |
+| `drawing_finished` | Done with a painted scrawlface: kept it, or moved on after 3+ strokes / fills (once per scrawlface; see `plans/metrics.md`) | `how`: `saved`, `autosaved`, `shared`, `downloaded`, `new`, `opened_another`, `left` · `paint_actions` · `seconds_drawing` · `tools_used` |
 
 ## Playing with it
 | Event | When | Properties |
@@ -54,6 +56,7 @@
 |---|---|---|
 | `wordmark_changed` | The wordmark takes another typeface: tapped, or back after a 30-minute break | `trigger`: `tap`, `return`, `other` (shell) · `font` |
 | `app_opened` | Every load | `first_open` · `days_since_last` (null the first time) |
+| `returning_visit` | Back after 30+ minutes away (a load or returning to an open page; not a reload), from a device seen before | `days_since_first` · `days_since_last` · `visit_number` |
 | `error` | An error message is shown | `where`: `save`, `open` |
 
 ## Onboarding

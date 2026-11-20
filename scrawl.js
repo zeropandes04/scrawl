@@ -382,6 +382,7 @@ function setup() {
 // where it came from, for the scribble_generated event.
 function generateScrawlface(source = 'other') {
   canvasPressed = false;
+  finishDrawing('new');
   startScrawlfaceStats(true);
 
   drawingGraphics.clear();
@@ -1646,6 +1647,7 @@ function downloadImage() {
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     track('scrawlface_downloaded', { from: 'canvas' });
+    finishDrawing('downloaded');
   });
 }
 
@@ -1656,7 +1658,10 @@ function shareImage() {
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
     // Rejects when the share sheet is dismissed
     navigator.share({ files: [file] })
-      .then(() => track('scrawlface_shared', { from: 'canvas' }))
+      .then(() => {
+        track('scrawlface_shared', { from: 'canvas' });
+        finishDrawing('shared');
+      })
       .catch(() => track('share_cancelled', { from: 'canvas' }));
   });
 }
@@ -2611,12 +2616,12 @@ async function saveToGalleryNow(trigger = 'button') {
   track('scrawlface_saved', {
     trigger,
     first_save: firstSave,
-    seconds_since_generated: scrawlfaceStats.generatedAt === null ? null
-      : Math.round((performance.now() - scrawlfaceStats.generatedAt) / 1000),
+    seconds_since_generated: secondsSince(scrawlfaceStats.generatedAt),
     tools_used: [...scrawlfaceStats.tools],
     strokes: scrawlfaceStats.strokes,
     fills: scrawlfaceStats.fills
   });
+  finishDrawing(trigger === 'auto' ? 'autosaved' : 'saved');
   savedVersion = version;
   paintSavedVersion = paint;
   if (!hasUnsavedChanges()) forgetDraft();
@@ -2696,6 +2701,7 @@ async function openFromGallery(id) {
   }
   scrawlfaceToken++;
   forgetDraft();
+  finishDrawing('opened_another');
   startScrawlfaceStats(false);
   track('scrawlface_reopened');
   galleryId = record.id;
@@ -2870,6 +2876,7 @@ async function openExample() {
   }
   scrawlfaceToken++;
   forgetDraft();
+  finishDrawing('opened_another');
   startScrawlfaceStats(false);
   galleryId = null;
   savedVersion = editVersion;
@@ -3807,29 +3814,93 @@ function startUmami() {
 if (!isEmbedded() && umamiHosts.includes(location.hostname)) startUmami();
 
 // The scrawlface on the canvas: what's been used on it, for tool_used (the
-// first use of each tool) and scrawlface_saved. fresh: a new scribble (so
-// the time since it was made counts); otherwise one reopened or restored.
-let scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: null };
+// first use of each tool), drawing_started / drawing_finished and
+// scrawlface_saved. fresh: a new scribble (so the time since it was made
+// counts); otherwise one reopened or restored.
+let scrawlfaceStats = null;
 
 function startScrawlfaceStats(fresh) {
-  scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: fresh ? performance.now() : null };
+  scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: fresh ? performance.now() : null,
+    startedAt: null, finished: false };
 }
+startScrawlfaceStats(false);
 
 function usedTool(tool) {
   if (tool === 'brush' || tool === 'eraser') scrawlfaceStats.strokes++;
   if (tool === 'fill') scrawlfaceStats.fills++;
+  // The first paint on this scrawlface: the drawing has started
+  if (tool !== 'eyes' && scrawlfaceStats.startedAt === null) {
+    scrawlfaceStats.startedAt = performance.now();
+    track('drawing_started', { tool, seconds_since_generated: secondsSince(scrawlfaceStats.generatedAt) });
+  }
   if (scrawlfaceStats.tools.has(tool)) return;
   scrawlfaceStats.tools.add(tool);
   track('tool_used', { tool });
 }
 
-// The app was opened: first time on this device, or after how many days
+function secondsSince(time) {
+  return time === null ? null : Math.round((performance.now() - time) / 1000);
+}
+
+// A drawing counts as finished (once per scrawlface) when the person is done
+// with a scrawlface they painted on: they keep it (saved, shared,
+// downloaded), or they move on (a new scribble, opening another one,
+// leaving the page) after real work: at least finishedPaintActions strokes
+// and fills. how says which.
+const finishedPaintActions = 3;
+
+function finishDrawing(how) {
+  const stats = scrawlfaceStats;
+  if (stats.startedAt === null || stats.finished) return;
+  const kept = ['saved', 'autosaved', 'shared', 'downloaded'].includes(how);
+  const paintActions = stats.strokes + stats.fills;
+  if (!kept && paintActions < finishedPaintActions) return;
+  stats.finished = true;
+  track('drawing_finished', { how, paint_actions: paintActions, seconds_drawing: secondsSince(stats.startedAt),
+    tools_used: [...stats.tools] });
+}
+
+// The app was opened: first time on this device, or a return. A visit is a
+// load, or coming back to the page, after 30 minutes or more away (so a
+// reload is not a visit); a return visit also gets returning_visit, with
+// how long since the first and the last.
+const visitGapMs = 30 * 60 * 1000;
+
 function trackAppOpened() {
+  const first = parseInt(storageGet('first_opened')) || 0;
   const last = parseInt(storageGet('last_opened')) || 0;
   const now = Date.now();
+  if (!first) storageSet('first_opened', last || now); // devices from before first_opened: their last visit
   storageSet('last_opened', now);
-  track('app_opened', { first_open: !last, days_since_last: last ? Math.floor((now - last) / 86400000) : null });
+  track('app_opened', { first_open: !last, days_since_last: last ? daysBetween(last, now) : null });
+  if (last && now - last >= visitGapMs) trackReturn(now, last);
 }
+
+function trackReturn(now, last) {
+  const first = parseInt(storageGet('first_opened')) || last;
+  const visits = (parseInt(storageGet('visits')) || 1) + 1;
+  storageSet('visits', visits);
+  track('returning_visit', { days_since_first: daysBetween(first, now), days_since_last: daysBetween(last, now), visit_number: visits });
+}
+
+function daysBetween(a, b) {
+  return Math.floor((b - a) / 86400000);
+}
+
+// Coming back to a page left open (a tab, an app in the background): a
+// return visit after 30 minutes or more. Leaving counts as finishing a
+// drawing in progress.
+let visitHiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    visitHiddenAt = Date.now();
+    storageSet('last_opened', visitHiddenAt);
+    if (scrawlfaceStats) finishDrawing('left');
+  } else if (visitHiddenAt !== null && Date.now() - visitHiddenAt >= visitGapMs) {
+    trackReturn(Date.now(), visitHiddenAt);
+    visitHiddenAt = null;
+  }
+});
 
 // ---- For a native shell: the app's state and the functions to drive it ----
 // A shell draws its own controls and talks to the page through
