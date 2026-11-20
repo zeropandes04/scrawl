@@ -3076,7 +3076,7 @@ const ONBOARDING_VERSION = 1;
 // first scribble (and its tip, see tipFirstScrawl).
 const introScreens = [
   { step: 'Look closer', art: 'reveal', title: 'Train your imagination.',
-    text: 'Find faces, creatures and characters hiding in every scribble.', next: 'Let\'s look' },
+    text: 'Find characters hidden in every scribble. A\u00a0calm, creative break for your mind.', next: 'Let\'s look' },
   { step: 'Make it yours', art: 'example', title: 'Every scribble holds a possibility.',
     text: 'Explore the canvas, spot a face, and add your own details.', next: 'Show me' },
   { step: 'Find something unexpected', art: 'mystery', title: 'Your first scribble is waiting.',
