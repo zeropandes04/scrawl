@@ -1,6 +1,6 @@
 # Is Scrawlface worth investing in? What to measure
 
-The question: is this a practice people come back to, or a novelty randomiser? Events are in `plans/analytics.md`. **Umami** (scrawlface.app, free plan) gets the funnel events below; **Vercel Web Analytics** gets every event (custom events need a Vercel plan that includes them). Umami shows custom events with their properties (Events), visit duration and bounce rate (Overview), and returning visitors (Reports → Retention).
+The question: is this a practice people come back to, or a novelty randomiser? Events are in `plans/analytics.md`. **Umami** (scrawlface.app, free plan) gets the funnel events below; the other events stay on the device (and go to a native shell's analytics later). Umami shows custom events with their properties (Events), visit duration and bounce rate (Overview), and returning visitors (Reports → Retention).
 
 ## The funnel
 `scribble_generated` → `drawing_started` → `drawing_finished` → `scrawlface_saved` / `scrawlface_shared` / `scrawlface_downloaded`, and later `returning_visit`.
@@ -35,4 +35,4 @@ The "real work" bar (3 strokes / fills) is `finishedPaintActions` in `scrawl.js`
 
 ## Not measured
 - In-app feedback (no feedback button for now) and tagging on social media.
-- In Umami, everything outside the funnel (tools, onboarding steps, gestures): those events still go to Vercel, and can be added to `umamiEvents` in `scrawl.js` if the free plan has room.
+- Everything outside the funnel (tools, onboarding steps, gestures): tracked, but not sent anywhere from the website. Add any of them to `umamiEvents` in `scrawl.js` if the free plan has room.

@@ -3728,8 +3728,8 @@ function tipSave() {
 // ---- Analytics events ----
 // What people do, as named events with a few properties (see
 // plans/analytics.md). Events go to listeners (a native shell forwards them
-// to its analytics through window.scrawlface.onEvent; the website sends
-// them to Vercel Web Analytics, see below) and the last few are kept for
+// to its analytics through window.scrawlface.onEvent; scrawlface.app sends
+// some of them to Umami, see below) and the last few are kept for
 // checking. Never put the drawing, image data or personal details in an
 // event.
 
@@ -3773,20 +3773,6 @@ function plainProps(props) {
     else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) data[key] = value;
   });
   return data;
-}
-
-// Vercel Web Analytics, on the website only (a native shell has its own):
-// Vercel's script counts page views, and our events go to it as custom
-// events. The script exists only where Vercel hosts the site; elsewhere it
-// fails to load and nothing is sent. Its queue (window.va) takes events
-// before the script has loaded.
-if (!isEmbedded()) {
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-  const vercel = document.createElement('script');
-  vercel.defer = true;
-  vercel.src = '/_vercel/insights/script.js';
-  document.head.appendChild(vercel);
-  onEvent(event => window.va('event', { name: event.name, data: plainProps(event.props) }));
 }
 
 // Umami (cloud.umami.is), on scrawlface.app only: not on other copies of the
