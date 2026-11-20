@@ -1,6 +1,6 @@
 # Is Scrawlface worth investing in? What to measure
 
-The question: is this a practice people come back to, or a novelty randomiser? Events are in `plans/analytics.md`; they reach **Umami** (scrawlface.app) and **Vercel Web Analytics**. Umami shows custom events with their properties (Events), visit duration and bounce rate (Overview), and returning visitors (Reports → Retention).
+The question: is this a practice people come back to, or a novelty randomiser? Events are in `plans/analytics.md`. **Umami** (scrawlface.app, free plan) gets the funnel events below; **Vercel Web Analytics** gets every event (custom events need a Vercel plan that includes them). Umami shows custom events with their properties (Events), visit duration and bounce rate (Overview), and returning visitors (Reports → Retention).
 
 ## The funnel
 `scribble_generated` → `drawing_started` → `drawing_finished` → `scrawlface_saved` / `scrawlface_shared` / `scrawlface_downloaded`, and later `returning_visit`.
@@ -24,15 +24,15 @@ The "real work" bar (3 strokes / fills) is `finishedPaintActions` in `scrawl.js`
 | **They come back unprompted** (no notifications, so pure intent) | 15–20% back within a week | `returning_visit` with `days_since_first` ≤ 7 ÷ new visitors that week (`app_opened` with `first_open`); Umami's Retention report as a cross-check |
 | **Calm, long sessions** | 5+ minutes is good; very short is a warning | Umami: average visit duration and bounce rate; `drawing_finished.seconds_drawing` |
 | **Sharing on its own** | Any, unasked | `scrawlface_shared` / `scrawlface_downloaded` per visitor (tagging on social media isn't visible to us) |
-| **Unprompted feedback**, especially "will I lose my drawings?" | Requests for accounts / sync = demand for a backend | No in-app feedback channel yet (see below) |
+| **Unprompted feedback**, especially "will I lose my drawings?" | Requests for accounts / sync = demand for a backend | Outside the app (email, social); no in-app feedback for now |
 
 ## Signals to keep it as a toy, or drop it
 | Signal | How to read it |
 |---|---|
 | Lots of generating, few finished drawings (a novelty randomiser, not a practice) | `scribble_generated` ÷ `drawing_finished` per visitor climbing; `drawing_started` without `drawing_finished` |
-| The gallery stays empty | Few `scrawlface_saved` (`button`); `my_scrawls_opened` with `count` 0 |
+| The gallery stays empty | Few `scrawlface_saved` with `trigger` = `button` |
 | Nobody returns after week 1 | `returning_visit` with `days_since_first` > 7 near zero |
 
-## Gaps
-- **Feedback:** there's no way to send feedback from the app. A "Send feedback" item in the ? menu (an email link, nothing remote) would capture the "will I lose my drawings?" kind.
-- **Vercel** records custom events only on plans that include them; Umami records them on every plan.
+## Not measured
+- In-app feedback (no feedback button for now) and tagging on social media.
+- In Umami, everything outside the funnel (tools, onboarding steps, gestures): those events still go to Vercel, and can be added to `umamiEvents` in `scrawl.js` if the free plan has room.

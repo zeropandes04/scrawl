@@ -3791,14 +3791,21 @@ if (!isEmbedded()) {
 
 // Umami (cloud.umami.is), on scrawlface.app only: not on other copies of the
 // site (GitHub Pages, local), in tests or in a native shell, so they don't
-// count. Its script counts page views; our events go to it as custom
-// events. Events from before it has loaded wait, then go.
+// count. Its script counts page views. To stay within the free plan's
+// monthly events, only the events that answer "is it worth investing in?"
+// (plans/metrics.md) go to it, without the properties every event carries.
+// Events from before it has loaded wait, then go.
 const umamiHosts = ['scrawlface.app', 'www.scrawlface.app'];
 const umamiWebsiteId = '50b061ec-4f31-4c39-884a-e768e170f27a';
+const umamiEvents = ['scribble_generated', 'drawing_started', 'drawing_finished',
+  'scrawlface_saved', 'scrawlface_shared', 'scrawlface_downloaded', 'returning_visit'];
 
 function startUmami() {
   const waiting = [];
-  const send = event => window.umami.track(event.name, plainProps(event.props));
+  const send = event => {
+    const { platform, app_version, onboarding_version, ...props } = event.props;
+    window.umami.track(event.name, plainProps(props));
+  };
   const script = document.createElement('script');
   script.defer = true;
   script.src = 'https://cloud.umami.is/script.js';
@@ -3808,7 +3815,10 @@ function startUmami() {
     waiting.splice(0).forEach(send);
   });
   document.head.appendChild(script);
-  onEvent(event => (window.umami ? send(event) : waiting.push(event)));
+  onEvent(event => {
+    if (!umamiEvents.includes(event.name)) return;
+    window.umami ? send(event) : waiting.push(event);
+  });
 }
 
 if (!isEmbedded() && umamiHosts.includes(location.hostname)) startUmami();

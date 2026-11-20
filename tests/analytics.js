@@ -286,12 +286,14 @@ async function run(label, contextOpts) {
       await new Promise(res => setTimeout(res, 300));
       r.fulfill({ contentType: 'application/javascript', body: 'window.umami = { calls: [], track(n, d) { this.calls.push([n, d]); } };' });
     });
-    await t.ev(() => { startUmami(); window.scrawlface.rotate(); });
+    // Only the events in plans/metrics.md go, without the properties every event carries
+    await t.ev(() => { startUmami(); window.scrawlface.rotate(); track('drawing_finished', { how: 'saved', tools_used: ['brush', 'fill'] }); });
     await t.page.waitForFunction(() => window.umami);
-    await t.ev(() => window.scrawlface.rotate());
+    await t.ev(() => { window.scrawlface.rotate(); track('returning_visit', { days_since_first: 3 }); });
     const umami = await t.ev(() => ({ calls: window.umami.calls, id: document.querySelector('script[src="https://cloud.umami.is/script.js"]').dataset.websiteId }));
-    check('Umami: its script with the website id; events before and after it loads reach it, with plain values',
-      umami.id === '50b061ec-4f31-4c39-884a-e768e170f27a' && umami.calls.length === 2 && umami.calls.every(([n, d]) => n === 'canvas_rotated' && typeof d.rotation === 'number'),
+    check('Umami: its script with the website id; only the listed events, before and after it loads, plain values without the common ones',
+      umami.id === '50b061ec-4f31-4c39-884a-e768e170f27a' &&
+      JSON.stringify(umami.calls) === JSON.stringify([['drawing_finished', { how: 'saved', tools_used: 'brush,fill' }], ['returning_visit', { days_since_first: 3 }]]),
       JSON.stringify(umami));
     t.remote.length = 0; // (the stand-in counts as remote; the check below is about the app itself)
 
