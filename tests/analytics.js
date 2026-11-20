@@ -278,12 +278,80 @@ async function run(label, contextOpts) {
       typeof vercel.saved.data.tools_used === 'string' && Object.values(vercel.saved.data).every(v => v === null || typeof v !== 'object'),
       JSON.stringify(vercel));
 
+    // Umami: only on scrawlface.app, so not here; started anyway (its script
+    // stood in for, served slowly), events from before it loads wait, then
+    // go, and later ones go straight to it
+    check('Umami: no script on other hosts', await t.ev(() => !document.querySelector('script[src*="umami"]')));
+    await t.page.route('https://cloud.umami.is/**', async r => {
+      await new Promise(res => setTimeout(res, 300));
+      r.fulfill({ contentType: 'application/javascript', body: 'window.umami = { calls: [], track(n, d) { this.calls.push([n, d]); } };' });
+    });
+    // Only the events in plans/metrics.md go, without the properties every event carries
+    await t.ev(() => { startUmami(); window.scrawlface.rotate(); track('drawing_finished', { how: 'saved', tools_used: ['brush', 'fill'] }); });
+    await t.page.waitForFunction(() => window.umami);
+    await t.ev(() => { window.scrawlface.rotate(); track('returning_visit', { days_since_first: 3 }); });
+    const umami = await t.ev(() => ({ calls: window.umami.calls, id: document.querySelector('script[src="https://cloud.umami.is/script.js"]').dataset.websiteId }));
+    check('Umami: its script with the website id; only the listed events, before and after it loads, plain values without the common ones',
+      umami.id === '50b061ec-4f31-4c39-884a-e768e170f27a' &&
+      JSON.stringify(umami.calls) === JSON.stringify([['drawing_finished', { how: 'saved', tools_used: 'brush,fill' }], ['returning_visit', { days_since_first: 3 }]]),
+      JSON.stringify(umami));
+    t.remote.length = 0; // (the stand-in counts as remote; the check below is about the app itself)
+
     // No drawing or image data in any event; each is small
     const all = await t.ev(() => window.scrawlface.recentEvents());
     check('events carry no image data and stay small', all.every(x => !/data:|blob:/.test(JSON.stringify(x)) && JSON.stringify(x).length < 600),
       String(Math.max(...all.map(x => JSON.stringify(x).length))));
     check('no page errors (work)', t.errors.length === 0, t.errors.join(' | '));
     check('nothing requested from outside the app (work)', t.remote.length === 0, t.remote.join(' '));
+    await t.ctx.close();
+  }
+
+  // -- Activation: drawing started, drawing finished; return visits --
+  {
+    const day = 86400000;
+    const t = await fresh(browser, contextOpts, { onboarding_completed: '1', onboarding_version_seen: '1',
+      tips_seen: '["drag-eyes","gestures","fill","save","help-key"]',
+      first_opened: String(Date.now() - 5 * day), last_opened: String(Date.now() - 2 * day) });
+    await t.load();
+    let e = await t.take();
+    const back = one(e, 'returning_visit');
+    check('returning_visit: days since the first and the last visit, visit number', back && back.days_since_first === 5 && back.days_since_last === 2 && back.visit_number === 2,
+      JSON.stringify(back));
+    await t.load();
+    e = await t.take();
+    check('a reload is not a return visit', !named(e, 'returning_visit').length && one(e, 'app_opened')?.first_open === false, JSON.stringify(e.map(x => x.name)));
+
+    await t.page.click('#blank-cta-btn');
+    await t.page.waitForFunction(() => scrawlQueue.length === 0);
+    await t.mark();
+    const paint = () => t.ev(() => { usedTool('brush'); markChanged(true); });
+    // One stroke, then New: started, but too little to count as finished
+    await paint();
+    await t.ev(() => generateScrawlface('key_n'));
+    e = await t.take();
+    check('drawing_started on the first paint; one stroke then New is not finished',
+      one(e, 'drawing_started')?.tool === 'brush' && Number.isInteger(one(e, 'drawing_started').seconds_since_generated) && !named(e, 'drawing_finished').length,
+      JSON.stringify(e.map(x => [x.name, x.props.tool || x.props.how])));
+    // Three paint actions, then New: finished (moved on)
+    await paint(); await paint(); await t.ev(() => usedTool('fill'));
+    await t.ev(() => generateScrawlface('key_n'));
+    e = await t.take();
+    const moved = one(e, 'drawing_finished');
+    check('drawing_finished on moving on after real work (how: new), once', named(e, 'drawing_started').length === 1 && moved?.how === 'new' &&
+      moved.paint_actions === 3 && moved.tools_used.includes('fill'), JSON.stringify(moved));
+    // Kept: a save finishes it at once, and only once
+    await paint();
+    await t.ev(() => window.scrawlface.save());
+    await t.ev(() => window.scrawlface.save());
+    await t.ev(() => generateScrawlface('key_n'));
+    e = await t.take();
+    check('saving finishes it (how: saved), once per scrawlface', JSON.stringify(named(e, 'drawing_finished').map(x => x.props.how)) === '["saved"]',
+      JSON.stringify(e.map(x => [x.name, x.props.how])));
+    // Nothing painted: never started, never finished
+    await t.ev(() => window.scrawlface.save());
+    e = await t.take();
+    check('no paint: no drawing_started or drawing_finished', !named(e, 'drawing_started').length && !named(e, 'drawing_finished').length, JSON.stringify(e.map(x => x.name)));
+    check('no page errors (activation)', t.errors.length === 0, t.errors.join(' | '));
     await t.ctx.close();
   }
 

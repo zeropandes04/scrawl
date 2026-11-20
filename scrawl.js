@@ -382,6 +382,7 @@ function setup() {
 // where it came from, for the scribble_generated event.
 function generateScrawlface(source = 'other') {
   canvasPressed = false;
+  finishDrawing('new');
   startScrawlfaceStats(true);
 
   drawingGraphics.clear();
@@ -1646,6 +1647,7 @@ function downloadImage() {
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     track('scrawlface_downloaded', { from: 'canvas' });
+    finishDrawing('downloaded');
   });
 }
 
@@ -1656,7 +1658,10 @@ function shareImage() {
     const file = new File([blob], 'scrawlface.png', { type: 'image/png' });
     // Rejects when the share sheet is dismissed
     navigator.share({ files: [file] })
-      .then(() => track('scrawlface_shared', { from: 'canvas' }))
+      .then(() => {
+        track('scrawlface_shared', { from: 'canvas' });
+        finishDrawing('shared');
+      })
       .catch(() => track('share_cancelled', { from: 'canvas' }));
   });
 }
@@ -2611,12 +2616,12 @@ async function saveToGalleryNow(trigger = 'button') {
   track('scrawlface_saved', {
     trigger,
     first_save: firstSave,
-    seconds_since_generated: scrawlfaceStats.generatedAt === null ? null
-      : Math.round((performance.now() - scrawlfaceStats.generatedAt) / 1000),
+    seconds_since_generated: secondsSince(scrawlfaceStats.generatedAt),
     tools_used: [...scrawlfaceStats.tools],
     strokes: scrawlfaceStats.strokes,
     fills: scrawlfaceStats.fills
   });
+  finishDrawing(trigger === 'auto' ? 'autosaved' : 'saved');
   savedVersion = version;
   paintSavedVersion = paint;
   if (!hasUnsavedChanges()) forgetDraft();
@@ -2696,6 +2701,7 @@ async function openFromGallery(id) {
   }
   scrawlfaceToken++;
   forgetDraft();
+  finishDrawing('opened_another');
   startScrawlfaceStats(false);
   track('scrawlface_reopened');
   galleryId = record.id;
@@ -2870,6 +2876,7 @@ async function openExample() {
   }
   scrawlfaceToken++;
   forgetDraft();
+  finishDrawing('opened_another');
   startScrawlfaceStats(false);
   galleryId = null;
   savedVersion = editVersion;
@@ -3757,6 +3764,17 @@ function onEvent(fn) {
   };
 }
 
+// An event's properties as plain values, as analytics services take them:
+// lists become comma-separated text, anything else that isn't plain is left out
+function plainProps(props) {
+  const data = {};
+  Object.entries(props).forEach(([key, value]) => {
+    if (Array.isArray(value)) data[key] = value.join(',');
+    else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) data[key] = value;
+  });
+  return data;
+}
+
 // Vercel Web Analytics, on the website only (a native shell has its own):
 // Vercel's script counts page views, and our events go to it as custom
 // events. The script exists only where Vercel hosts the site; elsewhere it
@@ -3768,41 +3786,131 @@ if (!isEmbedded()) {
   vercel.defer = true;
   vercel.src = '/_vercel/insights/script.js';
   document.head.appendChild(vercel);
-  // Custom event properties must be plain values: lists become text
+  onEvent(event => window.va('event', { name: event.name, data: plainProps(event.props) }));
+}
+
+// Umami (cloud.umami.is), on scrawlface.app only: not on other copies of the
+// site (GitHub Pages, local), in tests or in a native shell, so they don't
+// count. Its script counts page views. To stay within the free plan's
+// monthly events, only the events that answer "is it worth investing in?"
+// (plans/metrics.md) go to it, without the properties every event carries.
+// Events from before it has loaded wait, then go.
+const umamiHosts = ['scrawlface.app', 'www.scrawlface.app'];
+const umamiWebsiteId = '50b061ec-4f31-4c39-884a-e768e170f27a';
+const umamiEvents = ['scribble_generated', 'drawing_started', 'drawing_finished',
+  'scrawlface_saved', 'scrawlface_shared', 'scrawlface_downloaded', 'returning_visit'];
+
+function startUmami() {
+  const waiting = [];
+  const send = event => {
+    const { platform, app_version, onboarding_version, ...props } = event.props;
+    window.umami.track(event.name, plainProps(props));
+  };
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = 'https://cloud.umami.is/script.js';
+  script.dataset.websiteId = umamiWebsiteId;
+  script.addEventListener('load', () => {
+    if (!window.umami) return;
+    waiting.splice(0).forEach(send);
+  });
+  document.head.appendChild(script);
   onEvent(event => {
-    const data = {};
-    Object.entries(event.props).forEach(([key, value]) => {
-      if (Array.isArray(value)) data[key] = value.join(',');
-      else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) data[key] = value;
-    });
-    window.va('event', { name: event.name, data });
+    if (!umamiEvents.includes(event.name)) return;
+    window.umami ? send(event) : waiting.push(event);
   });
 }
 
+if (!isEmbedded() && umamiHosts.includes(location.hostname)) startUmami();
+
 // The scrawlface on the canvas: what's been used on it, for tool_used (the
-// first use of each tool) and scrawlface_saved. fresh: a new scribble (so
-// the time since it was made counts); otherwise one reopened or restored.
-let scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: null };
+// first use of each tool), drawing_started / drawing_finished and
+// scrawlface_saved. fresh: a new scribble (so the time since it was made
+// counts); otherwise one reopened or restored.
+let scrawlfaceStats = null;
 
 function startScrawlfaceStats(fresh) {
-  scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: fresh ? performance.now() : null };
+  scrawlfaceStats = { tools: new Set(), strokes: 0, fills: 0, generatedAt: fresh ? performance.now() : null,
+    startedAt: null, finished: false };
 }
+startScrawlfaceStats(false);
 
 function usedTool(tool) {
   if (tool === 'brush' || tool === 'eraser') scrawlfaceStats.strokes++;
   if (tool === 'fill') scrawlfaceStats.fills++;
+  // The first paint on this scrawlface: the drawing has started
+  if (tool !== 'eyes' && scrawlfaceStats.startedAt === null) {
+    scrawlfaceStats.startedAt = performance.now();
+    track('drawing_started', { tool, seconds_since_generated: secondsSince(scrawlfaceStats.generatedAt) });
+  }
   if (scrawlfaceStats.tools.has(tool)) return;
   scrawlfaceStats.tools.add(tool);
   track('tool_used', { tool });
 }
 
-// The app was opened: first time on this device, or after how many days
+function secondsSince(time) {
+  return time === null ? null : Math.round((performance.now() - time) / 1000);
+}
+
+// A drawing counts as finished (once per scrawlface) when the person is done
+// with a scrawlface they painted on: they keep it (saved, shared,
+// downloaded), or they move on (a new scribble, opening another one,
+// leaving the page) after real work: at least finishedPaintActions strokes
+// and fills. how says which.
+const finishedPaintActions = 3;
+
+function finishDrawing(how) {
+  const stats = scrawlfaceStats;
+  if (stats.startedAt === null || stats.finished) return;
+  const kept = ['saved', 'autosaved', 'shared', 'downloaded'].includes(how);
+  const paintActions = stats.strokes + stats.fills;
+  if (!kept && paintActions < finishedPaintActions) return;
+  stats.finished = true;
+  track('drawing_finished', { how, paint_actions: paintActions, seconds_drawing: secondsSince(stats.startedAt),
+    tools_used: [...stats.tools] });
+}
+
+// The app was opened: first time on this device, or a return. A visit is a
+// load, or coming back to the page, after 30 minutes or more away (so a
+// reload is not a visit); a return visit also gets returning_visit, with
+// how long since the first and the last.
+const visitGapMs = 30 * 60 * 1000;
+
 function trackAppOpened() {
+  const first = parseInt(storageGet('first_opened')) || 0;
   const last = parseInt(storageGet('last_opened')) || 0;
   const now = Date.now();
+  if (!first) storageSet('first_opened', last || now); // devices from before first_opened: their last visit
   storageSet('last_opened', now);
-  track('app_opened', { first_open: !last, days_since_last: last ? Math.floor((now - last) / 86400000) : null });
+  track('app_opened', { first_open: !last, days_since_last: last ? daysBetween(last, now) : null });
+  if (last && now - last >= visitGapMs) trackReturn(now, last);
 }
+
+function trackReturn(now, last) {
+  const first = parseInt(storageGet('first_opened')) || last;
+  const visits = (parseInt(storageGet('visits')) || 1) + 1;
+  storageSet('visits', visits);
+  track('returning_visit', { days_since_first: daysBetween(first, now), days_since_last: daysBetween(last, now), visit_number: visits });
+}
+
+function daysBetween(a, b) {
+  return Math.floor((b - a) / 86400000);
+}
+
+// Coming back to a page left open (a tab, an app in the background): a
+// return visit after 30 minutes or more. Leaving counts as finishing a
+// drawing in progress.
+let visitHiddenAt = null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    visitHiddenAt = Date.now();
+    storageSet('last_opened', visitHiddenAt);
+    if (scrawlfaceStats) finishDrawing('left');
+  } else if (visitHiddenAt !== null && Date.now() - visitHiddenAt >= visitGapMs) {
+    trackReturn(Date.now(), visitHiddenAt);
+    visitHiddenAt = null;
+  }
+});
 
 // ---- For a native shell: the app's state and the functions to drive it ----
 // A shell draws its own controls and talks to the page through
