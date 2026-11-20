@@ -278,6 +278,23 @@ async function run(label, contextOpts) {
       typeof vercel.saved.data.tools_used === 'string' && Object.values(vercel.saved.data).every(v => v === null || typeof v !== 'object'),
       JSON.stringify(vercel));
 
+    // Umami: only on scrawlface.app, so not here; started anyway (its script
+    // stood in for, served slowly), events from before it loads wait, then
+    // go, and later ones go straight to it
+    check('Umami: no script on other hosts', await t.ev(() => !document.querySelector('script[src*="umami"]')));
+    await t.page.route('https://cloud.umami.is/**', async r => {
+      await new Promise(res => setTimeout(res, 300));
+      r.fulfill({ contentType: 'application/javascript', body: 'window.umami = { calls: [], track(n, d) { this.calls.push([n, d]); } };' });
+    });
+    await t.ev(() => { startUmami(); window.scrawlface.rotate(); });
+    await t.page.waitForFunction(() => window.umami);
+    await t.ev(() => window.scrawlface.rotate());
+    const umami = await t.ev(() => ({ calls: window.umami.calls, id: document.querySelector('script[src="https://cloud.umami.is/script.js"]').dataset.websiteId }));
+    check('Umami: its script with the website id; events before and after it loads reach it, with plain values',
+      umami.id === '50b061ec-4f31-4c39-884a-e768e170f27a' && umami.calls.length === 2 && umami.calls.every(([n, d]) => n === 'canvas_rotated' && typeof d.rotation === 'number'),
+      JSON.stringify(umami));
+    t.remote.length = 0; // (the stand-in counts as remote; the check below is about the app itself)
+
     // No drawing or image data in any event; each is small
     const all = await t.ev(() => window.scrawlface.recentEvents());
     check('events carry no image data and stay small', all.every(x => !/data:|blob:/.test(JSON.stringify(x)) && JSON.stringify(x).length < 600),

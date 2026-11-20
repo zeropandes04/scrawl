@@ -5,6 +5,7 @@
 ## How it works
 - `track(name, props)` records an event. Events go to listeners, and the last 50 are kept for checking (`window.scrawlface.recentEvents()`).
 - **The website** sends them to **Vercel Web Analytics**: `scrawl.js` adds Vercel's script (`/_vercel/insights/script.js`, served by Vercel itself), which counts page views, and forwards each event as a custom event (`va('event', { name, data })`). Lists become comma-separated text, since custom event values must be plain. The script exists only where Vercel hosts the site; elsewhere (e.g. GitHub Pages) it fails to load and nothing is sent. Custom events are only recorded on Vercel plans that include them; page views on every plan. Web Analytics has to be switched on for the project in the Vercel dashboard.
+- **Umami** (cloud.umami.is) also gets them, on **scrawlface.app only** (not on GitHub Pages, local copies, in tests or in a native shell, so those don't count): `scrawl.js` adds Umami's script with the website ID, which counts page views, and sends each event with `umami.track(name, data)` (the same plain values). Events from before the script has loaded wait and go once it has (`startUmami`). Umami uses no cookies.
 - **A native shell** listens with `window.scrawlface.onEvent(fn)` (returns a function that stops listening) and forwards events to its own analytics. Canvas-only mode loads no Vercel script.
 - **Privacy:** no drawing, image data or personal details in any event. Vercel Web Analytics uses no cookies.
 

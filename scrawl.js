@@ -3757,6 +3757,17 @@ function onEvent(fn) {
   };
 }
 
+// An event's properties as plain values, as analytics services take them:
+// lists become comma-separated text, anything else that isn't plain is left out
+function plainProps(props) {
+  const data = {};
+  Object.entries(props).forEach(([key, value]) => {
+    if (Array.isArray(value)) data[key] = value.join(',');
+    else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) data[key] = value;
+  });
+  return data;
+}
+
 // Vercel Web Analytics, on the website only (a native shell has its own):
 // Vercel's script counts page views, and our events go to it as custom
 // events. The script exists only where Vercel hosts the site; elsewhere it
@@ -3768,16 +3779,32 @@ if (!isEmbedded()) {
   vercel.defer = true;
   vercel.src = '/_vercel/insights/script.js';
   document.head.appendChild(vercel);
-  // Custom event properties must be plain values: lists become text
-  onEvent(event => {
-    const data = {};
-    Object.entries(event.props).forEach(([key, value]) => {
-      if (Array.isArray(value)) data[key] = value.join(',');
-      else if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) data[key] = value;
-    });
-    window.va('event', { name: event.name, data });
-  });
+  onEvent(event => window.va('event', { name: event.name, data: plainProps(event.props) }));
 }
+
+// Umami (cloud.umami.is), on scrawlface.app only: not on other copies of the
+// site (GitHub Pages, local), in tests or in a native shell, so they don't
+// count. Its script counts page views; our events go to it as custom
+// events. Events from before it has loaded wait, then go.
+const umamiHosts = ['scrawlface.app', 'www.scrawlface.app'];
+const umamiWebsiteId = '50b061ec-4f31-4c39-884a-e768e170f27a';
+
+function startUmami() {
+  const waiting = [];
+  const send = event => window.umami.track(event.name, plainProps(event.props));
+  const script = document.createElement('script');
+  script.defer = true;
+  script.src = 'https://cloud.umami.is/script.js';
+  script.dataset.websiteId = umamiWebsiteId;
+  script.addEventListener('load', () => {
+    if (!window.umami) return;
+    waiting.splice(0).forEach(send);
+  });
+  document.head.appendChild(script);
+  onEvent(event => (window.umami ? send(event) : waiting.push(event)));
+}
+
+if (!isEmbedded() && umamiHosts.includes(location.hostname)) startUmami();
 
 // The scrawlface on the canvas: what's been used on it, for tool_used (the
 // first use of each tool) and scrawlface_saved. fresh: a new scribble (so
